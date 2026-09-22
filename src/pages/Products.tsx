@@ -13,6 +13,7 @@ import {
   ImageOff,
 } from "lucide-react";
 import Badge from "../components/Badge";
+import DimensoesProdutoSection from "../components/DimensoesProdutoSection";
 import {
   listProducts,
   createProduct,
@@ -129,6 +130,11 @@ export default function Products() {
   const [formItemPromocao, setFormItemPromocao] = useState(false);
   const [formCores, setFormCores] = useState<any[]>([]);
   const [formTamanhos, setFormTamanhos] = useState<string[]>([]);
+  // Peso e medidas do produto embalado (cálculo de frete)
+  const [formPeso, setFormPeso] = useState("");
+  const [formAltura, setFormAltura] = useState("");
+  const [formLargura, setFormLargura] = useState("");
+  const [formComprimento, setFormComprimento] = useState("");
   const [novaCorNome, setNovaCorNome] = useState("");
   const [novaCorHex, setNovaCorHex] = useState("#000000");
   const [novaCorImagem, setNovaCorImagem] = useState("");
@@ -181,6 +187,10 @@ export default function Products() {
     setFormItemPromocao(false);
     setFormCores([]);
     setFormTamanhos([]);
+    setFormPeso("");
+    setFormAltura("");
+    setFormLargura("");
+    setFormComprimento("");
     setNovaCorNome("");
     setNovaCorHex("#000000");
     setNovaCorImagem("");
@@ -233,6 +243,10 @@ export default function Products() {
       setFormItemPromocao(p.itemPromocao ?? false);
       setFormCores(p.cores ?? []);
       setFormTamanhos((p.tamanhos ?? []).map((t:any)=> typeof t === "string" ? t : t.tamanho).filter(Boolean));
+      setFormPeso(fresh.peso_gramas != null ? String(fresh.peso_gramas) : "");
+      setFormAltura(fresh.altura_cm != null ? String(fresh.altura_cm) : "");
+      setFormLargura(fresh.largura_cm != null ? String(fresh.largura_cm) : "");
+      setFormComprimento(fresh.comprimento_cm != null ? String(fresh.comprimento_cm) : "");
       setImagensExistentes(p.imagens);
       setImagensParaRemover([]);
       setNovasImagens([]);
@@ -385,6 +399,10 @@ export default function Products() {
       item_promocao: formItemPromocao,
       cores: formCores,
       tamanhos: formTamanhos,
+      peso_gramas: formPeso ? parseInt(formPeso, 10) : null,
+      altura_cm: formAltura ? parseFloat(formAltura.replace(",", ".")) : null,
+      largura_cm: formLargura ? parseFloat(formLargura.replace(",", ".")) : null,
+      comprimento_cm: formComprimento ? parseFloat(formComprimento.replace(",", ".")) : null,
     };
 
     setSaving(true);
@@ -1214,6 +1232,20 @@ export default function Products() {
                       />
                     </button>
                   </div>
+
+                  {/* Peso e medidas (frete) */}
+                  <DimensoesProdutoSection
+                    peso={formPeso}
+                    altura={formAltura}
+                    largura={formLargura}
+                    comprimento={formComprimento}
+                    onChange={(campo, valor) => {
+                      if (campo === "peso") setFormPeso(valor);
+                      if (campo === "altura") setFormAltura(valor);
+                      if (campo === "largura") setFormLargura(valor);
+                      if (campo === "comprimento") setFormComprimento(valor);
+                    }}
+                  />
 
                   {saveError && (
                     <p className="text-[12px] text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-lg px-3 py-2">

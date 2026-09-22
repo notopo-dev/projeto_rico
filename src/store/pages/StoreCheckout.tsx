@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, MessageCircle, CreditCard, QrCode, Loader2 } from "lucide-react";
+import { ChevronLeft, MessageCircle, CreditCard, QrCode, Loader2, Truck } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import { useCart } from "../context/CartContext";
-import { createPublicOrder } from "../lib/storeApi";
+import { createPublicOrder, type EnderecoEntrega } from "../lib/storeApi";
+import { calcularFrete, type OpcaoFrete } from "../lib/freteApi";
 import StripeCardPayment from "../components/StripeCardPayment";
 
 function formatBRL(v: number) {
@@ -25,6 +26,37 @@ function descricaoVariacao(corSelecionada?: string, tamanhoSelecionado?: string)
 
 type Etapa = "dados" | "pagamento";
 
+const estadosBR = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
+  "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC",
+  "SP", "SE", "TO",
+];
+
+function formatarCep(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 8);
+  return d.replace(/(\d{5})(\d)/, "$1-$2");
+}
+
+async function buscarCep(cep: string) {
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const data = await res.json();
+    if (data.erro) return null;
+    return {
+      logradouro: data.logradouro ?? "",
+      bairro: data.bairro ?? "",
+      cidade: data.localidade ?? "",
+      uf: data.uf ?? "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+const inputCls =
+  "w-full h-12 px-3.5 rounded-xl border border-[#e4e4e7] bg-white text-[15px] outline-none focus:border-[var(--store-primary)]";
+const labelCls = "block text-[12px] font-medium text-[#6b7280] mb-1";
+
 export default function StoreCheckout() {
   const { store } = useStore();
   const { items, total, clear } = useCart();
@@ -44,7 +76,77 @@ export default function StoreCheckout() {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  // Entrega
+  const [endereco, setEndereco] = useState<EnderecoEntrega>({
+    cep: "",
+    logradouro: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    uf: "",
+  });
+  const [buscandoFrete, setBuscandoFrete] = useState(false);
+  const [opcoesFrete, setOpcoesFrete] = useState<OpcaoFrete[]>([]);
+  const [freteSelecionado, setFreteSelecionado] = useState<OpcaoFrete | null>(null);
+  const [erroFrete, setErroFrete] = useState<string | null>(null);
+  // Loja sem Melhor Envio configurado: frete é combinado depois
+  const [freteACombinar, setFreteACombinar] = useState(false);
+
   if (!store) return null;
+
+  const valorFrete = freteSelecionado?.preco ?? 0;
+  const totalComFrete = total + valorFrete;
+
+  async function handleCepChange(valor: string) {
+    const formatado = formatarCep(valor);
+    setEndereco((e) => ({ ...e, cep: formatado }));
+    setOpcoesFrete([]);
+    setFreteSelecionado(null);
+    setErroFrete(null);
+    setFreteACombinar(false);
+
+    const digitos = formatado.replace(/\D/g, "");
+    if (digitos.length !== 8 || !store) return;
+
+    setBuscandoFrete(true);
+    try {
+      const [dadosCep, opcoes] = await Promise.all([
+        buscarCep(digitos),
+        calcularFrete(
+          store.id,
+          digitos,
+          items.map((i) => ({ product_id: i.productId, quantidade: i.quantidade }))
+        ).catch((err: Error) => {
+          const msg = err.message ?? "";
+          if (
+            msg.includes("não configurou") ||
+            msg.includes("CEP de origem")
+          ) {
+            setFreteACombinar(true);
+          } else {
+            setErroFrete(msg || "Não foi possível calcular o frete.");
+          }
+          return [] as OpcaoFrete[];
+        }),
+      ]);
+
+      if (dadosCep) {
+        setEndereco((e) => ({
+          ...e,
+          logradouro: dadosCep.logradouro || e.logradouro,
+          bairro: dadosCep.bairro || e.bairro,
+          cidade: dadosCep.cidade || e.cidade,
+          uf: dadosCep.uf || e.uf,
+        }));
+      }
+
+      setOpcoesFrete(opcoes);
+      if (opcoes.length > 0) setFreteSelecionado(opcoes[0]);
+    } finally {
+      setBuscandoFrete(false);
+    }
+  }
 
   const permiteWhatsapp = store.modo_compra === "whatsapp" || store.modo_compra === "ambos";
   const permitePagamento = store.modo_compra === "pagamento" || store.modo_compra === "ambos";
@@ -72,6 +174,27 @@ export default function StoreCheckout() {
       return;
     }
 
+    const cepDigits = endereco.cep.replace(/\D/g, "");
+    if (
+      cepDigits.length !== 8 ||
+      !endereco.logradouro.trim() ||
+      !endereco.numero.trim() ||
+      !endereco.bairro.trim() ||
+      !endereco.cidade.trim() ||
+      !endereco.uf
+    ) {
+      setErro("Preencha o endereço de entrega completo.");
+      return;
+    }
+    if (!freteSelecionado && !freteACombinar) {
+      setErro(
+        buscandoFrete
+          ? "Aguarde o cálculo do frete."
+          : "Escolha uma opção de frete."
+      );
+      return;
+    }
+
     setEnviando(true);
     try {
       const order = await createPublicOrder({
@@ -86,6 +209,16 @@ export default function StoreCheckout() {
         })),
         metodoPagamento: metodo === "whatsapp" ? null : metodo,
         cliente: { nome, telefone, cpf: cpfDigits, email: email || undefined },
+        enderecoEntrega: { ...endereco, cep: cepDigits },
+        frete: freteSelecionado
+          ? {
+              servicoId: freteSelecionado.id,
+              nome: freteSelecionado.nome,
+              transportadora: freteSelecionado.transportadora,
+              preco: freteSelecionado.preco,
+              prazoDias: freteSelecionado.prazo_dias,
+            }
+          : null,
       });
 
       if (metodo === "whatsapp") {
@@ -103,7 +236,14 @@ export default function StoreCheckout() {
           })
           .join("\n\n");
         const mensagem = encodeURIComponent(
-          `Olá! Quero fazer um pedido na ${store.nome} (#${order.numero}):\n\n${linhas}\n\n*Total: ${formatBRL(total)}*\n\nNome: ${nome}`
+          `Olá! Quero fazer um pedido na ${store.nome} (#${order.numero}):\n\n${linhas}\n\n` +
+            `Subtotal: ${formatBRL(total)}\n` +
+            (freteSelecionado
+              ? `Frete (${freteSelecionado.transportadora} ${freteSelecionado.nome}, ${freteSelecionado.prazo_dias} dias úteis): ${formatBRL(valorFrete)}\n`
+              : `Frete: a combinar\n`) +
+            `*Total: ${formatBRL(totalComFrete)}*\n\n` +
+            `Nome: ${nome}\n` +
+            `Entrega: ${endereco.logradouro}, ${endereco.numero}${endereco.complemento ? ` - ${endereco.complemento}` : ""}, ${endereco.bairro}, ${endereco.cidade}/${endereco.uf} - CEP ${endereco.cep}`
         );
         const numeroLoja = store.whatsapp ? onlyDigits(store.whatsapp) : "";
         clear();
@@ -213,6 +353,163 @@ export default function StoreCheckout() {
             </div>
           </div>
 
+          {/* Entrega */}
+          <div className="bg-white rounded-2xl border border-black/5 p-4">
+            <div className="flex items-center gap-1.5 mb-3">
+              <Truck size={15} className="text-[#374151]" />
+              <h2 className="text-[13px] font-bold text-[#111827]">Entrega</h2>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className={labelCls}>CEP</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={endereco.cep}
+                    onChange={(e) => handleCepChange(e.target.value)}
+                    placeholder="00000-000"
+                    className={inputCls}
+                  />
+                  {buscandoFrete && (
+                    <Loader2
+                      size={16}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-[#9ca3af]"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {endereco.cep.replace(/\D/g, "").length === 8 && (
+                <>
+                  <div>
+                    <label className={labelCls}>Rua / Avenida</label>
+                    <input
+                      type="text"
+                      value={endereco.logradouro}
+                      onChange={(e) =>
+                        setEndereco((x) => ({ ...x, logradouro: e.target.value }))
+                      }
+                      className={inputCls}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className={labelCls}>Número</label>
+                      <input
+                        type="text"
+                        value={endereco.numero}
+                        onChange={(e) =>
+                          setEndereco((x) => ({ ...x, numero: e.target.value }))
+                        }
+                        className={inputCls}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className={labelCls}>Complemento</label>
+                      <input
+                        type="text"
+                        value={endereco.complemento ?? ""}
+                        onChange={(e) =>
+                          setEndereco((x) => ({ ...x, complemento: e.target.value }))
+                        }
+                        placeholder="Opcional"
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Bairro</label>
+                    <input
+                      type="text"
+                      value={endereco.bairro}
+                      onChange={(e) =>
+                        setEndereco((x) => ({ ...x, bairro: e.target.value }))
+                      }
+                      className={inputCls}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2">
+                      <label className={labelCls}>Cidade</label>
+                      <input
+                        type="text"
+                        value={endereco.cidade}
+                        onChange={(e) =>
+                          setEndereco((x) => ({ ...x, cidade: e.target.value }))
+                        }
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>UF</label>
+                      <select
+                        value={endereco.uf}
+                        onChange={(e) =>
+                          setEndereco((x) => ({ ...x, uf: e.target.value }))
+                        }
+                        className={inputCls}
+                      >
+                        <option value="">—</option>
+                        {estadosBR.map((uf) => (
+                          <option key={uf} value={uf}>
+                            {uf}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Opções de frete */}
+                  {opcoesFrete.length > 0 && (
+                    <div className="pt-1 space-y-2">
+                      <p className="text-[12px] font-medium text-[#6b7280]">
+                        Escolha o frete
+                      </p>
+                      {opcoesFrete.map((op) => (
+                        <button
+                          key={op.id}
+                          type="button"
+                          onClick={() => setFreteSelecionado(op)}
+                          className={`w-full flex items-center justify-between gap-3 p-3 rounded-xl border-2 text-left transition-colors ${
+                            freteSelecionado?.id === op.id
+                              ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
+                              : "border-[#e4e4e7]"
+                          }`}
+                        >
+                          <div>
+                            <p className="text-[13px] font-semibold text-[#111827]">
+                              {op.transportadora} {op.nome}
+                            </p>
+                            <p className="text-[11px] text-[#9ca3af]">
+                              Até {op.prazo_dias} dia{op.prazo_dias !== 1 ? "s" : ""} úte
+                              {op.prazo_dias !== 1 ? "is" : "il"}
+                            </p>
+                          </div>
+                          <span className="text-[14px] font-bold text-[#111827] shrink-0">
+                            {formatBRL(op.preco)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {freteACombinar && (
+                    <p className="text-[12px] text-[#92400e] bg-[#fffbeb] border border-[#fde68a] rounded-xl px-3.5 py-2.5">
+                      O valor do frete será combinado com a loja após o pedido.
+                    </p>
+                  )}
+
+                  {erroFrete && (
+                    <p className="text-[12px] text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-xl px-3.5 py-2.5">
+                      {erroFrete}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
           {/* Forma de recebimento do pedido */}
           {(permiteWhatsapp && permitePagamento) && (
             <div className="bg-white rounded-2xl border border-black/5 p-4">
@@ -304,11 +601,27 @@ export default function StoreCheckout() {
                 );
               })}
             </div>
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#f0f0f1]">
-              <span className="text-[13px] font-semibold text-[#111827]">Total</span>
-              <span className="text-[16px] font-extrabold text-[#111827]">
-                {formatBRL(total)}
-              </span>
+            <div className="mt-3 pt-3 border-t border-[#f0f0f1] space-y-1.5">
+              <div className="flex items-center justify-between text-[13px]">
+                <span className="text-[#6b7280]">Subtotal</span>
+                <span className="text-[#111827]">{formatBRL(total)}</span>
+              </div>
+              <div className="flex items-center justify-between text-[13px]">
+                <span className="text-[#6b7280]">Frete</span>
+                <span className="text-[#111827]">
+                  {freteSelecionado
+                    ? formatBRL(valorFrete)
+                    : freteACombinar
+                    ? "A combinar"
+                    : "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-1.5">
+                <span className="text-[13px] font-semibold text-[#111827]">Total</span>
+                <span className="text-[16px] font-extrabold text-[#111827]">
+                  {formatBRL(totalComFrete)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -326,13 +639,13 @@ export default function StoreCheckout() {
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#f0f0f1]">
               <span className="text-[13px] text-[#6b7280]">Pedido #{orderNumero}</span>
               <span className="text-[16px] font-extrabold text-[#111827]">
-                {formatBRL(total)}
+                {formatBRL(totalComFrete)}
               </span>
             </div>
             <StripeCardPayment
               storeId={store.id}
               orderId={orderId}
-              totalReais={total}
+              totalReais={totalComFrete}
               metodo={metodo === "pix" ? "pix" : "card"}
               onSuccess={handlePagamentoConfirmado}
               onError={setErro}

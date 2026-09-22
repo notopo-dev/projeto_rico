@@ -1,22 +1,21 @@
 // ============================================================
 // Tipos que espelham o schema SQL do Supabase.
-// Mantenha sincronizado com 01_schema.sql sempre que alterar
+// Mantenha sincronizado com as migrations sempre que alterar
 // uma tabela.
 // ============================================================
 
 export type OrderStatus = "pendente" | "pago" | "enviado" | "entregue" | "cancelado";
 export type ProductStatus = "ativo" | "inativo" | "sem_estoque";
 export type CustomerStatus = "ativo" | "inativo";
-export type PaymentMethod = "pix" | "cartao" | "boleto";
+export type PaymentMethod = "pix" | "cartao" | "boleto" | "cartao_stripe";
 export type PaymentStatus = "recebido" | "pendente" | "estornado" | "falhou";
-export type WhatsAppGatilho =
-  | "pedido_confirmado"
-  | "pagamento_recebido"
-  | "pedido_enviado"
-  | "pedido_entregue"
-  | "pedido_cancelado"
-  | "pagamento_pendente"
-  | "carrinho_abandonado";
+export type EtiquetaStatus =
+  | "pendente"
+  | "paga"
+  | "gerada"
+  | "postada"
+  | "entregue"
+  | "cancelada";
 
 export interface Store {
   id: string;
@@ -29,13 +28,41 @@ export interface Store {
   logo_url: string | null;
   banner_url: string | null;
   cor_primaria: string;
+  cor_secundaria: string;
   politica_troca: string | null;
   politica_frete: string | null;
   ativo: boolean;
   manter_estoque: boolean;
   exibir_sem_estoque: boolean;
+  modo_compra: "whatsapp" | "pagamento" | "ambos";
   plano: string;
   plano_renovacao: string | null;
+  // Endereço de origem (de onde a encomenda é postada)
+  cep_origem: string | null;
+  endereco_logradouro: string | null;
+  endereco_numero: string | null;
+  endereco_complemento: string | null;
+  endereco_bairro: string | null;
+  endereco_cidade: string | null;
+  endereco_uf: string | null;
+  // Stripe Connect (conta do lojista, recebe do cliente final)
+  stripe_account_id: string | null;
+  stripe_tipo_pessoa: "individual" | "company" | null;
+  stripe_charges_enabled: boolean;
+  stripe_payouts_enabled: boolean;
+  stripe_onboarding_completo: boolean;
+  stripe_documento_enviado: boolean;
+  stripe_requisitos_pendentes: unknown[] | null;
+  // Stripe Billing (mensalidade do lojista com a plataforma)
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  assinatura_status:
+    | "sem_assinatura"
+    | "ativa"
+    | "inadimplente"
+    | "cancelada"
+    | null;
+  assinatura_proxima_cobranca: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -63,9 +90,31 @@ export interface Product {
   estoque: number;
   estoque_minimo: number;
   permite_venda_sem_estoque: boolean;
+  item_promocao: boolean;
   status: ProductStatus;
+  // Dimensões para cálculo de frete
+  peso_gramas: number | null;
+  altura_cm: number | null;
+  largura_cm: number | null;
+  comprimento_cm: number | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProductColor {
+  id: string;
+  product_id: string;
+  nome: string;
+  codigo_hex: string | null;
+  imagem_url: string | null;
+  created_at?: string;
+}
+
+export interface ProductSize {
+  id: string;
+  product_id: string;
+  tamanho: string;
+  created_at?: string;
 }
 
 export interface ProductImage {
@@ -76,23 +125,13 @@ export interface ProductImage {
   created_at: string;
 }
 
-export interface ProductVariant {
-  id: string;
-  product_id: string;
-  nome: string;
-  sku: string | null;
-  preco: number | null;
-  estoque: number;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface Customer {
   id: string;
   store_id: string;
   nome: string;
   email: string | null;
   telefone: string | null;
+  cpf: string | null;
   status: CustomerStatus;
   created_at: string;
   updated_at: string;
@@ -109,6 +148,15 @@ export interface Order {
   frete: number;
   total: number;
   endereco_entrega: Record<string, unknown> | null;
+  // Dados de envio
+  frete_servico: string | null;
+  frete_transportadora: string | null;
+  frete_prazo_dias: number | null;
+  cep_entrega: string | null;
+  melhor_envio_order_id: string | null;
+  codigo_rastreio: string | null;
+  etiqueta_url: string | null;
+  etiqueta_status: EtiquetaStatus | null;
   created_at: string;
   updated_at: string;
 }
@@ -117,11 +165,12 @@ export interface OrderItem {
   id: string;
   order_id: string;
   product_id: string | null;
-  variant_id: string | null;
   nome_produto: string;
   quantidade: number;
   preco_unitario: number;
   subtotal: number;
+  cor_selecionada: string | null;
+  tamanho_selecionado: string | null;
   created_at: string;
 }
 
@@ -135,17 +184,8 @@ export interface Payment {
   taxa: number;
   valor_liquido: number | null;
   status: PaymentStatus;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface WhatsAppRule {
-  id: string;
-  store_id: string;
-  nome: string;
-  gatilho: WhatsAppGatilho;
-  mensagem: string;
-  ativa: boolean;
+  stripe_payment_intent_id: string | null;
+  stripe_charge_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -159,43 +199,9 @@ export interface StoreSettings {
   notif_relatorio_semanal: boolean;
   notif_marketing: boolean;
   melhor_envio_token: string | null;
+  melhor_envio_ambiente: "sandbox" | "producao";
   correios_login: string | null;
   pix_chave: string | null;
   mercado_pago_token: string | null;
-  stripe_secret_key: string | null;
   updated_at: string;
-}
-
-// Linha da view v_estoque (criada em 03_functions.sql)
-export interface EstoqueView {
-  id: string;
-  store_id: string;
-  nome: string;
-  sku: string;
-  categoria: string | null;
-  estoque: number;
-  estoque_minimo: number;
-  status_estoque: "ok" | "baixo" | "sem";
-}
-
-// Tipagem completa das tabelas para uso com createClient<Database>()
-export interface Database {
-  public: {
-    Tables: {
-      stores: { Row: Store; Insert: Partial<Store>; Update: Partial<Store> };
-      categories: { Row: Category; Insert: Partial<Category>; Update: Partial<Category> };
-      products: { Row: Product; Insert: Partial<Product>; Update: Partial<Product> };
-      product_images: { Row: ProductImage; Insert: Partial<ProductImage>; Update: Partial<ProductImage> };
-      product_variants: { Row: ProductVariant; Insert: Partial<ProductVariant>; Update: Partial<ProductVariant> };
-      customers: { Row: Customer; Insert: Partial<Customer>; Update: Partial<Customer> };
-      orders: { Row: Order; Insert: Partial<Order>; Update: Partial<Order> };
-      order_items: { Row: OrderItem; Insert: Partial<OrderItem>; Update: Partial<OrderItem> };
-      payments: { Row: Payment; Insert: Partial<Payment>; Update: Partial<Payment> };
-      whatsapp_rules: { Row: WhatsAppRule; Insert: Partial<WhatsAppRule>; Update: Partial<WhatsAppRule> };
-      store_settings: { Row: StoreSettings; Insert: Partial<StoreSettings>; Update: Partial<StoreSettings> };
-    };
-    Views: {
-      v_estoque: { Row: EstoqueView };
-    };
-  };
 }

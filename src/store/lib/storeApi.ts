@@ -27,6 +27,7 @@ export interface PublicProductImage {
   url: string;
   posicao: number;
 }
+
 export interface PublicProductColor {
   id?: string;
   nome: string;
@@ -48,14 +49,26 @@ export interface PublicProduct {
   categoria_nome: string | null;
   imagens: PublicProductImage[];
   cores: PublicProductColor[];
-  tamanhos: {id?: string; tamanho:string}[];
+  tamanhos: { id?: string; tamanho: string }[];
   item_promocao: boolean;
 }
 
-/**
- * Busca os dados públicos de uma loja pelo slug.
- * Retorna null se não existir ou não estiver ativa.
- */
+const PRODUCT_SELECT =
+  "id, nome, slug, descricao, sku, preco, preco_promocional, estoque, permite_venda_sem_estoque, category_id, categories(nome), product_images(url, posicao), product_colors(id,nome,codigo_hex,imagem_url), product_sizes(id,tamanho), item_promocao";
+
+function mapProduct(p: any): PublicProduct {
+  return {
+    ...p,
+    categoria_nome: p.categories?.nome ?? null,
+    imagens: (p.product_images ?? []).sort(
+      (a: any, b: any) => a.posicao - b.posicao
+    ),
+    cores: p.product_colors ?? [],
+    tamanhos: p.product_sizes ?? [],
+    item_promocao: p.item_promocao ?? false,
+  };
+}
+
 export async function getStoreBySlug(slug: string): Promise<PublicStore | null> {
   const { data, error } = await supabase
     .from("stores")
@@ -84,34 +97,18 @@ export async function listPublicCategories(
   return data ?? [];
 }
 
-/**
- * Lista produtos visíveis na loja pública: ativos, e com estoque
- * OU com venda liberada mesmo sem estoque.
- */
 export async function listPublicProducts(
   storeId: string
 ): Promise<PublicProduct[]> {
   const { data, error } = await supabase
     .from("products")
-    .select(
-      "id, nome, slug, descricao, sku, preco, preco_promocional, estoque, permite_venda_sem_estoque, category_id, categories(nome), product_images(url, posicao), product_colors(id,nome,codigo_hex,imagem_url), product_sizes(id,tamanho), item_promocao"
-    )
+    .select(PRODUCT_SELECT)
     .eq("store_id", storeId)
     .eq("status", "ativo")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-
-  return (data ?? []).map((p: any) => ({
-    ...p,
-    categoria_nome: p.categories?.nome ?? null,
-    imagens: (p.product_images ?? []).sort(
-      (a: any, b: any) => a.posicao - b.posicao
-    ),
-    cores: p.product_colors ?? [],
-    tamanhos: p.product_sizes ?? [],
-    item_promocao: p.item_promocao ?? false,
-  }));
+  return (data ?? []).map(mapProduct);
 }
 
 export async function getPublicProductBySlug(
@@ -120,9 +117,7 @@ export async function getPublicProductBySlug(
 ): Promise<PublicProduct | null> {
   const { data, error } = await supabase
     .from("products")
-    .select(
-      "id, nome, slug, descricao, sku, preco, preco_promocional, estoque, permite_venda_sem_estoque, category_id, categories(nome), product_images(url, posicao), product_colors(id,nome,codigo_hex,imagem_url), product_sizes(id,tamanho), item_promocao"
-    )
+    .select(PRODUCT_SELECT)
     .eq("store_id", storeId)
     .eq("slug", productSlug)
     .eq("status", "ativo")
@@ -130,18 +125,7 @@ export async function getPublicProductBySlug(
 
   if (error) throw error;
   if (!data) return null;
-
-  const p: any = data;
-  return {
-    ...p,
-    categoria_nome: p.categories?.nome ?? null,
-    imagens: (p.product_images ?? []).sort(
-      (a: any, b: any) => a.posicao - b.posicao
-    ),
-    cores: p.product_colors ?? [],
-    tamanhos: p.product_sizes ?? [],
-    item_promocao: p.item_promocao ?? false,
-  };
+  return mapProduct(data);
 }
 
 export interface CartItemInput {
@@ -151,6 +135,24 @@ export interface CartItemInput {
   preco_unitario: number;
   cor_selecionada?: string;
   tamanho_selecionado?: string;
+}
+
+export interface EnderecoEntrega {
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+}
+
+export interface FreteEscolhido {
+  servicoId: number;
+  nome: string;
+  transportadora: string;
+  preco: number;
+  prazoDias: number;
 }
 
 export interface CheckoutInput {
@@ -163,18 +165,17 @@ export interface CheckoutInput {
     cpf: string;
     email?: string;
   };
-  enderecoEntrega?: Record<string, unknown>;
+  enderecoEntrega?: EnderecoEntrega | null;
+  frete?: FreteEscolhido | null;
 }
 
 /**
- * Cria o pedido no banco (cliente + pedido + itens).
- * Usado tanto para o fluxo de WhatsApp (registra o pedido antes
- * de redirecionar) quanto para o fluxo de pagamento.
+ * Cria o pedido no banco (cliente + pedido + itens), já com o
+ * frete escolhido somado ao total. Usado tanto no fluxo de
+ * WhatsApp quanto no de pagamento online.
  */
 export async function createPublicOrder(input: CheckoutInput) {
-  // 1. Garante o cliente (busca por CPF+telefone; cria se não
-  // existir). CPF é necessário para a consulta pública de
-  // pedidos funcionar depois.
+  // 1. Garante o cliente (busca por CPF+telefone; cria se não existir)
   let customerId: string | null = null;
 
   const cpfDigits = input.cliente.cpf.replace(/\D/g, "");
@@ -214,6 +215,7 @@ export async function createPublicOrder(input: CheckoutInput) {
     (sum, item) => sum + item.preco_unitario * item.quantidade,
     0
   );
+  const valorFrete = input.frete?.preco ?? 0;
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
@@ -223,17 +225,22 @@ export async function createPublicOrder(input: CheckoutInput) {
       status: "pendente",
       metodo_pagamento: input.metodoPagamento,
       subtotal,
-      frete: 0,
-      total: subtotal,
+      frete: valorFrete,
+      total: subtotal + valorFrete,
       endereco_entrega: input.enderecoEntrega ?? null,
+      cep_entrega: input.enderecoEntrega?.cep?.replace(/\D/g, "") || null,
+      frete_servico: input.frete ? String(input.frete.servicoId) : null,
+      frete_transportadora: input.frete
+        ? `${input.frete.transportadora} ${input.frete.nome}`.trim()
+        : null,
+      frete_prazo_dias: input.frete?.prazoDias ?? null,
     })
     .select("id, numero")
     .single();
 
   if (orderError) throw orderError;
 
-  // 3. Cria os itens do pedido — inclui cor/tamanho escolhidos,
-  // para não perder essa informação entre carrinho e pedido final.
+  // 3. Itens do pedido (com cor/tamanho)
   const itemsPayload = input.itens.map((item) => ({
     order_id: order.id,
     product_id: item.product_id,
@@ -274,9 +281,7 @@ export interface PedidoConsultado {
 
 /**
  * Consulta os pedidos do cliente por CPF + telefone (os dois
- * precisam bater). Usa uma função do banco (security definer)
- * em vez de select direto — evita expor pedidos de terceiros
- * por tentativa de CPF isolado.
+ * precisam bater), via função segura no banco.
  */
 export async function consultarPedidosPublico(
   storeId: string,

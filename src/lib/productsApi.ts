@@ -130,6 +130,18 @@ export interface ProductInput {
 
   tamanhos:string[];
 
+
+  // Peso e medidas do produto embalado — usados no cálculo
+  // de frete pelo Melhor Envio. Sem eles, o produto não pode
+  // ser cotado no checkout.
+  peso_gramas:number|null;
+
+  altura_cm:number|null;
+
+  largura_cm:number|null;
+
+  comprimento_cm:number|null;
+
 }
 
 
@@ -223,6 +235,19 @@ item_promocao:
 input.item_promocao,
 
 
+peso_gramas:
+input.peso_gramas,
+
+altura_cm:
+input.altura_cm,
+
+largura_cm:
+input.largura_cm,
+
+comprimento_cm:
+input.comprimento_cm,
+
+
 status:
 calcularStatus(
 input.estoque,
@@ -298,6 +323,19 @@ input.permite_venda_sem_estoque,
 
 item_promocao:
 input.item_promocao,
+
+
+peso_gramas:
+input.peso_gramas,
+
+altura_cm:
+input.altura_cm,
+
+largura_cm:
+input.largura_cm,
+
+comprimento_cm:
+input.comprimento_cm,
 
 
 status:

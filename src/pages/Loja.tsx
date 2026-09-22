@@ -16,6 +16,7 @@ import {
 } from "../lib/lojaApi";
 
 import type { Store } from "../types/database";
+import EnderecoOrigemSection from "../components/EnderecoOrigemSection";
 
 export default function Loja() {
   const [loading, setLoading] = useState(true);
@@ -45,6 +46,13 @@ export default function Loja() {
       ativo: true,
       manter_estoque: true,
       exibir_sem_estoque: false,
+      cep_origem: "",
+      endereco_logradouro: "",
+      endereco_numero: "",
+      endereco_complemento: "",
+      endereco_bairro: "",
+      endereco_cidade: "",
+      endereco_uf: "",
     });
 
   async function load() {
@@ -428,6 +436,9 @@ export default function Loja() {
               />
             </div>
           </section>
+
+          {/* Endereço de envio (origem das encomendas) */}
+          <EnderecoOrigemSection form={form} setForm={setForm} />
 
           {/* Políticas */}
           <section className="bg-white border border-[#e4e4e7] rounded-[6px]">
