@@ -1,9 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-export const supabase = createClient(
-  supabaseUrl,
-  supabaseKey
-);
+/**
+ * Compatibilidade: vários arquivos importam de "../lib/supabase".
+ * Para não existir mais de um cliente na mesma página, este
+ * arquivo apenas reexporta o cliente único de supabaseClient.ts.
+ */
+export { supabase } from "./supabaseClient";
