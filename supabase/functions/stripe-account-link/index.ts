@@ -67,12 +67,46 @@ Deno.serve(async (req) => {
     const returnUrl = `${APP_URL}/configuracoes?stripe=retorno`;
     const refreshUrl = `${APP_URL}/configuracoes?stripe=recarregar`;
 
+    // ⚠️ As configurações pedidas aqui têm que ser EXATAMENTE as que a
+    // conta já tem aplicadas, senão a Stripe recusa com
+    // "The configurations in the request must match the applied
+    // configurations on the account".
+    // A nossa stripe-custom-create-account cria com merchant + recipient,
+    // mas em vez de fixar no código lemos da própria conta.
+    const contaRes = await fetch(
+      `https://api.stripe.com/v2/core/accounts/${store.stripe_account_id}` +
+        `?include[0]=configuration.merchant&include[1]=configuration.recipient` +
+        `&include[2]=configuration.customer`,
+      {
+        headers: {
+          Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
+          "Stripe-Version": STRIPE_VERSION,
+        },
+      }
+    );
+
+    const conta = await contaRes.json();
+
+    if (!contaRes.ok) {
+      console.error("Falha ao ler a conta:", conta);
+      return json(
+        { error: conta?.error?.message ?? "Não foi possível ler a conta." },
+        400
+      );
+    }
+
+    const configuracoes = ["merchant", "recipient", "customer"].filter(
+      (c) => conta?.configuration?.[c] != null
+    );
+
+    if (configuracoes.length === 0) configuracoes.push("merchant");
+
     const useCase =
       tipo === "atualizar"
         ? {
             type: "account_update",
             account_update: {
-              configurations: ["merchant"],
+              configurations: configuracoes,
               return_url: returnUrl,
               refresh_url: refreshUrl,
             },
@@ -83,7 +117,7 @@ Deno.serve(async (req) => {
               // eventually_due = pede tudo de uma vez; evita o lojista
               // voltar várias vezes e evita bloqueio de repasse depois.
               collection_options: { fields: "eventually_due" },
-              configurations: ["merchant"],
+              configurations: configuracoes,
               return_url: returnUrl,
               refresh_url: refreshUrl,
             },

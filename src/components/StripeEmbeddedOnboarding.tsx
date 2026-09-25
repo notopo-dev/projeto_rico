@@ -5,7 +5,13 @@ import {
   ConnectAccountOnboarding,
   ConnectComponentsProvider,
 } from "@stripe/react-connect-js";
-import { Loader2, AlertCircle, ExternalLink, CheckCircle2 } from "lucide-react";
+import {
+  Loader2,
+  AlertCircle,
+  ExternalLink,
+  CheckCircle2,
+  RefreshCw,
+} from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 
 /**
@@ -70,6 +76,7 @@ export default function StripeEmbeddedOnboarding({
   const [carregando, setCarregando] = useState(true);
   const [finalizado, setFinalizado] = useState(false);
   const [abrindoLink, setAbrindoLink] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
   const primeiroSecret = useRef<string | null>(null);
 
   // A Stripe chama isto sempre que precisa de um client_secret novo.
@@ -142,7 +149,7 @@ export default function StripeEmbeddedOnboarding({
     return () => {
       vivo = false;
     };
-  }, [fetchClientSecret, corPrimaria]);
+  }, [fetchClientSecret, corPrimaria, tentativa]);
 
   async function abrirNaStripe() {
     setAbrindoLink(true);
@@ -177,18 +184,36 @@ export default function StripeEmbeddedOnboarding({
               Não foi possível abrir o formulário aqui
             </p>
             <p className="text-[12px] text-[#b91c1c] mt-1 break-words">{erro}</p>
-            <button
-              onClick={abrirNaStripe}
-              disabled={abrindoLink}
-              className="mt-3 h-11 min-h-[44px] px-4 rounded-xl bg-white border border-[#fecaca] text-[13px] font-semibold text-[#991b1b] inline-flex items-center gap-2 disabled:opacity-60"
-            >
-              {abrindoLink ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : (
-                <ExternalLink size={15} />
-              )}
-              Continuar pela página segura da Stripe
-            </button>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                onClick={() => {
+                  setErro(null);
+                  setCarregando(true);
+                  setTentativa((n) => n + 1);
+                }}
+                className="h-11 min-h-[44px] px-4 rounded-xl bg-[#0f1117] text-white text-[13px] font-semibold inline-flex items-center gap-2"
+              >
+                <RefreshCw size={15} />
+                Tentar novamente
+              </button>
+
+              {/* Saída de emergência: só aparece depois de falhar, para o
+                  lojista não ficar sem caminho nenhum. Em operação normal
+                  ninguém sai do nosso site. */}
+              <button
+                onClick={abrirNaStripe}
+                disabled={abrindoLink}
+                className="h-11 min-h-[44px] px-4 rounded-xl bg-white border border-[#fecaca] text-[13px] font-medium text-[#991b1b] inline-flex items-center gap-2 disabled:opacity-60"
+              >
+                {abrindoLink ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <ExternalLink size={15} />
+                )}
+                Abrir formulário da Stripe
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -224,19 +249,6 @@ export default function StripeEmbeddedOnboarding({
           />
         </ConnectComponentsProvider>
       )}
-
-      <button
-        onClick={abrirNaStripe}
-        disabled={abrindoLink}
-        className="mt-4 w-full h-11 min-h-[44px] rounded-xl border border-[#e4e4e7] text-[12.5px] font-medium text-[#6b7280] inline-flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-[#f4f4f5]"
-      >
-        {abrindoLink ? (
-          <Loader2 size={14} className="animate-spin" />
-        ) : (
-          <ExternalLink size={14} />
-        )}
-        Prefiro preencher na página da Stripe
-      </button>
     </div>
   );
 }
