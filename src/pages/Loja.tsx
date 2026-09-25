@@ -228,7 +228,7 @@ export default function Loja() {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-[860px]">
+      <div className="p-4 sm:p-6 max-w-[860px]">
         <div className="flex items-center gap-2 text-[13px] text-[#6b7280]">
           <Loader2
             size={16}
@@ -243,7 +243,7 @@ export default function Loja() {
 
   if (loadError || !store) {
     return (
-      <div className="p-6 max-w-[860px]">
+      <div className="p-4 sm:p-6 max-w-[860px]">
         <div className="flex items-center justify-between gap-3 rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[13px] text-[#b91c1c]">
           <span>
             {loadError ??
@@ -265,10 +265,21 @@ export default function Loja() {
     form.slug.trim()
   )}`;
 
+  /*
+   * O domínio mostrado antes era "lojapro.com.br" escrito no código,
+   * mesmo quando o site rodava em outro endereço. Agora vem do próprio
+   * navegador, então acerta em produção, em pré-visualização e no
+   * ambiente local, sem ninguém precisar lembrar de trocar.
+   */
+  const dominioPublico =
+    typeof window !== "undefined"
+      ? window.location.host.replace(/^www\./, "")
+      : "moneynotopo.com.br";
+
   return (
-    <div className="p-6 max-w-[860px]">
+    <div className="p-4 sm:p-6 max-w-[860px]">
       {/* Status bar */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#e4e4e7]">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-[#e4e4e7]">
         <div className="flex items-center gap-3">
           <div
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[12px] font-medium border ${
@@ -301,7 +312,7 @@ export default function Loja() {
           </a>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => {
@@ -315,7 +326,7 @@ export default function Loja() {
                 "noopener,noreferrer"
               );
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] text-[#374151] border border-[#e4e4e7] rounded-[6px] bg-white hover:bg-[#f4f4f5] transition-colors"
+            className="toque flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-1.5 text-[13px] font-medium text-[#374151] border border-[#e4e4e7] rounded-xl sm:rounded-[6px] bg-white hover:bg-[#f4f4f5] active:scale-[0.98] transition-all"
           >
             <Eye
               size={14}
@@ -328,7 +339,7 @@ export default function Loja() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] text-white bg-[#16a34a] rounded-[6px] hover:bg-[#15803d] transition-colors font-medium disabled:opacity-60"
+            className="toque flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-1.5 text-[13px] text-white bg-[#0f1117] sm:bg-[#16a34a] rounded-xl sm:rounded-[6px] hover:opacity-90 active:scale-[0.98] transition-all font-semibold disabled:opacity-60"
           >
             {saving ? (
               <Loader2
@@ -387,7 +398,7 @@ export default function Loja() {
 
                 <div className="flex items-center border border-[#e4e4e7] rounded-[6px] overflow-hidden focus-within:ring-1 focus-within:ring-[#16a34a] focus-within:border-[#16a34a]">
                   <span className="px-3 py-1.5 bg-[#f4f4f5] text-[12px] text-[#6b7280] border-r border-[#e4e4e7] whitespace-nowrap">
-                    lojapro.com.br/
+                    {dominioPublico}/
                   </span>
 
                   <input

@@ -363,4 +363,21 @@ textarea {
 
   /* Cartões e listas ganham respiro proporcional ao texto maior. */
   .cartao-app { border-radius: 20px; }
+
+  /* Alvo de toque mínimo. Botões desenhados para mouse costumavam ter
+     28-32px de altura; no dedo isso erra muito. 44px é a recomendação
+     da Apple, 48px a do Google — 44 com folga de padding resolve. */
+  button,
+  [role="button"] {
+    min-height: 44px;
+  }
+
+  /* Exceções: elementos que já controlam o próprio tamanho e não devem
+     esticar dentro de uma linha. */
+  .sem-toque-minimo,
+  summary,
+  nav button {
+    min-height: 0;
+  }
 }
+
