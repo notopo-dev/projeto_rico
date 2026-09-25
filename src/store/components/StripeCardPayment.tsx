@@ -12,7 +12,12 @@ import { criarPaymentIntent } from "../lib/stripeApi";
 // A chave PUBLICÁVEL é segura no frontend por design — a
 // secreta nunca sai da Edge Function.
 // https://docs.stripe.com/js/initializing
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+//
+// ⚠️ Em COBRANÇA DIRETA o Stripe.js precisa saber de qual conta
+// conectada é o pagamento. Por isso o loadStripe não roda mais no
+// topo do arquivo: ele só é criado depois que a Edge Function
+// responde com o stripeAccount.
+// https://docs.stripe.com/connect/direct-charges#create-payment-intent
 
 interface StripeCardPaymentProps {
   storeId: string;
@@ -82,16 +87,42 @@ export default function StripeCardPayment({
   onError,
 }: StripeCardPaymentProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [stripePromise, setStripePromise] =
+    useState<Promise<Stripe | null> | null>(null);
   const [erroInicial, setErroInicial] = useState<string | null>(null);
 
   useEffect(() => {
+    let vivo = true;
+
     criarPaymentIntent(storeId, orderId, totalReais, metodo)
-      .then(setClientSecret)
+      .then(({ clientSecret, stripeAccount, publishableKey }) => {
+        if (!vivo) return;
+
+        const pk =
+          publishableKey || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+
+        if (!pk || !String(pk).startsWith("pk_")) {
+          setErroInicial(
+            "Chave publicável da Stripe ausente ou inválida (precisa começar com pk_)."
+          );
+          return;
+        }
+
+        // stripeAccount = a conta do lojista. É o que faz o
+        // clientSecret da cobrança direta ser aceito.
+        setStripePromise(loadStripe(pk, { stripeAccount }));
+        setClientSecret(clientSecret);
+      })
       .catch((err) => {
+        if (!vivo) return;
         setErroInicial(
           err instanceof Error ? err.message : "Erro ao iniciar pagamento."
         );
       });
+
+    return () => {
+      vivo = false;
+    };
   }, [storeId, orderId, totalReais, metodo]);
 
   if (erroInicial) {
@@ -102,7 +133,7 @@ export default function StripeCardPayment({
     );
   }
 
-  if (!clientSecret) {
+  if (!clientSecret || !stripePromise) {
     return (
       <div className="flex items-center justify-center gap-2 py-8 text-[13px] text-[#6b7280]">
         <Loader2 size={16} className="animate-spin" />

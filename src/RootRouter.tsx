@@ -7,10 +7,14 @@ import StoreCart from "./store/pages/StoreCart";
 import StoreCheckout from "./store/pages/StoreCheckout";
 import StoreOrderConfirmed from "./store/pages/StoreOrderConfirmed";
 import StoreMyOrders from "./store/pages/StoreMyOrders";
+import Termos from "./pages/Termos";
+import Privacidade from "./pages/Privacidade";
 
 /**
  * Ponto de entrada que decide entre dois "mundos":
  * - /loja/:slug/*  → loja pública, sem exigir login, tema próprio
+ * - /termos, /privacidade → páginas públicas exigidas pela Stripe
+ *   ao revisar o perfil da plataforma (Connect)
  * - qualquer outra rota → painel admin (App.tsx), que continua
  *   controlando sua própria navegação internamente com pushState
  *
@@ -28,6 +32,10 @@ export default function RootRouter() {
           <Route path="pedido-confirmado" element={<StoreOrderConfirmed />} />
           <Route path="meus-pedidos" element={<StoreMyOrders />} />
         </Route>
+
+        {/* Públicas, sem login — a Stripe visita estas URLs */}
+        <Route path="/termos" element={<Termos />} />
+        <Route path="/privacidade" element={<Privacidade />} />
 
         {/* Qualquer outra rota cai no painel admin, que decide
             internamente (login, cadastro, ou o painel) */}

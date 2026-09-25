@@ -9,12 +9,14 @@ import {
   User,
   Landmark,
   RefreshCw,
+  ShieldCheck,
 } from "lucide-react";
 import {
   consultarStatusStripe,
   type StatusCompletoStripe,
 } from "../lib/stripeCustomApi";
 import StripeCustomOnboarding from "./StripeCustomOnboarding";
+import StripeEmbeddedOnboarding from "./StripeEmbeddedOnboarding";
 
 /**
  * Traduz os códigos de requisito da Stripe para algo que o
@@ -65,14 +67,20 @@ function traduzirRequisito(campo: string | null): string {
 
 /**
  * Painel de status da conta de recebimento do lojista.
- * Mostra a situação real consultada na Stripe e permite
- * retomar ou editar o cadastro a qualquer momento.
+ *
+ * Fluxo em duas etapas, depois da migração para Accounts v2:
+ *   1. Conta ainda não existe  -> formulário nosso (StripeCustomOnboarding),
+ *      que coleta os dados básicos e cria a conta na Stripe.
+ *   2. Conta criada, faltando verificação -> formulário EMBUTIDO da
+ *      Stripe (StripeEmbeddedOnboarding), que roda dentro da nossa
+ *      página e é o único capaz de coletar selfie e aceite de termos.
  */
 export default function StripeStatusPanel() {
   const [status, setStatus] = useState<StatusCompletoStripe | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [modoEdicao, setModoEdicao] = useState(false);
+  const [verificacaoAberta, setVerificacaoAberta] = useState(false);
 
   async function carregar() {
     setCarregando(true);
@@ -116,11 +124,10 @@ export default function StripeStatusPanel() {
     );
   }
 
-  // Nunca iniciou, ou está editando/retomando: mostra o formulário
-  if (!status || status.situacao === "nao_iniciado" || modoEdicao) {
-    const d = status?.dados;
-    const ehPJ = status?.tipoPessoa === "company";
+  const contaExiste = Boolean(status?.accountId);
 
+  // ETAPA 1 — conta ainda não existe: formulário nosso, que a cria.
+  if (!status || status.situacao === "nao_iniciado" || (modoEdicao && !contaExiste)) {
     return (
       <div>
         {modoEdicao && (
@@ -134,30 +141,52 @@ export default function StripeStatusPanel() {
             ← Voltar para o resumo
           </button>
         )}
-        <StripeCustomOnboarding
-          dadosIniciais={
-            status && status.situacao !== "nao_iniciado"
-              ? {
-                  tipoPessoa: status.tipoPessoa ?? null,
-                  nome: d?.individual?.nome ?? null,
-                  sobrenome: d?.individual?.sobrenome ?? null,
-                  email: d?.individual?.email ?? null,
-                  telefone:
-                    (ehPJ ? d?.empresa?.telefone : d?.individual?.telefone) ?? null,
-                  razaoSocial: d?.empresa?.razao_social ?? null,
-                  endereco:
-                    (ehPJ ? d?.empresa?.endereco : d?.individual?.endereco) ?? null,
-                  temContaBancaria: Boolean(d?.conta_bancaria),
-                }
-              : undefined
-          }
-        />
+        <StripeCustomOnboarding />
+      </div>
+    );
+  }
+
+  // ETAPA 2 — conta existe e o lojista pediu para editar/continuar:
+  // quem conduz é a Stripe, dentro da nossa página.
+  if (modoEdicao || verificacaoAberta) {
+    return (
+      <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
+        <div className="px-4 py-3 border-b border-[#e4e4e7] flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-[13px] font-semibold text-[#0f1117]">
+              Verificação da conta
+            </h2>
+            <p className="text-[12px] text-[#6b7280] mt-0.5">
+              Formulário seguro da Stripe, aqui mesmo no painel.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setModoEdicao(false);
+              setVerificacaoAberta(false);
+              carregar();
+            }}
+            className="shrink-0 text-[12px] text-[#6b7280] underline"
+          >
+            Voltar
+          </button>
+        </div>
+        <div className="px-4 py-4">
+          <StripeEmbeddedOnboarding
+            onConcluido={() => {
+              // A Stripe processa em segundo plano; damos um tempo
+              // antes de reconsultar para não mostrar status velho.
+              setTimeout(carregar, 2500);
+            }}
+          />
+        </div>
       </div>
     );
   }
 
   const dados = status.dados;
   const ehEmpresa = status.tipoPessoa === "company";
+  const temPendencias = Boolean(status.requisitos && status.requisitos.length > 0);
 
   const situacaoVisual = {
     ativo: {
@@ -237,20 +266,32 @@ export default function StripeStatusPanel() {
           </div>
         </div>
 
-        {/* Pendências específicas */}
-        {status.requisitos && status.requisitos.length > 0 && (
+        {/* Pendências específicas + atalho para a verificação da Stripe */}
+        {temPendencias && (
           <div className="rounded-xl border border-[#e4e4e7] px-3.5 py-3">
             <p className="text-[12px] font-semibold text-[#374151] mb-2">
               Informações pendentes
             </p>
             <ul className="space-y-1">
-              {status.requisitos.map((r, i) => (
+              {status.requisitos!.map((r, i) => (
                 <li key={i} className="text-[11px] text-[#6b7280] flex items-start gap-1.5">
                   <span className="text-[#b45309] mt-0.5">•</span>
                   <span>{traduzirRequisito(r.campo)}</span>
                 </li>
               ))}
             </ul>
+
+            <button
+              onClick={() => setVerificacaoAberta(true)}
+              className="mt-3 w-full h-11 rounded-xl bg-[#0f1117] text-white text-[13px] font-semibold flex items-center justify-center gap-1.5"
+            >
+              <ShieldCheck size={15} />
+              Concluir verificação
+            </button>
+            <p className="mt-2 text-[10.5px] text-[#9ca3af] leading-snug">
+              A selfie e o aceite dos termos são coletados pela própria Stripe,
+              aqui dentro do painel. Só ela pode fazer essa etapa.
+            </p>
           </div>
         )}
 
