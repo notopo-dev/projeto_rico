@@ -17,6 +17,11 @@ import {
 } from "../lib/stripeCustomApi";
 import StripeCustomOnboarding from "./StripeCustomOnboarding";
 import StripeEmbeddedOnboarding from "./StripeEmbeddedOnboarding";
+import PreparoVerificacao from "./PreparoVerificacao";
+import {
+  PainelGerenciarConta,
+  PainelNotificacoes,
+} from "./StripeConnectPaineis";
 
 /**
  * Traduz os códigos de requisito da Stripe para algo que o
@@ -81,6 +86,8 @@ export default function StripeStatusPanel() {
   const [erro, setErro] = useState<string | null>(null);
   const [modoEdicao, setModoEdicao] = useState(false);
   const [verificacaoAberta, setVerificacaoAberta] = useState(false);
+  // Mostra a tela de preparo antes de abrir o formulário de identidade.
+  const [preparoVisto, setPreparoVisto] = useState(false);
 
   async function carregar() {
     setCarregando(true);
@@ -148,6 +155,26 @@ export default function StripeStatusPanel() {
 
   // ETAPA 2 — conta existe e o lojista pediu para editar/continuar:
   // quem conduz é a Stripe, dentro da nossa página.
+  if ((modoEdicao || verificacaoAberta) && !preparoVisto) {
+    return (
+      <div>
+        <button
+          onClick={() => {
+            setModoEdicao(false);
+            setVerificacaoAberta(false);
+          }}
+          className="mb-2 text-[12px] text-[#6b7280] underline"
+        >
+          ← Voltar
+        </button>
+        <PreparoVerificacao
+          quantidadePendencias={status.requisitos?.length}
+          onComecar={() => setPreparoVisto(true)}
+        />
+      </div>
+    );
+  }
+
   if (modoEdicao || verificacaoAberta) {
     return (
       <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
@@ -164,6 +191,7 @@ export default function StripeStatusPanel() {
             onClick={() => {
               setModoEdicao(false);
               setVerificacaoAberta(false);
+              setPreparoVisto(false);
               carregar();
             }}
             className="shrink-0 text-[12px] text-[#6b7280] underline"
@@ -253,6 +281,11 @@ export default function StripeStatusPanel() {
       </div>
 
       <div className="px-4 py-4 space-y-4">
+        {/* Avisos da própria Stripe (pendências, risco, conformidade).
+            Este componente é exigido quando a Stripe responde pelos
+            saldos negativos — e a página precisa estar em site-links. */}
+        <PainelNotificacoes />
+
         {/* Situação atual */}
         <div className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 ${situacaoVisual.cor}`}>
           {situacaoVisual.icone}
@@ -359,6 +392,17 @@ export default function StripeStatusPanel() {
             </div>
           </div>
         </div>
+
+        {/* O lojista edita os próprios dados aqui dentro. Exigido pela
+            Stripe junto com o banner acima. */}
+        <details className="rounded-xl border border-[#e4e4e7]">
+          <summary className="px-3.5 py-3 text-[13px] font-medium text-[#374151] cursor-pointer select-none">
+            Dados da conta de recebimento
+          </summary>
+          <div className="px-3.5 pb-3">
+            <PainelGerenciarConta />
+          </div>
+        </details>
 
         {/* Ação */}
         <button

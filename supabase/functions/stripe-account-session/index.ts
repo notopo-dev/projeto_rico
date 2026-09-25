@@ -96,6 +96,18 @@ Deno.serve(async (req) => {
       "components[payments][features][dispute_management]": "true",
       "components[payouts][enabled]": "true",
       "components[payouts][features][external_account_collection]": "true",
+      // A Stripe exige estes componentes quando ela é responsável pelos
+      // saldos negativos (nosso caso): banner de notificação e
+      // gerenciamento de conta. Os demais completam o painel do lojista.
+      "components[account_management][enabled]": "true",
+      "components[account_management][features][external_account_collection]":
+        "true",
+      "components[notification_banner][enabled]": "true",
+      "components[notification_banner][features][external_account_collection]":
+        "true",
+      "components[balances][enabled]": "true",
+      "components[balances][features][external_account_collection]": "true",
+      "components[documents][enabled]": "true",
     });
 
     const res = await fetch("https://api.stripe.com/v1/account_sessions", {
