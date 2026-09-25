@@ -114,7 +114,7 @@ export default function StripeEmbeddedOnboarding({
 
         if (!pk || !String(pk).startsWith("pk_")) {
           throw new Error(
-            "Chave publicável da Stripe ausente ou inválida (precisa começar com pk_)."
+            "Configuração de pagamento incompleta. Fale com o suporte."
           );
         }
 
@@ -141,7 +141,7 @@ export default function StripeEmbeddedOnboarding({
         }
       } catch (e) {
         if (vivo) {
-          setErro(e instanceof Error ? e.message : "Erro ao iniciar o Stripe.");
+          setErro(e instanceof Error ? e.message : "Erro ao abrir a verificação.");
           setCarregando(false);
         }
       }
@@ -170,7 +170,7 @@ export default function StripeEmbeddedOnboarding({
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-2.5">
         <Loader2 size={20} className="animate-spin text-[#9ca3af]" />
-        <p className="text-[13px] text-[#6b7280]">Carregando o formulário…</p>
+        <p className="text-[13px] text-[#6b7280]">Carregando…</p>
       </div>
     );
   }
@@ -213,7 +213,7 @@ export default function StripeEmbeddedOnboarding({
                 ) : (
                   <ExternalLink size={15} />
                 )}
-                Abrir formulário da Stripe
+                Abrir em nova janela
               </button>
             </div>
           </div>
@@ -230,8 +230,8 @@ export default function StripeEmbeddedOnboarding({
           Cadastro enviado
         </p>
         <p className="mt-1 text-[12px] text-[#166534] leading-snug">
-          A Stripe está analisando seus dados. Isso costuma levar poucos
-          minutos. O status aparece atualizado aqui nesta página.
+          Estamos analisando seus dados. Isso costuma levar poucos minutos.
+          O status aparece atualizado aqui nesta página.
         </p>
       </div>
     );
@@ -253,7 +253,7 @@ export default function StripeEmbeddedOnboarding({
               console.error("Stripe onboarding onLoadError:", error);
               setErro(
                 `${error?.type ?? "erro"}: ${
-                  error?.message ?? "a Stripe não detalhou a causa."
+                  error?.message ?? "causa não detalhada."
                 }`
               );
             }}
@@ -267,7 +267,7 @@ export default function StripeEmbeddedOnboarding({
       {!montou && (
         <div className="flex items-center justify-center gap-2 py-10 text-[13px] text-[#6b7280]">
           <Loader2 size={16} className="animate-spin" />
-          Abrindo o formulário da Stripe…
+          Abrindo a verificação…
         </div>
       )}
     </div>

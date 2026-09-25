@@ -31,8 +31,8 @@ function traduzirRequisito(campo: string | null): string {
     "configuration.merchant.support_phone": "Telefone de suporte ao cliente",
     "defaults.profile.business_url": "Endereço (URL) da loja",
     "defaults.profile.product_description": "Descrição do que a loja vende",
-    "identity.attestations.terms_of_service.account.date": "Aceite dos termos da Stripe",
-    "identity.attestations.terms_of_service.account.ip": "Aceite dos termos da Stripe",
+    "identity.attestations.terms_of_service.account.date": "Aceite dos termos de uso",
+    "identity.attestations.terms_of_service.account.ip": "Aceite dos termos de uso",
     "identity.business_details.monthly_estimated_revenue.amount":
       "Faturamento mensal estimado",
     "identity.business_details.monthly_estimated_revenue.currency":
@@ -53,7 +53,7 @@ function traduzirRequisito(campo: string | null): string {
     "business_details.phone": "Telefone da empresa",
     "configuration.recipient.default_outbound_destination": "Conta bancária para recebimento",
     external_account: "Conta bancária para recebimento",
-    tos_acceptance: "Aceite dos termos de serviço",
+    tos_acceptance: "Aceite dos termos de uso",
   };
 
   // Tenta achar correspondência exata ou por prefixo
@@ -157,7 +157,7 @@ export default function StripeStatusPanel() {
               Verificação da conta
             </h2>
             <p className="text-[12px] text-[#6b7280] mt-0.5">
-              Formulário seguro da Stripe, aqui mesmo no painel.
+              Confirmação de identidade, aqui mesmo no painel.
             </p>
           </div>
           <button
@@ -204,7 +204,7 @@ export default function StripeStatusPanel() {
       texto: "text-[#92400e]",
       tituloTexto: "Cadastro em análise",
       descricao:
-        "A Stripe está verificando seus dados. Isso costuma levar de alguns minutos a 2 dias úteis.",
+        "Estamos verificando seus dados. Isso costuma levar de alguns minutos a 2 dias úteis.",
     },
     pendencias: {
       icone: <AlertTriangle size={18} className="text-[#b45309] shrink-0" />,
@@ -289,8 +289,8 @@ export default function StripeStatusPanel() {
               Concluir verificação
             </button>
             <p className="mt-2 text-[10.5px] text-[#9ca3af] leading-snug">
-              A selfie e o aceite dos termos são coletados pela própria Stripe,
-              aqui dentro do painel. Só ela pode fazer essa etapa.
+              A confirmação de identidade é feita aqui mesmo, em ambiente
+              criptografado. Seus documentos não ficam armazenados no painel.
             </p>
           </div>
         )}

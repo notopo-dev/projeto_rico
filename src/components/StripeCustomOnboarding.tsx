@@ -28,7 +28,7 @@ const estadosBR = [
 // O código 110 é o banco fictício de testes da Stripe (sandbox) —
 // use com agência 0000 e conta 0001234 para simular repasse OK.
 const bancosBR = [
-  { codigo: "110", nome: "Banco de TESTE (sandbox Stripe)" },
+  { codigo: "110", nome: "Banco de TESTE (ambiente de teste)" },
   { codigo: "001", nome: "Banco do Brasil" },
   { codigo: "033", nome: "Santander" },
   { codigo: "104", nome: "Caixa Econômica Federal" },
@@ -411,7 +411,7 @@ export default function StripeCustomOnboarding({
           <div className="space-y-3">
             {dadosIniciais?.tipoPessoa && (
               <p className="text-[11px] text-[#6b7280] bg-[#fafafa] border border-[#f0f0f1] rounded-lg px-3 py-2">
-                Por segurança, a Stripe não devolve CPF nem data de nascimento.
+                Por segurança, CPF e data de nascimento não são devolvidos.
                 Preencha esses dois campos novamente para confirmar os dados.
               </p>
             )}
