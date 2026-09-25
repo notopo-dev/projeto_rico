@@ -96,6 +96,11 @@ Deno.serve(async (req) => {
       "components[payments][features][dispute_management]": "true",
       "components[payouts][enabled]": "true",
       "components[payouts][features][external_account_collection]": "true",
+      // A Stripe exige que disable_stripe_user_authentication tenha o MESMO
+      // valor em todos os componentes da mesma sessão. Se ficar só no
+      // account_onboarding, ela recusa a sessão inteira.
+      "components[payouts][features][disable_stripe_user_authentication]":
+        "true",
     });
 
     const res = await fetch("https://api.stripe.com/v1/account_sessions", {
