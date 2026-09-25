@@ -34,6 +34,9 @@ function traduzirRequisito(campo: string | null): string {
   const mapa: Record<string, string> = {
     "configuration.merchant.mcc": "Categoria do negócio",
     "configuration.merchant.support_phone": "Telefone de suporte ao cliente",
+    "configuration.merchant.support.phone": "Telefone de suporte ao cliente",
+    "configuration.merchant.support.email": "E-mail de suporte ao cliente",
+    "configuration.merchant.support.address": "Endereço de suporte",
     "defaults.profile.business_url": "Endereço (URL) da loja",
     "defaults.profile.product_description": "Descrição do que a loja vende",
     "identity.attestations.terms_of_service.account.date": "Aceite dos termos de uso",
@@ -306,10 +309,18 @@ export default function StripeStatusPanel() {
               Informações pendentes
             </p>
             <ul className="space-y-1">
-              {status.requisitos!.map((r, i) => (
-                <li key={i} className="text-[11px] text-[#6b7280] flex items-start gap-1.5">
+              {/* Campos diferentes da Stripe podem virar o mesmo texto para
+                  o lojista (por exemplo data e IP do aceite de termos).
+                  Mostramos uma linha só — repetir confunde. */}
+              {Array.from(
+                new Set(status.requisitos!.map((r) => traduzirRequisito(r.campo)))
+              ).map((texto) => (
+                <li
+                  key={texto}
+                  className="text-[11px] text-[#6b7280] flex items-start gap-1.5"
+                >
                   <span className="text-[#b45309] mt-0.5">•</span>
-                  <span>{traduzirRequisito(r.campo)}</span>
+                  <span>{texto}</span>
                 </li>
               ))}
             </ul>

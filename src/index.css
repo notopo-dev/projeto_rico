@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
 @theme inline {
@@ -28,6 +28,19 @@
   --radius-lg: 8px;
 }
 
+:root {
+  /* Superfícies do painel */
+  --app-fundo: #f6f7f9;
+  --app-cartao: #ffffff;
+  --app-borda: #e7e7ea;
+  --app-texto: #0f1117;
+  --app-texto-fraco: #6b7280;
+  --app-tinta: #0f1117; /* preto dos botões principais */
+
+  /* Altura da barra inferior no celular, com a faixa do iPhone */
+  --barra-inferior: calc(62px + env(safe-area-inset-bottom, 0px));
+}
+
 html,
 body,
 #root {
@@ -39,9 +52,32 @@ body,
   -moz-osx-font-smoothing: grayscale;
 }
 
+body {
+  background: var(--app-fundo);
+  /* Impede o "puxar para recarregar" do Chrome no Android atrapalhar
+     listas roláveis dentro do painel. */
+  overscroll-behavior-y: none;
+}
+
+/* Evita o zoom automático do iOS ao focar um campo: acontece sempre que
+   a fonte do input é menor que 16px. */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+@media (min-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 14px;
+  }
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: #d1d5db transparent;
+  -webkit-tap-highlight-color: transparent;
 }
 
 *::-webkit-scrollbar {
@@ -60,4 +96,180 @@ body,
 
 *::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
+}
+
+/* ---------------------------------------------------------------
+   Componentes de interface
+   Classes reaproveitáveis, para as telas não repetirem a mesma
+   sopa de utilitários do Tailwind.
+   --------------------------------------------------------------- */
+
+/* Botão principal: preto, alto, cantos arredondados — cara de app. */
+.btn-app {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 16px;
+  background: var(--app-tinta);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+.btn-app:active {
+  transform: scale(0.975);
+}
+.btn-app:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Secundário: mesma forma, peso visual menor. */
+.btn-app-claro {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--app-texto);
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid var(--app-borda);
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.btn-app-claro:active {
+  transform: scale(0.975);
+  background: #f4f4f5;
+}
+
+/* Botão compacto, para barras de ação e listas. */
+.btn-app-pequeno {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.btn-app-pequeno:active {
+  transform: scale(0.97);
+}
+
+/* Qualquer alvo de toque: 44px é o mínimo confortável no celular. */
+.toque {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.cartao-app {
+  background: var(--app-cartao);
+  border: 1px solid var(--app-borda);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgb(15 17 23 / 0.04);
+}
+
+/* Cartão que também é botão — reage ao toque. */
+.cartao-toque {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  cursor: pointer;
+}
+.cartao-toque:active {
+  transform: scale(0.985);
+  box-shadow: 0 1px 1px rgb(15 17 23 / 0.06);
+}
+
+/* Espaço para a barra inferior não cobrir o conteúdo. */
+.com-barra-inferior {
+  padding-bottom: calc(var(--barra-inferior) + 16px);
+}
+@media (min-width: 1024px) {
+  .com-barra-inferior {
+    padding-bottom: 24px;
+  }
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ---------------------------------------------------------------
+   Animações
+   --------------------------------------------------------------- */
+
+@keyframes app-surgir {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-surgir {
+  animation: app-surgir 0.22s ease-out both;
+}
+
+/* Escalona a entrada de itens de uma lista. */
+.anim-lista > * {
+  animation: app-surgir 0.24s ease-out both;
+}
+.anim-lista > *:nth-child(1) { animation-delay: 0ms; }
+.anim-lista > *:nth-child(2) { animation-delay: 35ms; }
+.anim-lista > *:nth-child(3) { animation-delay: 70ms; }
+.anim-lista > *:nth-child(4) { animation-delay: 105ms; }
+.anim-lista > *:nth-child(5) { animation-delay: 140ms; }
+.anim-lista > *:nth-child(n + 6) { animation-delay: 170ms; }
+
+/* Bloco cinza que pulsa enquanto os dados não chegam. */
+@keyframes app-brilho {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.esqueleto {
+  background: linear-gradient(
+    90deg,
+    #eeeef1 25%,
+    #f7f7f9 50%,
+    #eeeef1 75%
+  );
+  background-size: 200% 100%;
+  animation: app-brilho 1.4s ease-in-out infinite;
+  border-radius: 10px;
+}
+
+/* Respeita quem pediu menos movimento no sistema. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
