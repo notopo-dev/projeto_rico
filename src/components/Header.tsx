@@ -138,15 +138,18 @@ export default function Header({
     displaySlug.charAt(0).toUpperCase() || "M";
 
   return (
-    <header className="relative z-20 flex h-12 w-full shrink-0 items-center justify-between border-b border-[#e5e7eb] bg-white px-2.5 sm:px-4">
+    <header className="relative z-20 flex h-14 sm:h-12 w-full shrink-0 items-center justify-between border-b border-[#e5e7eb] bg-white px-3.5 sm:px-4">
 
       {/* ESQUERDA */}
       <div className="flex min-w-0 items-center gap-2.5">
 
+        {/* O celular navega pela barra inferior, então o menu lateral
+            só aparece em tablet (sm a lg). Dois menus para a mesma
+            coisa confunde e ocupa espaço. */}
         <button
           type="button"
           onClick={onMenuToggle}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[#6b7280] transition hover:bg-[#f4f4f5] hover:text-[#0f1117] active:scale-95 lg:hidden"
+          className="hidden sm:flex lg:hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#6b7280] transition hover:bg-[#f4f4f5] hover:text-[#0f1117] active:scale-95"
           aria-label="Abrir menu"
         >
           <Menu
@@ -155,7 +158,7 @@ export default function Header({
           />
         </button>
 
-        <h1 className="min-w-0 truncate text-[13px] font-semibold text-[#0f1117] sm:text-[14px]">
+        <h1 className="min-w-0 truncate text-[17px] font-bold text-[#0f1117] sm:text-[14px] sm:font-semibold">
           {title}
         </h1>
       </div>
@@ -166,7 +169,7 @@ export default function Header({
         {/* NOTIFICAÇÕES */}
         <button
           type="button"
-          className="relative flex h-8 w-8 items-center justify-center rounded-xl text-[#6b7280] transition hover:bg-[#f4f4f5] hover:text-[#0f1117] active:scale-95"
+          className="relative flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-xl text-[#6b7280] transition hover:bg-[#f4f4f5] hover:text-[#0f1117] active:scale-95"
           aria-label="Notificações"
         >
           <Bell
@@ -185,13 +188,13 @@ export default function Header({
             onClick={() =>
               setProfileOpen((open) => !open)
             }
-            className="ml-0.5 flex h-8 items-center gap-1.5 rounded-xl pl-1.5 pr-1 transition hover:bg-[#f4f4f5] active:scale-[0.98]"
+            className="ml-0.5 flex h-10 sm:h-8 items-center gap-1.5 rounded-xl pl-1.5 pr-1 transition hover:bg-[#f4f4f5] active:scale-[0.98]"
             aria-expanded={profileOpen}
           >
 
             {/* LOGO */}
             {logo ? (
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#e5e7eb] bg-white">
+              <span className="flex h-8 w-8 sm:h-6 sm:w-6 shrink-0 items-center justify-center overflow-hidden rounded-xl sm:rounded-lg border border-[#e5e7eb] bg-white">
                 <img
                   src={logo}
                   alt={displaySlug}
@@ -199,7 +202,7 @@ export default function Header({
                 />
               </span>
             ) : (
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#e5e7eb] text-[9px] font-semibold text-[#374151]">
+              <span className="flex h-8 w-8 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-xl sm:rounded-lg bg-[#e5e7eb] text-[11px] font-semibold text-[#374151]">
                 {initial}
               </span>
             )}
@@ -218,7 +221,7 @@ export default function Header({
 
           {/* MENU */}
           {profileOpen && (
-            <div className="absolute right-0 top-10 z-50 w-48 rounded-xl border border-[#e5e7eb] bg-white p-1.5 shadow-lg">
+            <div className="absolute right-0 top-12 sm:top-10 z-50 w-52 sm:w-48 rounded-xl border border-[#e5e7eb] bg-white p-1.5 shadow-lg">
 
               <div className="border-b border-[#f0f0f1] px-3 py-2.5">
                 <p className="truncate text-[12px] font-medium text-[#111827]">
@@ -236,7 +239,7 @@ export default function Header({
                   setProfileOpen(false);
                   onLogout();
                 }}
-                className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[12px] text-[#b91c1c] hover:bg-[#fef2f2]"
+                className="toque mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-3 text-left text-[13px] font-medium text-[#b91c1c] hover:bg-[#fef2f2]"
               >
                 <LogOut
                   size={14}

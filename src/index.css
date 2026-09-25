@@ -273,3 +273,94 @@ textarea {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------------------------------------------------------------
+   Escala de texto no celular
+
+   O painel foi desenhado no desktop, onde 12–13px funciona. No celular
+   isso fica pequeno demais: o iOS usa 17px de corpo, o Material usa 16px,
+   e abaixo de 15px a leitura com o aparelho na mão já cansa.
+
+   Em vez de reescrever as 61 telas, subimos aqui cada tamanho usado no
+   projeto. No desktop nada muda — a regra só vale até 1023px.
+   --------------------------------------------------------------- */
+@media (max-width: 1023px) {
+  .text-\[10px\]    { font-size: 12px !important; }
+  .text-\[10\.5px\] { font-size: 12.5px !important; }
+  .text-\[11px\]    { font-size: 13px !important; }
+  .text-\[11\.5px\] { font-size: 13.5px !important; }
+  .text-\[12px\]    { font-size: 14px !important; }
+  .text-\[12\.5px\] { font-size: 14.5px !important; }
+  .text-\[13px\]    { font-size: 15.5px !important; }
+  .text-\[13\.5px\] { font-size: 15.5px !important; }
+  .text-\[14px\]    { font-size: 16.5px !important; }
+  .text-\[15px\]    { font-size: 17.5px !important; }
+  .text-\[16px\]    { font-size: 18.5px !important; }
+  .text-\[17px\]    { font-size: 19.5px !important; }
+  .text-\[18px\]    { font-size: 21px !important; }
+  .text-\[19px\]    { font-size: 22px !important; }
+  .text-\[20px\]    { font-size: 23px !important; }
+  .text-\[22px\]    { font-size: 26px !important; }
+  .text-\[24px\]    { font-size: 28px !important; }
+
+  /* Números grandes da visão geral ganham mais presença ainda. */
+  .numero-destaque { font-size: 30px !important; line-height: 1.1; }
+
+  /* Cartões com mais respiro para o dedo. */
+  .cartao-app { border-radius: 20px; }
+}
+
+/* ---------------------------------------------------------------
+   Escala de leitura no celular
+   ---------------------------------------------------------------
+   As telas foram desenhadas para desktop, com textos de 11 a 14px.
+   No celular isso fica pequeno demais: as referências de mercado
+   (iOS Human Interface Guidelines e Material 3) usam 16-17px para
+   corpo de texto, 20-24px para títulos e 28-34px para números em
+   destaque.
+
+   Em vez de reescrever cada tela, remapeamos aqui os tamanhos usados
+   no projeto. Vale só até 640px — no desktop nada muda.
+
+   Se um dia as telas forem refeitas com tamanhos responsivos nativos,
+   este bloco pode sair inteiro.
+   --------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .text-\[10px\]    { font-size: 12px !important; }
+  .text-\[10\.5px\] { font-size: 12.5px !important; }
+  .text-\[11px\]    { font-size: 13px !important; }
+  .text-\[11\.5px\] { font-size: 13.5px !important; }
+  .text-\[12px\]    { font-size: 14px !important; }
+  .text-\[12\.5px\] { font-size: 14.5px !important; }
+  .text-\[13px\]    { font-size: 15px !important; }
+  .text-\[13\.5px\] { font-size: 15.5px !important; }
+  .text-\[14px\]    { font-size: 16px !important; }
+  .text-\[15px\]    { font-size: 17px !important; }
+  .text-\[16px\]    { font-size: 18px !important; }
+  .text-\[17px\]    { font-size: 19px !important; }
+  .text-\[18px\]    { font-size: 20px !important; }
+  .text-\[19px\]    { font-size: 21px !important; }
+  .text-\[20px\]    { font-size: 23px !important; }
+  .text-\[22px\]    { font-size: 25px !important; }
+  .text-\[24px\]    { font-size: 28px !important; }
+  .text-\[25px\]    { font-size: 29px !important; }
+  .text-\[26px\]    { font-size: 30px !important; }
+  .text-\[28px\]    { font-size: 32px !important; }
+  .text-\[30px\]    { font-size: 34px !important; }
+
+  /* Ícones acompanham o texto. O lucide escreve width/height como
+     atributo, e a regra de CSS tem precedência sobre ele. */
+  svg[width="13"] { width: 15px !important; height: 15px !important; }
+  svg[width="14"] { width: 16px !important; height: 16px !important; }
+  svg[width="15"] { width: 17px !important; height: 17px !important; }
+  svg[width="16"] { width: 18px !important; height: 18px !important; }
+  svg[width="17"] { width: 19px !important; height: 19px !important; }
+  svg[width="18"] { width: 20px !important; height: 20px !important; }
+  svg[width="19"] { width: 21px !important; height: 21px !important; }
+  svg[width="20"] { width: 22px !important; height: 22px !important; }
+  svg[width="21"] { width: 23px !important; height: 23px !important; }
+  svg[width="22"] { width: 24px !important; height: 24px !important; }
+
+  /* Cartões e listas ganham respiro proporcional ao texto maior. */
+  .cartao-app { border-radius: 20px; }
+}
