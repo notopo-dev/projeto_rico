@@ -77,6 +77,7 @@ export default function StripeEmbeddedOnboarding({
   const [finalizado, setFinalizado] = useState(false);
   const [abrindoLink, setAbrindoLink] = useState(false);
   const [tentativa, setTentativa] = useState(0);
+  const [montou, setMontou] = useState(false);
   const primeiroSecret = useRef<string | null>(null);
 
   // A Stripe chama isto sempre que precisa de um client_secret novo.
@@ -189,6 +190,7 @@ export default function StripeEmbeddedOnboarding({
               <button
                 onClick={() => {
                   setErro(null);
+                  setMontou(false);
                   setCarregando(true);
                   setTentativa((n) => n + 1);
                 }}
@@ -244,10 +246,29 @@ export default function StripeEmbeddedOnboarding({
               setFinalizado(true);
               onConcluido?.();
             }}
+            // Sem isto, uma falha antes do primeiro render deixa a área
+            // simplesmente em branco: a Stripe não desenha mensagem nenhuma
+            // se o componente ainda não chegou a aparecer.
+            onLoadError={({ error }) => {
+              console.error("Stripe onboarding onLoadError:", error);
+              setErro(
+                `${error?.type ?? "erro"}: ${
+                  error?.message ?? "a Stripe não detalhou a causa."
+                }`
+              );
+            }}
+            onLoaderStart={() => setMontou(true)}
             fullTermsOfServiceUrl="https://moneynotopo.com.br/termos"
             privacyPolicyUrl="https://moneynotopo.com.br/privacidade"
           />
         </ConnectComponentsProvider>
+      )}
+
+      {!montou && (
+        <div className="flex items-center justify-center gap-2 py-10 text-[13px] text-[#6b7280]">
+          <Loader2 size={16} className="animate-spin" />
+          Abrindo o formulário da Stripe…
+        </div>
       )}
     </div>
   );

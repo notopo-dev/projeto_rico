@@ -83,24 +83,26 @@ Deno.serve(async (req) => {
       "components[account_onboarding][enabled]": "true",
       "components[account_onboarding][features][external_account_collection]":
         "true",
-      // Evita o popup de login da Stripe no meio do cadastro: como a nossa
-      // conta é dashboard "none" (a plataforma é responsável pela coleta),
-      // a Stripe permite desligar essa autenticação.
-      // ⚠️ Em troca, a plataforma assume a responsabilidade por saldos
-      // negativos dessas contas. Se um dia quisermos devolver esse risco
-      // à Stripe, é só remover esta linha — volta o popup.
-      "components[account_onboarding][features][disable_stripe_user_authentication]":
-        "true",
+      // NÃO dá para usar disable_stripe_user_authentication aqui.
+      // A Stripe só libera essa flag quando a PLATAFORMA é dona da coleta
+      // de requisitos. Nossas contas são criadas com
+      // defaults.responsibilities = { fees_collector: "stripe",
+      // losses_collector: "stripe" } — ou seja, a Stripe é dona da coleta e
+      // assume os saldos negativos. Nessa configuração ela exige a própria
+      // autenticação e recusa a sessão se tentarmos desligar.
+      //
+      // Consequência: na etapa de identidade abre uma janela pequena da
+      // Stripe por cima do nosso painel. O formulário em si continua todo
+      // dentro do nosso site — não há redirecionamento.
+      //
+      // Para eliminar essa janela seria preciso criar as contas com
+      // losses_collector: "application", passando o risco de saldo negativo
+      // dos lojistas para a plataforma. Decisão de negócio, não de código.
       "components[payments][enabled]": "true",
       "components[payments][features][refund_management]": "true",
       "components[payments][features][dispute_management]": "true",
       "components[payouts][enabled]": "true",
       "components[payouts][features][external_account_collection]": "true",
-      // A Stripe exige que disable_stripe_user_authentication tenha o MESMO
-      // valor em todos os componentes da mesma sessão. Se ficar só no
-      // account_onboarding, ela recusa a sessão inteira.
-      "components[payouts][features][disable_stripe_user_authentication]":
-        "true",
     });
 
     const res = await fetch("https://api.stripe.com/v1/account_sessions", {
