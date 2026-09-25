@@ -228,7 +228,6 @@ export default function StripeCustomOnboarding({
         await salvarDadosStripeCustom({
           tipoPessoa: "individual",
           individual,
-          aceiteTermos: true,
         });
       } else {
         const company: DadosPessoaJuridica = {
@@ -250,7 +249,6 @@ export default function StripeCustomOnboarding({
         await salvarDadosStripeCustom({
           tipoPessoa: "company",
           company,
-          aceiteTermos: true,
         });
       }
 

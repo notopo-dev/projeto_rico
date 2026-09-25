@@ -81,7 +81,6 @@ interface RequestBody {
     account_number: string;
     routing_number: string;
   };
-  aceiteTermos?: boolean;
   // Perfil do negócio, exigido pela Stripe para liberar as
   // capabilities (aparece em requirements como
   // defaults.profile.* e configuration.merchant.*)
@@ -90,14 +89,6 @@ interface RequestBody {
   urlNegocio?: string;
   descricaoProduto?: string;
   faturamentoMensalCentavos?: number;
-}
-
-function extrairIpCliente(req: Request): string | null {
-  const forwarded = req.headers.get("x-forwarded-for");
-  const candidato = forwarded?.split(",")[0]?.trim();
-  const ipv4Valido = candidato && /^\d{1,3}(\.\d{1,3}){3}$/.test(candidato);
-  const ipv6Valido = candidato && candidato.includes(":");
-  return ipv4Valido || ipv6Valido ? candidato! : null;
 }
 
 Deno.serve(async (req) => {
@@ -163,7 +154,6 @@ Deno.serve(async (req) => {
           ? body.individual?.email
           : body.company?.representative?.email;
 
-      const ipCliente = extrairIpCliente(req);
 
       const account = await stripeV2Fetch("/core/accounts", "POST", {
         contact_email: email,
@@ -175,21 +165,15 @@ Deno.serve(async (req) => {
         identity: {
           country: "BR",
           entity_type: body.tipoPessoa === "individual" ? "individual" : "company",
-          // Aceite dos termos de serviço da Stripe. Na v2 fica em
-          // identity.attestations.terms_of_service.account, e é
-          // obrigatório para liberar as capabilities.
-          ...(ipCliente
-            ? {
-                attestations: {
-                  terms_of_service: {
-                    account: {
-                      date: new Date().toISOString(),
-                      ip: ipCliente,
-                    },
-                  },
-                },
-              }
-            : {}),
+          // NÃO enviamos o aceite dos termos aqui.
+          // Com responsibilities stripe/stripe, a coleta de requisitos é
+          // da Stripe, e ela recusa a plataforma aceitando os termos em
+          // nome do lojista:
+          //   "You cannot accept the Terms of Service on behalf of
+          //    accounts where requirement collection is owned by Stripe."
+          // O aceite acontece dentro do formulário embutido, feito pelo
+          // próprio lojista — que é como tem que ser, porque é ele quem
+          // assume o contrato.
         },
         defaults: {
           currency: "brl",
@@ -440,17 +424,6 @@ Deno.serve(async (req) => {
         );
       }
     }
-
-    // ------------------------------------------------------------
-    // 4. Aceite de termos — TEMPORARIAMENTE DESATIVADO.
-    // A estrutura correta de tos_acceptance na Accounts v2 ainda
-    // não foi confirmada (configuration.merchant.tos_acceptance
-    // não existe, segundo a própria API). Precisa ser retomado
-    // antes de ir para produção, consultando a doc oficial da
-    // Stripe para o local certo desse campo em v2.
-    // ------------------------------------------------------------
-    // const ipCliente = extrairIpCliente(req);
-    // if (body.aceiteTermos && ipCliente) { ... }
 
     // ------------------------------------------------------------
     // 5. Consulta estado atual para saber o que falta

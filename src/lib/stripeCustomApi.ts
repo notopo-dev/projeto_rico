@@ -39,7 +39,6 @@ export interface CriarContaCustomInput {
   individual?: DadosPessoaFisica;
   company?: DadosPessoaJuridica;
   contaBancaria?: DadosContaBancaria;
-  aceiteTermos?: boolean;
 }
 
 export interface StatusContaCustom {
