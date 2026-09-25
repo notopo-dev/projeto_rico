@@ -194,10 +194,22 @@ Deno.serve(async (req) => {
         defaults: {
           currency: "brl",
           responsibilities: {
-            // Stripe cobra as taxas de processamento diretamente do
-            // lojista e assume o risco de saldo negativo/estornos —
-            // a plataforma não fica exposta a esse risco nem
-            // precisa repassar cobrança manual de taxas.
+            // Os dois campos andam juntos: a Stripe só aceita
+            // stripe/stripe ou application/application. Misturar devolve
+            // "This account configuration is not supported".
+            //
+            // Usamos stripe/stripe porque o modelo da plataforma é
+            // mensalidade, sem percentual sobre a venda:
+            //   - as taxas de processamento saem direto do lojista, sem
+            //     passar pelo nosso saldo;
+            //   - a Stripe assume o risco de saldo negativo e chargeback.
+            //
+            // O preço disso é um popup de autenticação da Stripe na etapa
+            // de identidade do cadastro. Para removê-lo seria preciso
+            // application/application, e aí a plataforma passaria a pagar
+            // as taxas de todas as vendas e teria que cobrá-las de volta
+            // via application_fee — ou seja, voltaria a ser percentual
+            // sobre a venda.
             fees_collector: "stripe",
             losses_collector: "stripe",
           },

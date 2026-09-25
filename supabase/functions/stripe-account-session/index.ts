@@ -83,21 +83,14 @@ Deno.serve(async (req) => {
       "components[account_onboarding][enabled]": "true",
       "components[account_onboarding][features][external_account_collection]":
         "true",
-      // NÃO dá para usar disable_stripe_user_authentication aqui.
-      // A Stripe só libera essa flag quando a PLATAFORMA é dona da coleta
-      // de requisitos. Nossas contas são criadas com
-      // defaults.responsibilities = { fees_collector: "stripe",
-      // losses_collector: "stripe" } — ou seja, a Stripe é dona da coleta e
-      // assume os saldos negativos. Nessa configuração ela exige a própria
-      // autenticação e recusa a sessão se tentarmos desligar.
-      //
-      // Consequência: na etapa de identidade abre uma janela pequena da
-      // Stripe por cima do nosso painel. O formulário em si continua todo
-      // dentro do nosso site — não há redirecionamento.
-      //
-      // Para eliminar essa janela seria preciso criar as contas com
-      // losses_collector: "application", passando o risco de saldo negativo
-      // dos lojistas para a plataforma. Decisão de negócio, não de código.
+      // Não é possível desligar a autenticação da Stripe aqui.
+      // A flag disable_stripe_user_authentication só é aceita quando a
+      // PLATAFORMA é dona da coleta de requisitos, o que exige criar as
+      // contas com responsibilities application/application — e isso faria
+      // as taxas de processamento passarem pelo nosso saldo.
+      // Com stripe/stripe (nosso caso), a Stripe conduz a identidade e
+      // abre uma janela própria nessa etapa. O resto do cadastro continua
+      // dentro do nosso painel.
       "components[payments][enabled]": "true",
       "components[payments][features][refund_management]": "true",
       "components[payments][features][dispute_management]": "true",
