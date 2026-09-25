@@ -83,6 +83,14 @@ Deno.serve(async (req) => {
       "components[account_onboarding][enabled]": "true",
       "components[account_onboarding][features][external_account_collection]":
         "true",
+      // Evita o popup de login da Stripe no meio do cadastro: como a nossa
+      // conta é dashboard "none" (a plataforma é responsável pela coleta),
+      // a Stripe permite desligar essa autenticação.
+      // ⚠️ Em troca, a plataforma assume a responsabilidade por saldos
+      // negativos dessas contas. Se um dia quisermos devolver esse risco
+      // à Stripe, é só remover esta linha — volta o popup.
+      "components[account_onboarding][features][disable_stripe_user_authentication]":
+        "true",
       "components[payments][enabled]": "true",
       "components[payments][features][refund_management]": "true",
       "components[payments][features][dispute_management]": "true",
