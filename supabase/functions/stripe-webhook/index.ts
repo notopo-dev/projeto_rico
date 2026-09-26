@@ -19,7 +19,23 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2024-12-18.acacia",
 });
 
-const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
+/**
+ * Segredos de assinatura aceitos.
+ *
+ * O projeto tem DOIS endpoints cadastrados na Stripe — o de eventos
+ * da conta da plataforma e o de eventos das contas conectadas
+ * (Connect) — e cada endpoint tem o seu próprio `whsec_`. Verificar
+ * só com um deles fazia metade dos eventos ser recusada como
+ * "assinatura inválida": na cobrança direta, é justamente o de
+ * Connect que traz o "pagamento aprovado".
+ *
+ * Tentamos cada segredo até um validar. Isso não afrouxa nada: o
+ * evento continua tendo que ser assinado por um segredo nosso.
+ */
+const SEGREDOS = [
+  Deno.env.get("STRIPE_WEBHOOK_SECRET"),
+  Deno.env.get("STRIPE_WEBHOOK_SECRET_V2"),
+].filter((v): v is string => Boolean(v));
 
 Deno.serve(async (req) => {
   const signature = req.headers.get("stripe-signature");
@@ -29,17 +45,29 @@ Deno.serve(async (req) => {
     return new Response("Falta assinatura do webhook.", { status: 400 });
   }
 
-  let event: Stripe.Event;
-  try {
-    // Verificação criptográfica: garante que o evento veio mesmo da
-    // Stripe, e não de alguém batendo na URL.
-    event = await stripe.webhooks.constructEventAsync(
-      body,
-      signature,
-      webhookSecret
-    );
-  } catch (err) {
-    console.error("Assinatura de webhook inválida:", err);
+  if (SEGREDOS.length === 0) {
+    console.error("Nenhum segredo de webhook configurado.");
+    return new Response("Webhook não configurado.", { status: 500 });
+  }
+
+  // Verificação criptográfica: garante que o evento veio mesmo da
+  // Stripe, e não de alguém batendo na URL.
+  let event: Stripe.Event | null = null;
+  for (const segredo of SEGREDOS) {
+    try {
+      event = await stripe.webhooks.constructEventAsync(
+        body,
+        signature,
+        segredo
+      );
+      break;
+    } catch {
+      // Segredo errado para este endpoint — tenta o próximo.
+    }
+  }
+
+  if (!event) {
+    console.error("Assinatura inválida para todos os segredos conhecidos.");
     return new Response("Assinatura inválida.", { status: 400 });
   }
 
