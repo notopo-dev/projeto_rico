@@ -1,6 +1,15 @@
-import { useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Search,
+  Package,
+  RefreshCw,
+  AlertCircle,
   AlertTriangle,
   CheckCircle2,
   XCircle,
@@ -8,476 +17,315 @@ import {
   Check,
   X,
 } from "lucide-react";
+import {
+  ajustarEstoque,
+  listarEstoque,
+  type ItemEstoque,
+  type SituacaoEstoque,
+} from "../lib/estoqueApi";
+import { ListaCarregando } from "../components/Carregando";
 
-interface StockItem {
-  id: string;
-  nome: string;
-  sku: string;
-  categoria: string;
-  estoque: number;
-  minimo: number;
-}
+/**
+ * Estoque da loja, vindo do banco.
+ *
+ * Esta tela tinha `const initialItems: StockItem[] = []` com um
+ * comentário dizendo que os produtos viriam do Supabase
+ * "posteriormente". Nunca vieram — a tela filtrava e editava uma
+ * lista vazia por construção.
+ */
 
-// ============================================================
-// DADOS
-// ============================================================
-// Os produtos serão carregados posteriormente do Supabase.
-// Nenhum produto fictício é mantido neste arquivo.
+type Filtro = "todos" | SituacaoEstoque;
 
-const initialItems: StockItem[] = [];
+const FILTROS: { id: Filtro; rotulo: string }[] = [
+  { id: "todos", rotulo: "Todos" },
+  { id: "baixo", rotulo: "Acabando" },
+  { id: "sem", rotulo: "Sem estoque" },
+  { id: "ok", rotulo: "Em estoque" },
+];
 
-type Filter = "todos" | "ok" | "baixo" | "sem";
-
-function getStatus(item: StockItem): "ok" | "baixo" | "sem" {
-  if (item.estoque === 0) return "sem";
-  if (item.estoque < item.minimo) return "baixo";
-  return "ok";
-}
-
-const filterLabels: Record<Filter, string> = {
-  todos: "Todos",
-  ok: "Em estoque",
-  baixo: "Estoque baixo",
-  sem: "Sem estoque",
+const VISUAL: Record<
+  SituacaoEstoque,
+  { cor: string; icone: ReactNode; rotulo: string }
+> = {
+  ok: {
+    cor: "bg-[#f0fdf4] text-[#15803d] border-[#bbf7d0]",
+    icone: <CheckCircle2 size={13} />,
+    rotulo: "Em estoque",
+  },
+  baixo: {
+    cor: "bg-[#fffbeb] text-[#b45309] border-[#fde68a]",
+    icone: <AlertTriangle size={13} />,
+    rotulo: "Acabando",
+  },
+  sem: {
+    cor: "bg-[#fef2f2] text-[#b91c1c] border-[#fecaca]",
+    icone: <XCircle size={13} />,
+    rotulo: "Sem estoque",
+  },
 };
 
+function brl(v: number) {
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 export default function Estoque() {
-  const [items, setItems] = useState<StockItem[]>(initialItems);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Filter>("todos");
-  const [editing, setEditing] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
+  const [itens, setItens] = useState<ItemEstoque[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
 
-  const filtered = items.filter((item) => {
-    const matchSearch =
-      item.nome.toLowerCase().includes(search.toLowerCase()) ||
-      item.sku.toLowerCase().includes(search.toLowerCase());
+  const [busca, setBusca] = useState("");
+  const [filtro, setFiltro] = useState<Filtro>("todos");
 
-    const status = getStatus(item);
+  const [editando, setEditando] = useState<string | null>(null);
+  const [valor, setValor] = useState("");
+  const [salvando, setSalvando] = useState<string | null>(null);
 
-    const matchFilter =
-      filter === "todos" || status === filter;
-
-    return matchSearch && matchFilter;
-  });
-
-  const counts = {
-    sem: items.filter((i) => getStatus(i) === "sem").length,
-    baixo: items.filter((i) => getStatus(i) === "baixo").length,
-  };
-
-  function startEdit(item: StockItem) {
-    setEditing(item.id);
-    setEditValue(String(item.estoque));
-  }
-
-  function confirmEdit(id: string) {
-    const val = parseInt(editValue, 10);
-
-    if (!isNaN(val) && val >= 0) {
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === id
-            ? { ...i, estoque: val }
-            : i
-        )
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    setErro(null);
+    try {
+      setItens(await listarEstoque());
+    } catch (e) {
+      setErro(
+        e instanceof Error ? e.message : "Não foi possível carregar o estoque.",
       );
+    } finally {
+      setCarregando(false);
     }
+  }, []);
 
-    setEditing(null);
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  async function salvar(item: ItemEstoque) {
+    setSalvando(item.id);
+    setErro(null);
+    try {
+      await ajustarEstoque(item.id, Number(valor));
+      await carregar();
+      setEditando(null);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível salvar.");
+    } finally {
+      setSalvando(null);
+    }
   }
 
-  function cancelEdit() {
-    setEditing(null);
-  }
+  const filtrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return itens.filter((i) => {
+      if (filtro !== "todos" && i.situacao !== filtro) return false;
+      if (!termo) return true;
+      return (
+        i.nome.toLowerCase().includes(termo) ||
+        (i.sku ?? "").toLowerCase().includes(termo) ||
+        (i.categoria ?? "").toLowerCase().includes(termo)
+      );
+    });
+  }, [itens, busca, filtro]);
+
+  const contagem = useMemo(() => {
+    const c: Record<string, number> = { todos: itens.length };
+    itens.forEach((i) => {
+      c[i.situacao] = (c[i.situacao] ?? 0) + 1;
+    });
+    return c;
+  }, [itens]);
+
+  const precisaAtencao = (contagem.baixo ?? 0) + (contagem.sem ?? 0);
 
   return (
-    <div className="w-full min-h-full px-3 py-3 sm:px-4 lg:max-w-[1100px] lg:px-6 lg:py-6">
-
-      {/* ======================================================
-          ALERTAS
-      ====================================================== */}
-
-      {counts.sem > 0 && (
-        <div className="flex items-center gap-2.5 px-4 py-2.5 bg-[#fef2f2] border border-[#fecaca] rounded-[6px] mb-3 text-[13px] text-[#b91c1c]">
-          <XCircle
-            size={15}
-            strokeWidth={2}
-            className="shrink-0"
-          />
-
-          <span>
-            <strong>
-              {counts.sem} produto
-              {counts.sem > 1 ? "s" : ""}
-            </strong>{" "}
-            sem estoque — verifique a reposição.
-          </span>
-        </div>
-      )}
-
-      {counts.baixo > 0 && (
-        <div className="flex items-center gap-2.5 px-4 py-2.5 bg-[#fffbeb] border border-[#fde68a] rounded-[6px] mb-4 text-[13px] text-[#b45309]">
-          <AlertTriangle
-            size={15}
-            strokeWidth={2}
-            className="shrink-0"
-          />
-
-          <span>
-            <strong>
-              {counts.baixo} produto
-              {counts.baixo > 1 ? "s" : ""}
-            </strong>{" "}
-            abaixo do estoque mínimo.
-          </span>
-        </div>
-      )}
-
-      {/* ======================================================
-          TOOLBAR
-      ====================================================== */}
-
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-
-        <div className="relative w-full lg:max-w-xs">
-          <Search
-            size={14}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9ca3af]"
-            strokeWidth={2}
-          />
-
-          <input
-            type="text"
-            placeholder="Buscar produto ou SKU..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full min-h-11 pl-9 pr-3 py-2 text-base border border-[#e4e4e7] rounded-xl bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a] lg:min-h-0 lg:pl-8 lg:py-1.5 lg:text-[13px] lg:rounded-[6px]"
-          />
-        </div>
-
-        <div className="flex w-full items-center gap-1 overflow-x-auto rounded-xl border border-[#e4e4e7] bg-white p-1 lg:w-auto lg:rounded-[6px] lg:p-0">
-          {(Object.keys(filterLabels) as Filter[]).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`min-h-9 shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors lg:min-h-0 lg:rounded-none ${
-                filter === f
-                  ? "bg-[#16a34a] text-white"
-                  : "text-[#374151] hover:bg-[#f4f4f5]"
-              }`}
-            >
-              {filterLabels[f]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Lista mobile */}
-      <div className="space-y-2.5 lg:hidden">
-        <div className="px-1">
-          <span className="text-[12px] text-[#6b7280]">
-            {filtered.length} produto{filtered.length !== 1 ? "s" : ""}
-          </span>
-        </div>
-
-        {filtered.length === 0 ? (
-          <div className="rounded-2xl border border-[#e4e4e7] bg-white px-5 py-12 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f4f4f5]">
-              <CheckCircle2 size={23} strokeWidth={1.7} className="text-[#a1a1aa]" />
-            </div>
-            <p className="text-[13px] font-medium text-[#374151]">Nenhum produto encontrado</p>
-            <p className="mt-1 text-[11px] text-[#9ca3af]">
-              {search || filter !== "todos"
-                ? "Altere a busca ou o filtro para tentar novamente."
-                : "Os produtos cadastrados aparecerão aqui."}
+    <div className="p-4 sm:p-6 max-w-[1100px] mx-auto space-y-3.5">
+      {/* Aviso de reposição */}
+      {!carregando && precisaAtencao > 0 && filtro === "todos" && (
+        <button
+          onClick={() => setFiltro(contagem.sem ? "sem" : "baixo")}
+          className="w-full cartao-app cartao-toque p-3.5 text-left flex items-start gap-2.5 border-[#fde68a] bg-[#fffbeb]"
+        >
+          <AlertTriangle size={16} className="text-[#b45309] shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[13px] font-semibold text-[#b45309]">
+              {precisaAtencao}{" "}
+              {precisaAtencao === 1 ? "produto precisa" : "produtos precisam"}{" "}
+              de reposição
+            </p>
+            <p className="text-[11.5px] text-[#92400e] leading-snug">
+              {contagem.sem
+                ? `${contagem.sem} sem estoque nenhum. Produto sem estoque não vende.`
+                : "Estão abaixo do mínimo que você definiu."}
             </p>
           </div>
-        ) : (
-          filtered.map((item) => {
-            const status = getStatus(item);
+        </button>
+      )}
 
-            return (
-              <article
-                key={item.id}
-                className={`rounded-2xl border p-4 ${
-                  status === "sem"
-                    ? "border-[#fecaca] bg-[#fff8f8]"
-                    : status === "baixo"
-                    ? "border-[#fde68a] bg-[#fffdf4]"
-                    : "border-[#e4e4e7] bg-white"
+      {/* Busca */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9ca3af]"
+          />
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Produto, SKU ou categoria"
+            className="w-full h-12 pl-10 pr-3 rounded-xl bg-white border border-[#e7e7ea] text-[14px] outline-none focus:border-[#0f1117] transition-colors"
+          />
+        </div>
+        <button
+          onClick={carregar}
+          disabled={carregando}
+          className="toque w-12 rounded-xl bg-white border border-[#e7e7ea] flex items-center justify-center disabled:opacity-50"
+          aria-label="Atualizar"
+        >
+          <RefreshCw
+            size={16}
+            className={`text-[#6b7280] ${carregando ? "animate-spin" : ""}`}
+          />
+        </button>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1">
+        {FILTROS.map(({ id, rotulo }) => (
+          <button
+            key={id}
+            onClick={() => setFiltro(id)}
+            className={`btn-app-pequeno shrink-0 border ${
+              filtro === id
+                ? "bg-[#0f1117] text-white border-[#0f1117]"
+                : "bg-white text-[#374151] border-[#e7e7ea]"
+            }`}
+          >
+            {rotulo}
+            {contagem[id] > 0 && (
+              <span
+                className={`ml-1 text-[11px] ${
+                  filtro === id ? "text-white/70" : "text-[#9ca3af]"
                 }`}
               >
-                <div className="flex min-w-0 items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="truncate text-[14px] font-semibold text-[#0f1117]">{item.nome}</h2>
-                    <div className="mt-1 flex min-w-0 items-center gap-2 text-[10px] text-[#9ca3af]">
-                      <span className="shrink-0 font-mono">{item.sku}</span>
-                      <span>•</span>
-                      <span className="truncate">{item.categoria}</span>
-                    </div>
+                {contagem[id]}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {erro && (
+        <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
+          <AlertCircle size={16} className="text-[#b91c1c] shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-[12.5px] text-[#b91c1c] break-words">{erro}</p>
+            <button
+              onClick={carregar}
+              className="sem-toque-minimo text-[12px] font-semibold text-[#991b1b] underline mt-1"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        </div>
+      )}
+
+      {carregando ? (
+        <ListaCarregando linhas={6} />
+      ) : filtrados.length === 0 ? (
+        <div className="py-16 text-center">
+          <Package
+            size={34}
+            className="mx-auto text-[#d4d4d8] mb-2.5"
+            strokeWidth={1.5}
+          />
+          <p className="text-[14px] font-semibold text-[#0f1117]">
+            {itens.length === 0 ? "Nenhum produto ainda" : "Nada encontrado"}
+          </p>
+          <p className="text-[12.5px] text-[#9ca3af] mt-1">
+            {itens.length === 0
+              ? "Cadastre produtos em Produtos para controlar o estoque aqui."
+              : "Tente outro termo ou troque de filtro."}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2.5 anim-lista">
+          {filtrados.map((i) => {
+            const v = VISUAL[i.situacao];
+            const emEdicao = editando === i.id;
+
+            return (
+              <div key={i.id} className="cartao-app p-3.5">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold text-[#0f1117] leading-snug">
+                      {i.nome}
+                    </p>
+                    <p className="text-[11.5px] text-[#9ca3af] mt-0.5">
+                      {[i.sku, i.categoria].filter(Boolean).join(" · ") || "—"}
+                    </p>
+                    <span
+                      className={`mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${v.cor}`}
+                    >
+                      {v.icone}
+                      {v.rotulo}
+                    </span>
                   </div>
 
-                  {status === "ok" && (
-                    <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[#15803d]">
-                      <CheckCircle2 size={12} strokeWidth={2} /> Em estoque
-                    </span>
-                  )}
-                  {status === "baixo" && (
-                    <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[#b45309]">
-                      <AlertTriangle size={12} strokeWidth={2} /> Baixo
-                    </span>
-                  )}
-                  {status === "sem" && (
-                    <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[#b91c1c]">
-                      <XCircle size={12} strokeWidth={2} /> Esgotado
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 divide-x divide-[#e4e4e7] rounded-xl border border-[#e4e4e7] bg-white/70">
-                  <div className="px-3 py-2.5">
-                    <p className="text-[9px] font-semibold uppercase tracking-wide text-[#9ca3af]">Mínimo</p>
-                    <p className="mt-0.5 text-[14px] font-semibold text-[#374151]">{item.minimo}</p>
-                  </div>
-                  <div className="px-3 py-2.5">
-                    <p className="text-[9px] font-semibold uppercase tracking-wide text-[#9ca3af]">Estoque atual</p>
-                    {editing === item.id ? (
-                      <div className="mt-1 flex items-center gap-1.5">
+                  <div className="text-right shrink-0">
+                    {emEdicao ? (
+                      <div className="flex items-center gap-1.5">
                         <input
-                          type="number"
-                          min="0"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") confirmEdit(item.id);
-                            if (e.key === "Escape") cancelEdit();
-                          }}
-                          className="h-10 min-w-0 flex-1 rounded-lg border border-[#16a34a] px-2 text-base focus:outline-none"
+                          value={valor}
+                          onChange={(e) => setValor(e.target.value)}
+                          inputMode="numeric"
                           autoFocus
+                          className="w-20 h-10 px-2 text-center rounded-xl border border-[#0f1117] text-[15px] font-bold outline-none tabular-nums"
                         />
-                        <button onClick={() => confirmEdit(item.id)} aria-label="Confirmar estoque" className="flex h-10 w-9 items-center justify-center rounded-lg text-[#16a34a]">
-                          <Check size={16} strokeWidth={2.5} />
+                        <button
+                          onClick={() => salvar(i)}
+                          disabled={salvando !== null}
+                          aria-label="Salvar"
+                          className="toque w-10 h-10 rounded-xl bg-[#0f1117] text-white flex items-center justify-center disabled:opacity-50"
+                        >
+                          {salvando === i.id ? (
+                            <RefreshCw size={15} className="animate-spin" />
+                          ) : (
+                            <Check size={15} />
+                          )}
                         </button>
-                        <button onClick={cancelEdit} aria-label="Cancelar edição" className="flex h-10 w-9 items-center justify-center rounded-lg text-[#6b7280]">
-                          <X size={16} strokeWidth={2.5} />
+                        <button
+                          onClick={() => setEditando(null)}
+                          aria-label="Cancelar"
+                          className="toque w-10 h-10 rounded-xl bg-[#f4f4f5] flex items-center justify-center"
+                        >
+                          <X size={15} className="text-[#374151]" />
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between gap-2">
-                        <p className={`mt-0.5 text-[14px] font-semibold ${status === "sem" ? "text-[#b91c1c]" : status === "baixo" ? "text-[#b45309]" : "text-[#0f1117]"}`}>
-                          {item.estoque}
-                        </p>
-                        <button onClick={() => startEdit(item)} aria-label={`Editar estoque de ${item.nome}`} className="flex h-10 w-10 items-center justify-center rounded-lg text-[#6b7280] active:bg-[#f4f4f5]">
-                          <Pencil size={16} strokeWidth={1.8} />
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => {
+                          setEditando(i.id);
+                          setValor(String(i.estoque));
+                        }}
+                        className="sem-toque-minimo inline-flex items-center gap-1.5"
+                      >
+                        <span className="text-[19px] font-bold text-[#0f1117] tabular-nums">
+                          {i.estoque}
+                        </span>
+                        <Pencil size={13} className="text-[#9ca3af]" />
+                      </button>
+                    )}
+
+                    {!emEdicao && (
+                      <p className="text-[11px] text-[#9ca3af] mt-0.5">
+                        mínimo {i.minimo} · {brl(i.preco)}
+                      </p>
                     )}
                   </div>
                 </div>
-              </article>
+              </div>
             );
-          })
-        )}
-      </div>
-
-      {/* Tabela desktop preservada */}
-
-      <div className="hidden bg-white border border-[#e4e4e7] rounded-[6px] lg:block">
-
-        <div className="px-4 py-2.5 border-b border-[#e4e4e7]">
-          <span className="text-[12px] text-[#6b7280]">
-            {filtered.length} produto
-            {filtered.length !== 1 ? "s" : ""}
-          </span>
+          })}
         </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px]">
-
-            <thead>
-              <tr className="border-b border-[#e4e4e7] bg-[#fafafa]">
-                {[
-                  "Produto",
-                  "SKU",
-                  "Categoria",
-                  "Mínimo",
-                  "Estoque atual",
-                  "Status",
-                  "Editar",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-4 py-2 text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-[13px] text-[#6b7280]">
-                    Nenhum produto encontrado
-                  </td>
-                </tr>
-              )}
-
-              {filtered.map((item) => {
-                const status = getStatus(item);
-
-                return (
-                  <tr
-                    key={item.id}
-                    className={`border-b border-[#f4f4f5] transition-colors ${
-                      status === "sem"
-                        ? "bg-[#fff8f8]"
-                        : status === "baixo"
-                        ? "bg-[#fffdf4]"
-                        : "hover:bg-[#fafafa]"
-                    }`}
-                  >
-
-                    <td className="px-4 py-2.5 text-[13px] font-medium text-[#0f1117]">
-                      {item.nome}
-                    </td>
-
-                    <td className="px-4 py-2.5 text-[12px] text-[#6b7280] font-mono">
-                      {item.sku}
-                    </td>
-
-                    <td className="px-4 py-2.5 text-[12px] text-[#374151]">
-                      {item.categoria}
-                    </td>
-
-                    <td className="px-4 py-2.5 text-[12px] text-[#6b7280]">
-                      {item.minimo}
-                    </td>
-
-                    <td className="px-4 py-2.5">
-
-                      {editing === item.id ? (
-                        <div className="flex items-center gap-1">
-
-                          <input
-                            type="number"
-                            min="0"
-                            value={editValue}
-                            onChange={(e) =>
-                              setEditValue(e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                confirmEdit(item.id);
-                              }
-
-                              if (e.key === "Escape") {
-                                cancelEdit();
-                              }
-                            }}
-                            className="w-16 px-2 py-0.5 text-[13px] border border-[#16a34a] rounded-[4px] focus:outline-none"
-                            autoFocus
-                          />
-
-                          <button
-                            onClick={() =>
-                              confirmEdit(item.id)
-                            }
-                            className="p-0.5 text-[#16a34a] hover:text-[#15803d]"
-                          >
-                            <Check
-                              size={14}
-                              strokeWidth={2.5}
-                            />
-                          </button>
-
-                          <button
-                            onClick={cancelEdit}
-                            className="p-0.5 text-[#9ca3af] hover:text-[#6b7280]"
-                          >
-                            <X
-                              size={14}
-                              strokeWidth={2.5}
-                            />
-                          </button>
-
-                        </div>
-                      ) : (
-                        <span
-                          className={`text-[13px] font-semibold ${
-                            status === "sem"
-                              ? "text-[#b91c1c]"
-                              : status === "baixo"
-                              ? "text-[#b45309]"
-                              : "text-[#0f1117]"
-                          }`}
-                        >
-                          {item.estoque}
-                        </span>
-                      )}
-
-                    </td>
-
-                    <td className="px-4 py-2.5">
-
-                      {status === "ok" && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#15803d]">
-                          <CheckCircle2
-                            size={12}
-                            strokeWidth={2}
-                          />
-                          Em estoque
-                        </span>
-                      )}
-
-                      {status === "baixo" && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#b45309]">
-                          <AlertTriangle
-                            size={12}
-                            strokeWidth={2}
-                          />
-                          Baixo
-                        </span>
-                      )}
-
-                      {status === "sem" && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#b91c1c]">
-                          <XCircle
-                            size={12}
-                            strokeWidth={2}
-                          />
-                          Esgotado
-                        </span>
-                      )}
-
-                    </td>
-
-                    <td className="px-4 py-2.5">
-
-                      <button
-                        onClick={() => startEdit(item)}
-                        className="p-1 text-[#6b7280] hover:text-[#0f1117] rounded hover:bg-[#f4f4f5]"
-                      >
-                        <Pencil
-                          size={14}
-                          strokeWidth={1.8}
-                        />
-                      </button>
-
-                    </td>
-
-                  </tr>
-                );
-              })}
-
-            </tbody>
-
-          </table>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

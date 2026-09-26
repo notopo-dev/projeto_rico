@@ -1,109 +1,290 @@
-import { useState } from "react";
-import { Search, Users } from "lucide-react";
-import Badge from "../components/Badge";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Search,
+  Users,
+  RefreshCw,
+  AlertCircle,
+  MessageCircle,
+  Mail,
+} from "lucide-react";
+import { listarClientes, type Cliente } from "../lib/clientesApi";
+import { ListaCarregando } from "../components/Carregando";
 
-const customers: Array<{
-  id: string;
-  nome: string;
-  email: string;
-  telefone: string;
-  pedidos: number;
-  gasto: string;
-  ultima: string;
-  status: string;
-}> = [];
+/**
+ * Clientes da loja, vindos do banco.
+ *
+ * Esta tela tinha `const customers = []` escrito no código: pesquisava
+ * dentro de uma lista vazia por construção e nunca mostrava ninguém,
+ * mesmo com clientes reais cadastrados. Era o mesmo defeito de Pedidos.
+ */
+
+type Ordem = "recentes" | "gasto" | "pedidos" | "nome";
+
+const ORDENS: { id: Ordem; rotulo: string }[] = [
+  { id: "recentes", rotulo: "Mais recentes" },
+  { id: "gasto", rotulo: "Quem mais gastou" },
+  { id: "pedidos", rotulo: "Quem mais comprou" },
+  { id: "nome", rotulo: "Nome" },
+];
+
+function brl(v: number) {
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function dataCurta(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  });
+}
+
+function apenasDigitos(v: string | null) {
+  return (v ?? "").replace(/\D/g, "");
+}
+
+function inicial(nome: string) {
+  return nome.trim().charAt(0).toUpperCase() || "?";
+}
 
 export default function Customers() {
-  const [search, setSearch] = useState("");
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
 
-  const filtered = customers.filter(
-    (c) =>
-      c.nome.toLowerCase().includes(search.toLowerCase()) ||
-      c.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const [busca, setBusca] = useState("");
+  const [ordem, setOrdem] = useState<Ordem>("recentes");
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    setErro(null);
+    try {
+      setClientes(await listarClientes());
+    } catch (e) {
+      setErro(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível carregar os clientes.",
+      );
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  const lista = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+
+    const filtrados = clientes.filter((c) => {
+      if (!termo) return true;
+      return (
+        c.nome.toLowerCase().includes(termo) ||
+        (c.email ?? "").toLowerCase().includes(termo) ||
+        apenasDigitos(c.telefone).includes(apenasDigitos(termo))
+      );
+    });
+
+    const ordenados = [...filtrados];
+    if (ordem === "gasto") ordenados.sort((a, b) => b.gasto - a.gasto);
+    else if (ordem === "pedidos")
+      ordenados.sort((a, b) => b.pedidos - a.pedidos);
+    else if (ordem === "nome")
+      ordenados.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    else
+      ordenados.sort((a, b) => {
+        const x = a.ultima_compra ?? a.criado_em;
+        const y = b.ultima_compra ?? b.criado_em;
+        return y.localeCompare(x);
+      });
+
+    return ordenados;
+  }, [clientes, busca, ordem]);
+
+  const totais = useMemo(() => {
+    const compraram = clientes.filter((c) => c.pedidos > 0);
+    const receita = clientes.reduce((s, c) => s + c.gasto, 0);
+    return {
+      cadastrados: clientes.length,
+      compraram: compraram.length,
+      receita,
+      ticket: compraram.length ? receita / compraram.length : 0,
+    };
+  }, [clientes]);
 
   return (
-    <div className="w-full min-h-full px-3 py-3 sm:px-4 lg:max-w-[1200px] lg:px-6 lg:py-6">
-      <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:gap-3">
-        <div className="relative w-full lg:max-w-xs">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9ca3af]" strokeWidth={2} />
+    <div className="p-4 sm:p-6 max-w-[1100px] mx-auto space-y-3.5">
+      {/* Resumo */}
+      {!carregando && clientes.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {[
+            { rotulo: "Cadastrados", valor: String(totais.cadastrados) },
+            { rotulo: "Já compraram", valor: String(totais.compraram) },
+            { rotulo: "Receita", valor: brl(totais.receita) },
+            { rotulo: "Média por cliente", valor: brl(totais.ticket) },
+          ].map((t) => (
+            <div key={t.rotulo} className="cartao-app p-3.5">
+              <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold">
+                {t.rotulo}
+              </p>
+              <p className="text-[17px] font-bold text-[#0f1117] mt-1 tabular-nums">
+                {t.valor}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Busca */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9ca3af]"
+          />
           <input
-            type="text"
-            placeholder="Buscar cliente..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full min-h-11 pl-9 pr-3 py-2 text-base border border-[#e4e4e7] rounded-xl bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a] lg:min-h-0 lg:pl-8 lg:py-1.5 lg:text-[13px] lg:rounded-[6px]"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Nome, e-mail ou telefone"
+            className="w-full h-12 pl-10 pr-3 rounded-xl bg-white border border-[#e7e7ea] text-[14px] outline-none focus:border-[#0f1117] transition-colors"
           />
         </div>
-        <span className="text-[12px] text-[#6b7280]">{filtered.length} cliente{filtered.length !== 1 ? "s" : ""}</span>
+        <button
+          onClick={carregar}
+          disabled={carregando}
+          className="toque w-12 rounded-xl bg-white border border-[#e7e7ea] flex items-center justify-center disabled:opacity-50"
+          aria-label="Atualizar"
+        >
+          <RefreshCw
+            size={16}
+            className={`text-[#6b7280] ${carregando ? "animate-spin" : ""}`}
+          />
+        </button>
       </div>
 
-      <div className="space-y-2.5 lg:hidden">
-        {filtered.length === 0 ? (
-          <div className="rounded-2xl border border-[#e4e4e7] bg-white px-5 py-12 text-center">
-            <Users size={32} strokeWidth={1.5} className="mx-auto mb-2 text-[#d1d5db]" />
-            <p className="text-[13px] font-medium text-[#374151]">Nenhum cliente encontrado</p>
-            <p className="mt-1 text-[11px] text-[#9ca3af]">Os clientes cadastrados aparecerão aqui.</p>
-          </div>
-        ) : filtered.map((c) => (
-          <article key={c.id} className="rounded-2xl border border-[#e4e4e7] bg-white p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e4e4e7] text-[13px] font-semibold text-[#374151]">{c.nome.charAt(0)}</div><div className="min-w-0"><h2 className="truncate text-[14px] font-semibold text-[#0f1117]">{c.nome}</h2><p className="truncate text-[11px] text-[#9ca3af]">{c.email}</p></div></div>
-              <Badge variant={c.status === "Ativo" ? "success" : "neutral"} label={c.status} />
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-3 rounded-xl border border-[#f4f4f5] bg-[#fafafa] p-3 text-[11px]"><div><p className="text-[#9ca3af]">Telefone</p><p className="mt-0.5 font-medium text-[#374151]">{c.telefone}</p></div><div><p className="text-[#9ca3af]">Pedidos</p><p className="mt-0.5 font-medium text-[#374151]">{c.pedidos}</p></div><div><p className="text-[#9ca3af]">Total gasto</p><p className="mt-0.5 text-[13px] font-semibold text-[#0f1117]">{c.gasto}</p></div><div><p className="text-[#9ca3af]">Última compra</p><p className="mt-0.5 font-medium text-[#374151]">{c.ultima}</p></div></div>
-          </article>
+      {/* Ordenação */}
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1">
+        {ORDENS.map(({ id, rotulo }) => (
+          <button
+            key={id}
+            onClick={() => setOrdem(id)}
+            className={`btn-app-pequeno shrink-0 border ${
+              ordem === id
+                ? "bg-[#0f1117] text-white border-[#0f1117]"
+                : "bg-white text-[#374151] border-[#e7e7ea]"
+            }`}
+          >
+            {rotulo}
+          </button>
         ))}
       </div>
 
-      <div className="hidden bg-white border border-[#e4e4e7] rounded-[6px] lg:block">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px]">
-            <thead>
-              <tr className="border-b border-[#e4e4e7] bg-[#fafafa]">
-                {["Cliente", "Telefone", "Pedidos", "Total gasto", "Última compra", "Status"].map((h) => (
-                  <th key={h} className="px-4 py-2 text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center">
-                    <Users size={32} strokeWidth={1.5} className="mx-auto text-[#d1d5db] mb-2" />
-                    <p className="text-[13px] text-[#6b7280]">Nenhum cliente encontrado</p>
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((c) => (
-                  <tr key={c.id} className="border-b border-[#f4f4f5] hover:bg-[#fafafa] transition-colors cursor-pointer">
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-[#e4e4e7] flex items-center justify-center text-[11px] font-semibold text-[#374151] shrink-0">
-                          {c.nome.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-[13px] font-medium text-[#0f1117]">{c.nome}</p>
-                          <p className="text-[11px] text-[#9ca3af]">{c.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-[12px] text-[#374151]">{c.telefone}</td>
-                    <td className="px-4 py-2.5 text-[12px] text-[#374151]">{c.pedidos}</td>
-                    <td className="px-4 py-2.5 text-[13px] font-semibold text-[#0f1117]">{c.gasto}</td>
-                    <td className="px-4 py-2.5 text-[12px] text-[#6b7280]">{c.ultima}</td>
-                    <td className="px-4 py-2.5">
-                      <Badge variant={c.status === "Ativo" ? "success" : "neutral"} label={c.status} />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {erro && (
+        <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
+          <AlertCircle size={16} className="text-[#b91c1c] shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-[12.5px] text-[#b91c1c] break-words">{erro}</p>
+            <button
+              onClick={carregar}
+              className="sem-toque-minimo text-[12px] font-semibold text-[#991b1b] underline mt-1"
+            >
+              Tentar novamente
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {carregando ? (
+        <ListaCarregando linhas={5} />
+      ) : lista.length === 0 ? (
+        <div className="py-16 text-center">
+          <Users
+            size={34}
+            className="mx-auto text-[#d4d4d8] mb-2.5"
+            strokeWidth={1.5}
+          />
+          <p className="text-[14px] font-semibold text-[#0f1117]">
+            {clientes.length === 0 ? "Nenhum cliente ainda" : "Nada encontrado"}
+          </p>
+          <p className="text-[12.5px] text-[#9ca3af] mt-1">
+            {clientes.length === 0
+              ? "Quem comprar na sua loja aparece aqui automaticamente."
+              : "Tente outro nome, e-mail ou telefone."}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2.5 anim-lista">
+          {lista.map((c) => {
+            const zap = apenasDigitos(c.telefone);
+            return (
+              <div key={c.id} className="cartao-app p-3.5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 shrink-0 rounded-full bg-[#f4f4f5] flex items-center justify-center text-[14px] font-bold text-[#374151]">
+                    {inicial(c.nome)}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold text-[#0f1117] truncate">
+                      {c.nome}
+                    </p>
+                    {c.email && (
+                      <p className="text-[12px] text-[#6b7280] truncate">
+                        {c.email}
+                      </p>
+                    )}
+                    {c.telefone && (
+                      <p className="text-[12px] text-[#6b7280]">{c.telefone}</p>
+                    )}
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <p className="text-[15px] font-bold text-[#0f1117] tabular-nums">
+                      {brl(c.gasto)}
+                    </p>
+                    <p className="text-[11.5px] text-[#9ca3af]">
+                      {c.pedidos} {c.pedidos === 1 ? "pedido" : "pedidos"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-[#f0f0f1] flex items-center justify-between gap-3">
+                  <p className="text-[11.5px] text-[#9ca3af]">
+                    {c.pedidos > 0
+                      ? `Última compra em ${dataCurta(c.ultima_compra)}`
+                      : `Cadastrado em ${dataCurta(c.criado_em)} · ainda não comprou`}
+                  </p>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    {zap && (
+                      <a
+                        href={`https://wa.me/55${zap}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="sem-toque-minimo inline-flex items-center gap-1 text-[12px] font-semibold text-[#15803d]"
+                      >
+                        <MessageCircle size={13} />
+                        WhatsApp
+                      </a>
+                    )}
+                    {c.email && (
+                      <a
+                        href={`mailto:${c.email}`}
+                        className="sem-toque-minimo inline-flex items-center gap-1 text-[12px] font-semibold text-[#374151]"
+                      >
+                        <Mail size={13} />
+                        E-mail
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
