@@ -1,153 +1,401 @@
-import { useState } from "react";
-import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-} from "recharts";
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  ShoppingBag,
+  Receipt,
+  Package,
+  Users,
+  CreditCard,
+  RefreshCw,
+  AlertCircle,
+} from "lucide-react";
+import {
+  getMelhoresClientes,
+  getProdutosVendidos,
+  getReceitaPorPeriodo,
+  getResumoVendas,
+  getVendasPorPagamento,
+  type LinhaCliente,
+  type LinhaPagamento,
+  type LinhaProduto,
+  type Periodo,
+  type PontoGrafico,
+  type ResumoVendas,
+} from "../lib/relatoriosApi";
+import { CartoesCarregando, ListaCarregando } from "../components/Carregando";
 
-const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set"];
+/**
+ * Relatórios de vendas, com dados reais do banco.
+ *
+ * Antes esta tela tinha os números escritos no próprio código —
+ * mostrava sempre a mesma coisa, independente das vendas.
+ */
 
-const revenueData = [
-  { mes: "Jan", receita: 18400, pedidos: 142 },
-  { mes: "Fev", receita: 21200, pedidos: 168 },
-  { mes: "Mar", receita: 19800, pedidos: 155 },
-  { mes: "Abr", receita: 24600, pedidos: 192 },
-  { mes: "Mai", receita: 28100, pedidos: 218 },
-  { mes: "Jun", receita: 31400, pedidos: 247 },
-  { mes: "Jul", receita: 29700, pedidos: 231 },
-  { mes: "Ago", receita: 35200, pedidos: 274 },
-  { mes: "Set", receita: 41800, pedidos: 312 },
+const PERIODOS: { id: Periodo; rotulo: string }[] = [
+  { id: "7d", rotulo: "7 dias" },
+  { id: "30d", rotulo: "30 dias" },
+  { id: "90d", rotulo: "90 dias" },
+  { id: "12m", rotulo: "12 meses" },
 ];
 
-const ticketData = months.map((mes, i) => ({
-  mes,
-  ticket: Math.round(revenueData[i].receita / revenueData[i].pedidos),
-}));
+function brl(v: number) {
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
-const topCategories = [
-  { nome: "Camisetas", receita: 89400, pct: 31 },
-  { nome: "Calçados", receita: 72100, pct: 25 },
-  { nome: "Calças", receita: 54800, pct: 19 },
-  { nome: "Blusas", receita: 38600, pct: 13 },
-  { nome: "Outros", receita: 33600, pct: 12 },
-];
+function variacao(atual: number, anterior: number) {
+  if (anterior === 0) return atual > 0 ? 100 : 0;
+  return ((atual - anterior) / anterior) * 100;
+}
 
-const kpis = [
-  { label: "Receita total (set/26)", value: "R$ 41.800,00", change: "+18,8%", up: true },
-  { label: "Pedidos (set/26)", value: "312", change: "+13,9%", up: true },
-  { label: "Ticket médio", value: "R$ 134,00", change: "+4,3%", up: true },
-  { label: "Taxa de cancelamento", value: "2,4%", change: "-0,8pp", up: true },
-];
+function Variacao({ atual, anterior }: { atual: number; anterior: number }) {
+  const pct = variacao(atual, anterior);
+  const igual = Math.abs(pct) < 0.5;
 
-type Period = "3m" | "6m" | "9m";
-
-export default function Vendas() {
-  const [period, setPeriod] = useState<Period>("9m");
-
-  const sliceMap: Record<Period, number> = { "3m": 3, "6m": 6, "9m": 9 };
-  const slice = sliceMap[period];
-  const data = revenueData.slice(-slice);
+  const Icone = igual ? Minus : pct > 0 ? TrendingUp : TrendingDown;
+  const cor = igual
+    ? "text-[#9ca3af]"
+    : pct > 0
+    ? "text-[#16a34a]"
+    : "text-[#b91c1c]";
 
   return (
-    <div className="p-4 sm:p-6 max-w-[1200px] space-y-4 sm:space-y-6">
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((k) => (
-          <div key={k.label} className="bg-white border border-[#e4e4e7] rounded-[6px] p-4">
-            <p className="text-[12px] text-[#6b7280] font-medium mb-2">{k.label}</p>
-            <p className="text-[20px] font-semibold text-[#0f1117] leading-none mb-1.5">{k.value}</p>
-            <div className="flex items-center gap-1">
-              {k.up ? <ArrowUpRight size={13} className="text-[#16a34a]" strokeWidth={2} /> : <ArrowDownRight size={13} className="text-[#b91c1c]" strokeWidth={2} />}
-              <span className={`text-[11px] font-medium ${k.up ? "text-[#16a34a]" : "text-[#b91c1c]"}`}>{k.change}</span>
-              <span className="text-[11px] text-[#9ca3af]">vs. mês anterior</span>
-            </div>
+    <span
+      className={`inline-flex items-center gap-1 text-[11px] font-medium ${cor}`}
+    >
+      <Icone size={12} strokeWidth={2.2} />
+      {igual ? "estável" : `${pct > 0 ? "+" : ""}${pct.toFixed(0)}%`}
+    </span>
+  );
+}
+
+function Cartao({
+  titulo,
+  valor,
+  atual,
+  anterior,
+  icone: Icone,
+}: {
+  titulo: string;
+  valor: string;
+  atual: number;
+  anterior: number;
+  icone: React.ElementType;
+}) {
+  return (
+    <div className="cartao-app p-4">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[12px] text-[#6b7280]">{titulo}</p>
+        <Icone size={15} className="text-[#9ca3af] shrink-0" />
+      </div>
+      <p className="text-[22px] font-extrabold text-[#0f1117] mt-1.5 leading-none">
+        {valor}
+      </p>
+      <div className="mt-2">
+        <Variacao atual={atual} anterior={anterior} />
+        <span className="text-[11px] text-[#9ca3af] ml-1.5">
+          vs. período anterior
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Barras horizontais: legíveis no celular, ao contrário de eixos apertados. */
+function Grafico({ pontos }: { pontos: PontoGrafico[] }) {
+  const maior = Math.max(...pontos.map((p) => p.valor), 1);
+  const temVenda = pontos.some((p) => p.valor > 0);
+
+  if (!temVenda) {
+    return (
+      <p className="text-[13px] text-[#9ca3af] py-10 text-center">
+        Nenhuma venda registrada neste período.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {pontos.map((p) => (
+        <div key={p.rotulo} className="flex items-center gap-2.5">
+          <span className="text-[11px] text-[#9ca3af] w-12 shrink-0 tabular-nums">
+            {p.rotulo}
+          </span>
+          <div className="flex-1 h-6 bg-[#f4f4f5] rounded-lg overflow-hidden">
+            <div
+              className="h-full bg-[#0f1117] rounded-lg transition-all duration-500"
+              style={{
+                width: `${Math.max(
+                  (p.valor / maior) * 100,
+                  p.valor > 0 ? 3 : 0
+                )}%`,
+              }}
+            />
           </div>
-        ))}
+          <span className="text-[11.5px] font-medium text-[#374151] w-20 text-right shrink-0 tabular-nums">
+            {p.valor > 0 ? brl(p.valor) : "—"}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Secao({
+  titulo,
+  icone: Icone,
+  children,
+}: {
+  titulo: string;
+  icone: React.ElementType;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="cartao-app">
+      <div className="px-4 py-3 border-b border-[#e7e7ea] flex items-center gap-2">
+        <Icone size={15} className="text-[#6b7280]" />
+        <h2 className="text-[13px] font-semibold text-[#0f1117]">{titulo}</h2>
+      </div>
+      <div className="px-4 py-4">{children}</div>
+    </div>
+  );
+}
+
+function Vazio({ texto }: { texto: string }) {
+  return <p className="text-[13px] text-[#9ca3af] py-8 text-center">{texto}</p>;
+}
+
+export default function Vendas() {
+  const [periodo, setPeriodo] = useState<Periodo>("30d");
+
+  const [resumo, setResumo] = useState<ResumoVendas | null>(null);
+  const [grafico, setGrafico] = useState<PontoGrafico[]>([]);
+  const [produtos, setProdutos] = useState<LinhaProduto[]>([]);
+  const [pagamentos, setPagamentos] = useState<LinhaPagamento[]>([]);
+  const [clientes, setClientes] = useState<LinhaCliente[]>([]);
+
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function carregar(p: Periodo) {
+    setCarregando(true);
+    setErro(null);
+    try {
+      const [r, g, prod, pag, cli] = await Promise.all([
+        getResumoVendas(p),
+        getReceitaPorPeriodo(p),
+        getProdutosVendidos(p),
+        getVendasPorPagamento(p),
+        getMelhoresClientes(p),
+      ]);
+      setResumo(r);
+      setGrafico(g);
+      setProdutos(prod);
+      setPagamentos(pag);
+      setClientes(cli);
+    } catch (e) {
+      setErro(
+        e instanceof Error ? e.message : "Não foi possível carregar os dados."
+      );
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  useEffect(() => {
+    carregar(periodo);
+  }, [periodo]);
+
+  const totalPagamentos = pagamentos.reduce((s, x) => s + x.receita, 0);
+
+  return (
+    <div className="p-4 sm:p-6 max-w-[1100px] mx-auto space-y-4">
+      {/* Período */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+          {PERIODOS.map(({ id, rotulo }) => (
+            <button
+              key={id}
+              onClick={() => setPeriodo(id)}
+              className={`btn-app-pequeno shrink-0 border ${
+                periodo === id
+                  ? "bg-[#0f1117] text-white border-[#0f1117]"
+                  : "bg-white text-[#374151] border-[#e7e7ea]"
+              }`}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => carregar(periodo)}
+          disabled={carregando}
+          className="btn-app-pequeno bg-white border border-[#e7e7ea] text-[#6b7280] disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={carregando ? "animate-spin" : ""} />
+          Atualizar
+        </button>
       </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Revenue bar chart */}
-        <div className="lg:col-span-2 bg-white border border-[#e4e4e7] rounded-[6px]">
-          <div className="px-4 py-3 border-b border-[#e4e4e7] flex items-center justify-between">
-            <span className="text-[13px] font-semibold text-[#0f1117]">Receita mensal</span>
-            <div className="flex items-center gap-0.5 border border-[#e4e4e7] rounded-[4px] overflow-hidden">
-              {(["3m", "6m", "9m"] as Period[]).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`px-2.5 py-1 text-[11px] font-medium transition-colors ${period === p ? "bg-[#16a34a] text-white" : "text-[#6b7280] hover:bg-[#f4f4f5]"}`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="p-4">
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                <Tooltip
-                  contentStyle={{ fontSize: 12, border: "1px solid #e4e4e7", borderRadius: 4, boxShadow: "none" }}
-                  formatter={(v) => [`R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Receita"]}
-                />
-                <Bar dataKey="receita" fill="#16a34a" radius={[3, 3, 0, 0]} maxBarSize={36} />
-              </BarChart>
-            </ResponsiveContainer>
+      {erro && (
+        <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
+          <AlertCircle size={16} className="text-[#b91c1c] shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-[12.5px] text-[#b91c1c] break-words">{erro}</p>
+            <button
+              onClick={() => carregar(periodo)}
+              className="text-[12px] font-semibold text-[#991b1b] underline mt-1"
+            >
+              Tentar novamente
+            </button>
           </div>
         </div>
+      )}
 
-        {/* Top categories */}
-        <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
-          <div className="px-4 py-3 border-b border-[#e4e4e7]">
-            <span className="text-[13px] font-semibold text-[#0f1117]">Receita por categoria</span>
-          </div>
-          <div className="px-4 py-3 space-y-3">
-            {topCategories.map((c) => (
-              <div key={c.nome}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[12px] text-[#374151]">{c.nome}</span>
-                  <span className="text-[12px] font-medium text-[#0f1117]">{c.pct}%</span>
-                </div>
-                <div className="h-1.5 bg-[#f4f4f5] rounded-full overflow-hidden">
-                  <div className="h-full bg-[#16a34a] rounded-full" style={{ width: `${c.pct}%` }} />
-                </div>
-                <p className="text-[11px] text-[#9ca3af] mt-0.5">R$ {c.receita.toLocaleString("pt-BR")}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Ticket médio line chart */}
-      <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
-        <div className="px-4 py-3 border-b border-[#e4e4e7]">
-          <span className="text-[13px] font-semibold text-[#0f1117]">Evolução do ticket médio</span>
-        </div>
-        <div className="p-4">
-          <ResponsiveContainer width="100%" height={140}>
-            <LineChart data={ticketData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-              <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} tickFormatter={(v) => `R$${v}`} />
-              <Tooltip
-                contentStyle={{ fontSize: 12, border: "1px solid #e4e4e7", borderRadius: 4, boxShadow: "none" }}
-                formatter={(v) => [`R$ ${Number(v).toLocaleString("pt-BR")}`, "Ticket médio"]}
+      {carregando ? (
+        <>
+          <CartoesCarregando quantidade={4} />
+          <ListaCarregando linhas={4} />
+        </>
+      ) : (
+        <>
+          {resumo && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 anim-lista">
+              <Cartao
+                titulo="Receita"
+                valor={brl(resumo.receita)}
+                atual={resumo.receita}
+                anterior={resumo.receitaAnterior}
+                icone={Receipt}
               />
-              <Line type="monotone" dataKey="ticket" stroke="#16a34a" strokeWidth={1.5} dot={{ r: 3, strokeWidth: 0, fill: "#16a34a" }} activeDot={{ r: 4 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+              <Cartao
+                titulo="Pedidos"
+                valor={String(resumo.pedidos)}
+                atual={resumo.pedidos}
+                anterior={resumo.pedidosAnterior}
+                icone={ShoppingBag}
+              />
+              <Cartao
+                titulo="Ticket médio"
+                valor={brl(resumo.ticketMedio)}
+                atual={resumo.ticketMedio}
+                anterior={resumo.ticketMedioAnterior}
+                icone={TrendingUp}
+              />
+              <Cartao
+                titulo="Itens vendidos"
+                valor={String(resumo.itensVendidos)}
+                atual={resumo.itensVendidos}
+                anterior={resumo.itensVendidosAnterior}
+                icone={Package}
+              />
+            </div>
+          )}
+
+          <Secao titulo="Receita no período" icone={TrendingUp}>
+            <Grafico pontos={grafico} />
+          </Secao>
+
+          <Secao titulo="Produtos mais vendidos" icone={Package}>
+            {produtos.length === 0 ? (
+              <Vazio texto="Nenhum produto vendido neste período." />
+            ) : (
+              <div className="space-y-2">
+                {produtos.map((p, i) => (
+                  <div
+                    key={`${p.sku}-${i}`}
+                    className="flex items-center gap-3 py-1"
+                  >
+                    <span className="w-6 h-6 rounded-lg bg-[#f4f4f5] text-[11px] font-bold text-[#6b7280] flex items-center justify-center shrink-0">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-[#0f1117] truncate">
+                        {p.nome}
+                      </p>
+                      <p className="text-[11.5px] text-[#9ca3af]">
+                        {p.unidades} {p.unidades === 1 ? "unidade" : "unidades"}
+                        {p.sku !== "—" && ` · ${p.sku}`}
+                      </p>
+                    </div>
+                    <span className="text-[13px] font-semibold text-[#0f1117] shrink-0 tabular-nums">
+                      {brl(p.receita)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Secao>
+
+          <Secao titulo="Formas de pagamento" icone={CreditCard}>
+            {pagamentos.length === 0 ? (
+              <Vazio texto="Nenhum pagamento neste período." />
+            ) : (
+              <div className="space-y-2.5">
+                {pagamentos.map((p) => {
+                  const pct = totalPagamentos
+                    ? (p.receita / totalPagamentos) * 100
+                    : 0;
+                  return (
+                    <div key={p.metodo}>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[13px] text-[#0f1117]">
+                          {p.metodo}
+                        </span>
+                        <span className="text-[12.5px] text-[#6b7280] tabular-nums">
+                          {brl(p.receita)}
+                          <span className="text-[#9ca3af] ml-1.5">
+                            {pct.toFixed(0)}%
+                          </span>
+                        </span>
+                      </div>
+                      <div className="h-2 bg-[#f4f4f5] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#0f1117] rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Secao>
+
+          <Secao titulo="Clientes que mais compraram" icone={Users}>
+            {clientes.length === 0 ? (
+              <Vazio texto="Nenhum cliente com compras neste período." />
+            ) : (
+              <div className="space-y-2">
+                {clientes.map((c, i) => (
+                  <div
+                    key={`${c.nome}-${i}`}
+                    className="flex items-center gap-3 py-1"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-[#0f1117] truncate">
+                        {c.nome}
+                      </p>
+                      <p className="text-[11.5px] text-[#9ca3af]">
+                        {c.pedidos} {c.pedidos === 1 ? "pedido" : "pedidos"}
+                        {c.ultimaCompra &&
+                          ` · última em ${new Date(
+                            c.ultimaCompra
+                          ).toLocaleDateString("pt-BR")}`}
+                      </p>
+                    </div>
+                    <span className="text-[13px] font-semibold text-[#0f1117] shrink-0 tabular-nums">
+                      {brl(c.receita)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Secao>
+        </>
+      )}
     </div>
   );
 }
