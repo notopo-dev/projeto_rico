@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
 
     const { data: store } = await supabase
       .from("stores")
-      .select("id, stripe_account_id, stripe_tipo_pessoa, stripe_documento_enviado, aceita_pix, aceita_cartao")
+      .select("id, stripe_account_id, stripe_tipo_pessoa, stripe_documento_enviado, aceita_pix, aceita_cartao, stripe_dominio_registrado, stripe_carteiras_ativas")
       .eq("owner_id", user.id)
       .single();
 
@@ -179,6 +179,11 @@ Deno.serve(async (req) => {
         metodos: {
           cartao: { liberado: chargesEnabled, aceita: store.aceita_cartao !== false },
           pix: { liberado: pixLiberado, aceita: store.aceita_pix === true },
+        },
+        // Apple Pay e Google Pay: dependem só do domínio registrado.
+        carteiras: {
+          dominioRegistrado: store.stripe_dominio_registrado ?? null,
+          ativas: store.stripe_carteiras_ativas === true,
         },
         requisitos,
         documento_enviado: store.stripe_documento_enviado,

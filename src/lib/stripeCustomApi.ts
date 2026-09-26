@@ -175,6 +175,17 @@ export interface StatusCompletoStripe {
     cartao: { liberado: boolean; aceita: boolean };
     pix: { liberado: boolean; aceita: boolean };
   };
+  /**
+   * Carteiras digitais (Apple Pay, Google Pay).
+   *
+   * Não são formas de pagamento separadas — são maneiras de entregar
+   * um cartão. Só dependem do domínio da loja estar registrado na
+   * conta conectada; por isso não têm interruptor de "aceita".
+   */
+  carteiras?: {
+    dominioRegistrado: string | null;
+    ativas: boolean;
+  };
   requisitos?: RequisitoPendente[];
   documento_enviado?: boolean;
   dados?: {
@@ -261,4 +272,52 @@ export async function salvarFormaPagamento(
     .eq("owner_id", user.id);
 
   if (error) throw error;
+}
+
+export interface ResultadoCarteiras {
+  sucesso: boolean;
+  dominio: string;
+  jaExistia: boolean;
+  applePay: string | null;
+  googlePay: string | null;
+}
+
+/**
+ * Registra o domínio da loja na conta conectada, que é o que libera
+ * os botões de Apple Pay e Google Pay no checkout.
+ *
+ * O domínio não vai daqui: quem decide é o servidor, a partir do
+ * APP_URL. Mandar do navegador deixaria um lojista registrar o
+ * domínio de outra pessoa.
+ */
+export async function ativarCarteirasDigitais(): Promise<ResultadoCarteiras> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error("Sessão expirada. Entre novamente.");
+
+  const url = import.meta.env.VITE_SUPABASE_URL;
+
+  const res = await fetch(`${url}/functions/v1/stripe-registrar-dominio`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+
+  let corpo: any = null;
+  try {
+    corpo = await res.json();
+  } catch {
+    corpo = null;
+  }
+
+  if (!res.ok || corpo?.error) {
+    throw new Error(
+      corpo?.error ?? `Falha ao ativar as carteiras (${res.status}).`,
+    );
+  }
+
+  return corpo as ResultadoCarteiras;
 }

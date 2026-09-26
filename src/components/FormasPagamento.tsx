@@ -2,11 +2,14 @@ import { useState } from "react";
 import {
   CreditCard,
   QrCode,
+  Wallet,
   AlertTriangle,
   Loader2,
   ExternalLink,
+  Check,
 } from "lucide-react";
 import {
+  ativarCarteirasDigitais,
   salvarFormaPagamento,
   type StatusCompletoStripe,
 } from "../lib/stripeCustomApi";
@@ -106,7 +109,9 @@ function Linha({
 
 export default function FormasPagamento({ status, aoSalvar }: Props) {
   const [salvando, setSalvando] = useState<"pix" | "cartao" | null>(null);
+  const [ativandoCarteiras, setAtivandoCarteiras] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [avisoCarteiras, setAvisoCarteiras] = useState<string | null>(null);
 
   // Conta recém-criada ainda não traz "metodos"; assume o conservador.
   const metodos = status.metodos ?? {
@@ -129,6 +134,34 @@ export default function FormasPagamento({ status, aoSalvar }: Props) {
     }
   }
 
+  const carteiras = status.carteiras ?? {
+    dominioRegistrado: null,
+    ativas: false,
+  };
+
+  async function ativarCarteiras() {
+    setAtivandoCarteiras(true);
+    setErro(null);
+    setAvisoCarteiras(null);
+    try {
+      const r = await ativarCarteirasDigitais();
+      setAvisoCarteiras(
+        r.applePay === "active" || r.googlePay === "active"
+          ? `Liberado para ${r.dominio}. Os botões aparecem no checkout para quem abrir a loja num aparelho compatível.`
+          : `Domínio ${r.dominio} enviado. A Stripe valida em alguns minutos — volte aqui depois para conferir.`,
+      );
+      aoSalvar();
+    } catch (e) {
+      setErro(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível ativar as carteiras.",
+      );
+    } finally {
+      setAtivandoCarteiras(false);
+    }
+  }
+
   const nenhumLigado =
     !(metodos.cartao.liberado && metodos.cartao.aceita) &&
     !(metodos.pix.liberado && metodos.pix.aceita);
@@ -147,8 +180,8 @@ export default function FormasPagamento({ status, aoSalvar }: Props) {
       <div className="divide-y divide-[#f0f0f1]">
         <Linha
           icone={<CreditCard size={16} />}
-          titulo="Cartão de crédito"
-          descricao="Liberado junto com a sua conta de recebimento."
+          titulo="Cartão de crédito ou débito"
+          descricao="Um ajuste só cobre os dois: para a Stripe, crédito e débito são o mesmo tipo."
           liberado={metodos.cartao.liberado}
           aceita={metodos.cartao.aceita}
           salvando={salvando === "cartao"}
@@ -186,6 +219,64 @@ export default function FormasPagamento({ status, aoSalvar }: Props) {
           }
           onAlternar={(novo) => alternar("pix", novo)}
         />
+
+        {/* Carteiras digitais.
+            Não têm interruptor porque não são forma de pagamento à
+            parte: Apple Pay e Google Pay entregam um CARTÃO. O que
+            decide é o domínio da loja estar registrado na conta
+            conectada — por isso aqui é um botão de ativar, e não um
+            liga-desliga. */}
+        <div className="px-3.5 py-3">
+          <div className="flex items-start gap-3">
+            <Wallet size={16} className="mt-0.5 shrink-0 text-[#6b7280]" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-[#0f1117]">
+                Apple Pay e Google Pay
+              </p>
+              <p className="text-[11.5px] text-[#6b7280] leading-snug mt-0.5">
+                Pagamento em um toque, sem digitar o cartão. Aparece sozinho
+                para quem abrir a loja num aparelho compatível.
+              </p>
+            </div>
+
+            {carteiras.ativas && (
+              <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-[#f0fdf4] border border-[#bbf7d0] px-2 py-0.5 text-[11px] font-semibold text-[#15803d]">
+                <Check size={11} />
+                Ativo
+              </span>
+            )}
+          </div>
+
+          {!carteiras.ativas && (
+            <div className="mt-2.5 ml-7">
+              <button
+                onClick={ativarCarteiras}
+                disabled={ativandoCarteiras || !metodos.cartao.liberado}
+                className="btn-app-pequeno bg-[#0f1117] text-white disabled:opacity-50"
+              >
+                {ativandoCarteiras ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Wallet size={14} />
+                )}
+                {carteiras.dominioRegistrado
+                  ? "Conferir liberação"
+                  : "Ativar carteiras digitais"}
+              </button>
+              {!metodos.cartao.liberado && (
+                <p className="mt-1.5 text-[11px] text-[#9ca3af]">
+                  Disponível depois que a conta estiver ativa.
+                </p>
+              )}
+            </div>
+          )}
+
+          {avisoCarteiras && (
+            <p className="mt-2 ml-7 text-[11.5px] text-[#15803d] bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg px-2.5 py-2 leading-snug">
+              {avisoCarteiras}
+            </p>
+          )}
+        </div>
       </div>
 
       {erro && (
