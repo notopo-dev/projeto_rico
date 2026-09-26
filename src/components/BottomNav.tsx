@@ -10,6 +10,7 @@ import {
   Users,
   Boxes,
   CreditCard,
+  Landmark,
   MessageCircle,
   Settings,
   X,
@@ -44,6 +45,7 @@ const SECUNDARIAS: { id: Page; label: string; icone: React.ElementType }[] = [
   { id: "clientes", label: "Clientes", icone: Users },
   { id: "estoque", label: "Estoque", icone: Boxes },
   { id: "pagamentos", label: "Pagamentos", icone: CreditCard },
+  { id: "recebimentos", label: "Recebimentos", icone: Landmark },
   { id: "whatsapp", label: "WhatsApp", icone: MessageCircle },
   { id: "configuracoes", label: "Configurações", icone: Settings },
 ];

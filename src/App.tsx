@@ -12,6 +12,7 @@ import Customers from "./pages/Customers";
 import Estoque from "./pages/Estoque";
 import Vendas from "./pages/Vendas";
 import Pagamentos from "./pages/Pagamentos";
+import Recebimentos from "./pages/Recebimentos";
 import WhatsApp from "./pages/WhatsApp";
 import Configuracoes from "./pages/Configuracoes";
 import Header from "./components/Header";
@@ -29,6 +30,7 @@ const pageConfig: Record<Page, { title: string; component: ReactNode }> = {
   estoque: { title: "Estoque", component: <Estoque /> },
   vendas: { title: "Vendas", component: <Vendas /> },
   pagamentos: { title: "Pagamentos", component: <Pagamentos /> },
+  recebimentos: { title: "Recebimentos", component: <Recebimentos /> },
   whatsapp: { title: "WhatsApp", component: <WhatsApp /> },
   configuracoes: { title: "Configurações", component: <Configuracoes /> },
 };

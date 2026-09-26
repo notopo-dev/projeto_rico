@@ -25,7 +25,6 @@ import {
   alterarSenha,
   alterarEmail,
 } from "../lib/settingsApi";
-import StripeStatusPanel from "../components/StripeStatusPanel";
 
 type Tab = "conta" | "loja" | "notificacoes" | "integracoes";
 
@@ -754,8 +753,6 @@ export default function Configuracoes() {
       {/* ======================= INTEGRAÇÕES ======================= */}
       {tab === "integracoes" && (
         <div className="space-y-4">
-          <StripeStatusPanel />
-
           {loadingSettings ? (
             <div className="flex items-center gap-2 text-[13px] text-[#6b7280] py-8 justify-center">
               <Loader2 size={16} className="animate-spin" />

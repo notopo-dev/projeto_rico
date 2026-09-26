@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Settings,
   ChevronDown,
+  Landmark,
   X,
 } from "lucide-react";
 
@@ -19,6 +20,7 @@ import { getStoreCustomization } from "../lib/storeCustomizationApi";
 
 export type Page =
   | "dashboard"
+  | "recebimentos"
   | "loja"
   | "produtos"
   | "categorias"
@@ -102,6 +104,11 @@ const groups: {
         id: "pagamentos",
         label: "Pagamentos",
         icon: CreditCard,
+      },
+      {
+        id: "recebimentos",
+        label: "Recebimentos",
+        icon: Landmark,
       },
       {
         id: "whatsapp",
