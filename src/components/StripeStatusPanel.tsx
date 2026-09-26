@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Loader2,
   CheckCircle2,
@@ -91,26 +91,65 @@ export default function StripeStatusPanel() {
   const [verificacaoAberta, setVerificacaoAberta] = useState(false);
   // Mostra a tela de preparo antes de abrir o formulário de identidade.
   const [preparoVisto, setPreparoVisto] = useState(false);
+  // Acabou de enviar a verificação nesta visita — muda a mensagem de topo.
+  const [enviadoAgora, setEnviadoAgora] = useState(false);
 
-  async function carregar() {
-    setCarregando(true);
+  const temporizadores = useRef<number[]>([]);
+
+  function pararAcompanhamento() {
+    temporizadores.current.forEach((id) => window.clearTimeout(id));
+    temporizadores.current = [];
+  }
+
+  /**
+   * Recarrega o status.
+   *
+   * @param silencioso  não troca a tela pelo "Verificando..." — usado
+   * pelas reconsultas automáticas. Sem isto, cada reconsulta
+   * desmontava o formulário da Stripe no meio do caminho.
+   */
+  async function carregar(silencioso = false) {
+    if (!silencioso) setCarregando(true);
     setErro(null);
     try {
       const data = await consultarStatusStripe();
       setStatus(data);
+      // Deu certo: não há mais o que esperar.
+      if (data?.situacao === "ativo") pararAcompanhamento();
     } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao consultar status.");
+      if (!silencioso) {
+        setErro(err instanceof Error ? err.message : "Erro ao consultar status.");
+      }
     } finally {
-      setCarregando(false);
+      if (!silencioso) setCarregando(false);
     }
+  }
+
+  /**
+   * A Stripe processa o cadastro em segundo plano e leva de alguns
+   * segundos a alguns minutos. Em vez de pedir para o lojista ficar
+   * apertando "Atualizar", reconsultamos sozinhos por um tempo — em
+   * silêncio, sem piscar a tela.
+   */
+  function acompanharAnalise() {
+    pararAcompanhamento();
+    [3000, 8000, 15000, 25000, 40000, 60000, 90000].forEach((ms) => {
+      temporizadores.current.push(
+        window.setTimeout(() => carregar(true), ms)
+      );
+    });
   }
 
   useEffect(() => {
     carregar();
+    return pararAcompanhamento;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Enquanto carrega
-  if (carregando) {
+  // Só na primeira vez. Depois de já ter status na tela, uma reconsulta
+  // acontece por baixo — trocar tudo por um spinner remontava o
+  // formulário da Stripe e devolvia o lojista ao começo.
+  if (carregando && !status) {
     return (
       <div className="bg-white border border-[#e4e4e7] rounded-[6px] px-4 py-8">
         <div className="flex items-center justify-center gap-2 text-[13px] text-[#6b7280]">
@@ -195,7 +234,7 @@ export default function StripeStatusPanel() {
               setModoEdicao(false);
               setVerificacaoAberta(false);
               setPreparoVisto(false);
-              carregar();
+              carregar(true);
             }}
             className="shrink-0 text-[12px] text-[#6b7280] underline"
           >
@@ -205,9 +244,21 @@ export default function StripeStatusPanel() {
         <div className="px-4 py-4">
           <StripeEmbeddedOnboarding
             onConcluido={() => {
-              // A Stripe processa em segundo plano; damos um tempo
-              // antes de reconsultar para não mostrar status velho.
-              setTimeout(carregar, 2500);
+              // A Stripe avisa aqui tanto quando o lojista CONCLUI
+              // quanto quando ele SAI do formulário. Nos dois casos o
+              // certo é fechar e voltar ao resumo.
+              //
+              // Antes não fechava: o painel reconsultava o status, o
+              // spinner substituía a tela inteira, o formulário era
+              // remontado do zero e reaparecia no mesmo passo — o
+              // lojista confirmava, e caía no botão de confirmar de
+              // novo, sem fim.
+              setVerificacaoAberta(false);
+              setModoEdicao(false);
+              setPreparoVisto(false);
+              setEnviadoAgora(true);
+              carregar(true);
+              acompanharAnalise();
             }}
           />
         </div>
@@ -284,6 +335,24 @@ export default function StripeStatusPanel() {
       </div>
 
       <div className="px-4 py-4 space-y-4">
+        {/* Acabou de enviar: explica que agora é só esperar, para o
+            lojista não achar que precisa preencher tudo outra vez. */}
+        {enviadoAgora && status.situacao !== "ativo" && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3.5 py-3">
+            <CheckCircle2 size={18} className="text-[#16a34a] shrink-0" />
+            <div>
+              <p className="text-[13px] font-medium text-[#15803d]">
+                Recebemos seus dados
+              </p>
+              <p className="text-[11px] text-[#166534] leading-snug">
+                Não precisa preencher de novo. Esta tela se atualiza
+                sozinha assim que a análise terminar — pode sair e
+                voltar depois.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Avisos da própria Stripe (pendências, risco, conformidade).
             Este componente é exigido quando a Stripe responde pelos
             saldos negativos — e a página precisa estar em site-links. */}

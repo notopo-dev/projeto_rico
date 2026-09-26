@@ -138,7 +138,7 @@ export default function Header({
     displaySlug.charAt(0).toUpperCase() || "M";
 
   return (
-    <header className="relative z-20 flex h-14 sm:h-12 w-full shrink-0 items-center justify-between border-b border-[#e5e7eb] bg-white px-3.5 sm:px-4">
+    <header className="sticky top-0 z-20 flex h-14 sm:h-12 w-full shrink-0 items-center justify-between border-b border-[#e5e7eb] bg-white px-3.5 sm:px-4">
 
       {/* ESQUERDA */}
       <div className="flex min-w-0 items-center gap-2.5">

@@ -4,7 +4,13 @@
 // uma tabela.
 // ============================================================
 
-export type OrderStatus = "pendente" | "pago" | "enviado" | "entregue" | "cancelado";
+export type OrderStatus =
+  | "pendente"
+  | "pago"
+  | "enviado"
+  | "entregue"
+  | "cancelado"
+  | "devolvido";
 export type ProductStatus = "ativo" | "inativo" | "sem_estoque";
 export type CustomerStatus = "ativo" | "inativo";
 export type PaymentMethod = "pix" | "cartao" | "boleto" | "cartao_stripe";

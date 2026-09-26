@@ -279,9 +279,9 @@ export default function Sidebar({
           ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
 
           lg:translate-x-0
-          lg:static
+          lg:sticky
+          lg:self-start
           lg:w-56
-          lg:h-full
           lg:rounded-none
           lg:shadow-none
           lg:z-auto

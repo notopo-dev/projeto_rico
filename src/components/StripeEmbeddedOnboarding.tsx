@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ConnectAccountOnboarding } from "@stripe/react-connect-js";
-import { Loader2, AlertCircle, ExternalLink, CheckCircle2, RefreshCw } from "lucide-react";
+import { Loader2, AlertCircle, ExternalLink, RefreshCw } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useStripeConnect } from "./StripeConnectContexto";
 
@@ -29,7 +29,6 @@ export default function StripeEmbeddedOnboarding({ onConcluido }: Props) {
   const { connect, carregando, erro, semConta, tentarDeNovo } =
     useStripeConnect();
 
-  const [finalizado, setFinalizado] = useState(false);
   const [montou, setMontou] = useState(false);
   const [erroLocal, setErroLocal] = useState<string | null>(null);
   const [abrindoLink, setAbrindoLink] = useState(false);
@@ -123,30 +122,17 @@ export default function StripeEmbeddedOnboarding({ onConcluido }: Props) {
     );
   }
 
-  if (finalizado) {
-    return (
-      <div className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] p-5 text-center">
-        <CheckCircle2 size={26} className="mx-auto text-[#16a34a]" />
-        <p className="mt-2 text-[14px] font-semibold text-[#14532d]">
-          Cadastro enviado
-        </p>
-        <p className="mt-1 text-[12px] text-[#166534] leading-snug">
-          Estamos analisando seus dados. Isso costuma levar poucos minutos.
-          O status aparece atualizado aqui nesta página.
-        </p>
-      </div>
-    );
-  }
-
   if (!connect) return null;
 
   return (
     <div>
       <ConnectAccountOnboarding
-        onExit={() => {
-          setFinalizado(true);
-          onConcluido?.();
-        }}
+        // A Stripe chama isto tanto ao concluir quanto ao sair pelo
+        // botão de voltar dela. Quem decide o que fazer é o painel:
+        // ele fecha a verificação e mostra o status. Esta tela não
+        // guarda mais estado de "enviado" — guardava, e sumia junto
+        // com o componente na primeira reconsulta.
+        onExit={() => onConcluido?.()}
         // Sem isto, uma falha antes do primeiro render deixa a área em
         // branco: a Stripe não desenha mensagem se o componente ainda
         // não chegou a aparecer.

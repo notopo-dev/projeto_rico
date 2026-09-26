@@ -51,7 +51,19 @@ const statusMap: Record<string, string> = {
   enviado: "Enviado",
   entregue: "Entregue",
   cancelado: "Cancelado",
+  devolvido: "Devolvido",
 };
+
+/** Status que não contam como venda realizada. */
+const STATUS_IGNORADOS = ["cancelado", "devolvido"];
+
+/**
+ * Receita de um pedido já descontado o que voltou para o cliente.
+ * Sem isto, um reembolso parcial continuaria contando pelo valor cheio.
+ */
+function liquido(p: { total: unknown; valor_reembolsado?: unknown }) {
+  return Number(p.total ?? 0) - Number(p.valor_reembolsado ?? 0);
+}
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   const storeId = await getCurrentStoreId();
@@ -76,13 +88,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   ] = await Promise.all([
     supabase
       .from("orders")
-      .select("total, status")
+      .select("total, valor_reembolsado, status")
       .eq("store_id", storeId)
       .gte("created_at", hoje.toISOString())
       .lt("created_at", amanha.toISOString()),
     supabase
       .from("orders")
-      .select("total, status")
+      .select("total, valor_reembolsado, status")
       .eq("store_id", storeId)
       .gte("created_at", ontem.toISOString())
       .lt("created_at", hoje.toISOString()),
@@ -108,11 +120,11 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const pedidosOntem = pedidosOntemRes.data ?? [];
 
   const vendasHoje = pedidosHoje
-    .filter((p) => p.status !== "cancelado")
-    .reduce((sum, p) => sum + Number(p.total), 0);
+    .filter((p) => !STATUS_IGNORADOS.includes(p.status))
+    .reduce((sum, p) => sum + liquido(p), 0);
   const vendasOntem = pedidosOntem
-    .filter((p) => p.status !== "cancelado")
-    .reduce((sum, p) => sum + Number(p.total), 0);
+    .filter((p) => !STATUS_IGNORADOS.includes(p.status))
+    .reduce((sum, p) => sum + liquido(p), 0);
 
   return {
     vendasHoje,
@@ -134,9 +146,9 @@ export async function getVendasUltimos7Dias(): Promise<VendaPorDia[]> {
 
   const { data, error } = await supabase
     .from("orders")
-    .select("total, created_at, status")
+    .select("total, valor_reembolsado, created_at, status")
     .eq("store_id", storeId)
-    .neq("status", "cancelado")
+    .not("status", "in", "(cancelado,devolvido)")
     .gte("created_at", seteDiasAtras.toISOString())
     .order("created_at");
 
@@ -152,7 +164,7 @@ export async function getVendasUltimos7Dias(): Promise<VendaPorDia[]> {
   (data ?? []).forEach((pedido) => {
     const dia = new Date(pedido.created_at).toDateString();
     if (porDia.has(dia)) {
-      porDia.set(dia, (porDia.get(dia) ?? 0) + Number(pedido.total));
+      porDia.set(dia, (porDia.get(dia) ?? 0) + liquido(pedido));
     }
   });
 
@@ -202,7 +214,7 @@ export async function getProdutosMaisVendidos(
       "quantidade, subtotal, product_id, nome_produto, orders!inner(store_id, status), products(sku, estoque)"
     )
     .eq("orders.store_id", storeId)
-    .neq("orders.status", "cancelado");
+    .not("orders.status", "in", "(cancelado,devolvido)");
 
   if (error) throw error;
 

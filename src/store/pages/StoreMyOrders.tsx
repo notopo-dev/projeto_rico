@@ -28,6 +28,7 @@ const statusLabel: Record<string, string> = {
   enviado: "Enviado",
   entregue: "Entregue",
   cancelado: "Cancelado",
+  devolvido: "Devolvido",
 };
 
 const statusColor: Record<string, string> = {
@@ -36,6 +37,7 @@ const statusColor: Record<string, string> = {
   enviado: "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]",
   entregue: "bg-[#f4f4f5] text-[#52525b] border-[#e4e4e7]",
   cancelado: "bg-[#fef2f2] text-[#b91c1c] border-[#fecaca]",
+  devolvido: "bg-[#faf5ff] text-[#7e22ce] border-[#e9d5ff]",
 };
 
 export default function StoreMyOrders() {

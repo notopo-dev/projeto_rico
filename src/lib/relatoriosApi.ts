@@ -74,7 +74,18 @@ const DIAS_POR_PERIODO: Record<Periodo, number> = {
 };
 
 /** Status que não contam como venda realizada. */
-const STATUS_IGNORADOS = ["cancelado"];
+const STATUS_IGNORADOS = ["cancelado", "devolvido"];
+
+/**
+ * Receita de um pedido, já descontado o que foi devolvido ao cliente.
+ *
+ * Um pedido reembolsado por inteiro some do relatório (status
+ * "devolvido", acima). O parcial continua contando — mas só pelo que
+ * de fato ficou com o lojista, senão o faturamento infla sozinho.
+ */
+function liquido(o: any) {
+  return Number(o.total ?? 0) - Number(o.valor_reembolsado ?? 0);
+}
 
 function intervalo(periodo: Periodo) {
   const dias = DIAS_POR_PERIODO[periodo];
@@ -101,7 +112,7 @@ export async function getResumoVendas(
 
   const { data, error } = await supabase
     .from("orders")
-    .select("total, created_at, status, order_items(quantidade)")
+    .select("total, valor_reembolsado, created_at, status, order_items(quantidade)")
     .eq("store_id", storeId)
     .gte("created_at", inicioAnterior.toISOString());
 
@@ -119,7 +130,7 @@ export async function getResumoVendas(
   );
 
   function somar(lista: any[]) {
-    const receita = lista.reduce((s, o) => s + Number(o.total ?? 0), 0);
+    const receita = lista.reduce((s, o) => s + liquido(o), 0);
     const itens = lista.reduce(
       (s, o) =>
         s +
@@ -162,7 +173,7 @@ export async function getReceitaPorPeriodo(
 
   const { data, error } = await supabase
     .from("orders")
-    .select("total, created_at, status")
+    .select("total, valor_reembolsado, created_at, status")
     .eq("store_id", storeId)
     .gte("created_at", inicio.toISOString())
     .order("created_at");
@@ -203,7 +214,7 @@ export async function getReceitaPorPeriodo(
         : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 
       if (baldes.has(chave)) {
-        baldes.set(chave, (baldes.get(chave) ?? 0) + Number(o.total ?? 0));
+        baldes.set(chave, (baldes.get(chave) ?? 0) + liquido(o));
       }
     });
 
@@ -264,7 +275,7 @@ export async function getVendasPorPagamento(
 
   const { data, error } = await supabase
     .from("orders")
-    .select("total, metodo_pagamento, status")
+    .select("total, valor_reembolsado, metodo_pagamento, status")
     .eq("store_id", storeId)
     .gte("created_at", inicio.toISOString());
 
@@ -279,7 +290,7 @@ export async function getVendasPorPagamento(
       const metodo = NOMES_METODO[bruto] ?? bruto;
       const atual = mapa.get(metodo) ?? { metodo, pedidos: 0, receita: 0 };
       atual.pedidos += 1;
-      atual.receita += Number(o.total ?? 0);
+      atual.receita += liquido(o);
       mapa.set(metodo, atual);
     });
 
@@ -296,7 +307,7 @@ export async function getMelhoresClientes(
 
   const { data, error } = await supabase
     .from("orders")
-    .select("total, created_at, status, customer_id, customers(nome)")
+    .select("total, valor_reembolsado, created_at, status, customer_id, customers(nome)")
     .eq("store_id", storeId)
     .gte("created_at", inicio.toISOString());
 
@@ -315,7 +326,7 @@ export async function getMelhoresClientes(
         ultimaCompra: null as string | null,
       };
       atual.pedidos += 1;
-      atual.receita += Number(o.total ?? 0);
+      atual.receita += liquido(o);
 
       const data = new Date(o.created_at).toISOString();
       if (!atual.ultimaCompra || data > atual.ultimaCompra) {

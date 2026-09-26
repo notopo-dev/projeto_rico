@@ -41,10 +41,13 @@
   --barra-inferior: calc(62px + env(safe-area-inset-bottom, 0px));
 }
 
+/* min-height, não height: a rolagem da página é da JANELA. Com altura
+   fixa aqui, o conteúdo alto ficava preso num contêiner interno e os
+   menus de componentes embutidos (Stripe) abriam fora de lugar. */
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
@@ -235,6 +238,22 @@ textarea {
   animation: app-surgir 0.22s ease-out both;
 }
 
+/* Entrada só por opacidade.
+   Serve para envolver conteúdo que contém iframes de terceiros: um
+   `transform` no ancestral cria bloco de contenção e faz o
+   `position: fixed` de dentro do embed se ancorar no lugar errado. */
+@keyframes app-aparecer {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anim-aparecer {
+  animation: app-aparecer 0.2s ease-out both;
+}
+
 /* Escalona a entrada de itens de uma lista. */
 .anim-lista > * {
   animation: app-surgir 0.24s ease-out both;
@@ -381,3 +400,118 @@ textarea {
   }
 }
 
+
+/* ---------------------------------------------------------------
+   Folha de detalhe
+   Modal comum no computador, tela cheia no celular.
+
+   A versão anterior usava um contêiner com `overflow:auto` e um
+   cabeçalho `sticky` dentro dele. No iOS e em vários Android esse
+   par se desalinha quando o teclado abre ou a barra do navegador
+   recolhe: o cabeçalho flutua sobre o conteúdo e o rodapé some.
+   Aqui o cabeçalho e o rodapé são irmãos fixos de um flex column
+   e SÓ o miolo rola — não há sticky para desalinhar.
+   --------------------------------------------------------------- */
+.folha-fundo {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+@media (min-width: 640px) {
+  .folha-fundo {
+    align-items: center;
+    padding: 24px;
+  }
+}
+
+.folha {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+  background: #fff;
+  overflow: hidden;
+}
+@media (min-width: 640px) {
+  .folha {
+    max-width: 580px;
+    height: auto;
+    max-height: 88dvh;
+    border-radius: 24px;
+    box-shadow: 0 24px 60px rgb(15 17 23 / 0.28);
+  }
+}
+
+.folha-topo,
+.folha-rodape {
+  flex-shrink: 0;
+}
+
+/* overscroll-behavior impede que o "puxão" no fim da lista role a
+   página atrás da folha — outro sintoma do modal que "bugava". */
+.folha-corpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Campo de texto padrão das folhas. */
+.campo-app {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--app-borda);
+  background: #fff;
+  font-size: 14px;
+  color: var(--app-texto);
+  outline: none;
+  transition: border-color 0.12s ease;
+}
+.campo-app:focus {
+  border-color: var(--app-tinta);
+}
+textarea.campo-app {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------
+   Impressão
+   O comprovante/romaneio do pedido é montado escondido na página.
+   Ao imprimir, tudo some e só ele aparece — sem abrir aba nova,
+   que o bloqueador de pop-up do celular costuma barrar.
+   --------------------------------------------------------------- */
+.area-impressao {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .area-impressao {
+    display: block;
+    visibility: visible;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    padding: 24px;
+    background: #fff;
+    color: #000;
+    font-size: 12pt;
+  }
+  .area-impressao * {
+    visibility: visible;
+  }
+  .nao-imprimir {
+    display: none !important;
+  }
+}

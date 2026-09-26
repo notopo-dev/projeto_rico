@@ -185,10 +185,18 @@ export default function App() {
           onMenuToggle={() => setMobileMenuOpen(true)}
           onLogout={logout}
         />
-        <div className="min-h-0 flex-1 overflow-auto com-barra-inferior">
+        {/* Sem overflow aqui de propósito: quem rola é a JANELA.
+            Enquanto a rolagem acontecia dentro desta div, componentes
+            de terceiros que abrem menus (o formulário de verificação
+            da Stripe) calculavam a posição errada — a lista abria por
+            cima do cabeçalho, cortada, sem como rolar até ela. */}
+        <div className="flex-1 com-barra-inferior">
           {/* key: remonta ao trocar de página, o que dispara a animação
-              de entrada e zera o estado da tela anterior. */}
-          <div key={currentPage} className="anim-surgir">
+              de entrada e zera o estado da tela anterior.
+              anim-aparecer (e não anim-surgir): esta animação não usa
+              transform. Um transform aqui viraria bloco de contenção e
+              quebraria o position:fixed de qualquer embed lá dentro. */}
+          <div key={currentPage} className="anim-aparecer">
             {page.component}
           </div>
         </div>
