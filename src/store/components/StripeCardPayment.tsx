@@ -24,7 +24,15 @@ interface StripeCardPaymentProps {
   orderId: string;
   totalReais: number;
   metodo: "pix" | "card";
-  onSuccess: () => void;
+  /**
+   * Chamado quando a confirmação volta sem erro.
+   *
+   * Recebe o status real do pagamento — "succeeded" ou "processing".
+   * Antes não recebia nada, e a tela seguinte tinha que adivinhar:
+   * dizia "assim que configurarmos o pagamento" mesmo depois de a
+   * cobrança ter sido aprovada.
+   */
+  onSuccess: (status: string | null) => void;
   onError: (mensagem: string) => void;
 }
 
@@ -32,7 +40,7 @@ function FormularioCartao({
   onSuccess,
   onError,
 }: {
-  onSuccess: () => void;
+  onSuccess: (status: string | null) => void;
   onError: (mensagem: string) => void;
 }) {
   const stripe = useStripe();
@@ -48,7 +56,7 @@ function FormularioCartao({
     // confirmPayment SEM redirect: o pagamento é confirmado direto
     // aqui na tela, sem sair da loja.
     // https://docs.stripe.com/js/payment_intents/confirm_payment
-    const { error } = await stripe.confirmPayment({
+    const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       redirect: "if_required",
     });
@@ -59,7 +67,11 @@ function FormularioCartao({
       return;
     }
 
-    onSuccess();
+    // "succeeded" = aprovado agora. "processing" = a Stripe ainda
+    // está liquidando (acontece em alguns cartões e no Pix). Quem
+    // decide se o pedido virou pago é o webhook, não esta tela —
+    // mas o cliente merece saber em qual dos dois está.
+    onSuccess(paymentIntent?.status ?? null);
   }
 
   return (

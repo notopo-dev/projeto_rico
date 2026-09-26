@@ -1,0 +1,26 @@
+# =====================================================================
+# Configuração das Edge Functions — LojaPro / Money NoTopo
+#
+# POR QUE ESTE ARQUIVO EXISTE
+# Por padrão o Supabase exige um token JWT válido em TODA chamada a
+# uma Edge Function, e recusa com 401 antes mesmo de a função rodar.
+#
+# Para quase todas as nossas funções isso é o certo: quem chama é o
+# painel do lojista (token dele) ou a loja pública (chave anônima,
+# que também é um JWT válido).
+#
+# O webhook é a exceção. Quem chama é a STRIPE, que não tem e nem
+# poderia ter um token do nosso Supabase. Sem a linha abaixo, todo
+# evento é recusado com 401 e o pedido nunca vira "pago" — a venda
+# acontece na Stripe e o sistema nunca fica sabendo.
+#
+# Isso NÃO deixa a função aberta: ela continua verificando a
+# assinatura criptográfica da Stripe (constructEventAsync) e recusa
+# qualquer chamada que não venha assinada com um dos nossos segredos.
+# A autenticação existe — só não é a do Supabase.
+# =====================================================================
+
+project_id = "wsbmfoyxluynqwmiliao"
+
+[functions.stripe-webhook]
+verify_jwt = false

@@ -22,20 +22,26 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
 /**
  * Segredos de assinatura aceitos.
  *
- * O projeto tem DOIS endpoints cadastrados na Stripe — o de eventos
- * da conta da plataforma e o de eventos das contas conectadas
- * (Connect) — e cada endpoint tem o seu próprio `whsec_`. Verificar
- * só com um deles fazia metade dos eventos ser recusada como
- * "assinatura inválida": na cobrança direta, é justamente o de
- * Connect que traz o "pagamento aprovado".
+ * Cada endpoint cadastrado na Stripe tem o SEU próprio `whsec_`, e
+ * este projeto precisa de vários: o da conta da plataforma (onde
+ * chega a mensalidade), o das contas CONECTADAS (onde chega
+ * "pagamento aprovado", já que a cobrança é direta) e o destino de
+ * eventos v2 (mudanças no cadastro do lojista).
+ *
+ * Em vez de listar nomes fixos, varremos toda variável de ambiente
+ * que comece com STRIPE_WEBHOOK_SECRET. Cadastrar um endpoint novo
+ * passa a ser só criar mais um segredo — sem mexer neste arquivo e
+ * sem descobrir tarde demais que faltava um.
  *
  * Tentamos cada segredo até um validar. Isso não afrouxa nada: o
- * evento continua tendo que ser assinado por um segredo nosso.
+ * evento continua tendo que estar assinado por um segredo nosso.
  */
-const SEGREDOS = [
-  Deno.env.get("STRIPE_WEBHOOK_SECRET"),
-  Deno.env.get("STRIPE_WEBHOOK_SECRET_V2"),
-].filter((v): v is string => Boolean(v));
+const SEGREDOS = Object.entries(Deno.env.toObject())
+  .filter(
+    ([nome, valor]) =>
+      nome.startsWith("STRIPE_WEBHOOK_SECRET") && valor?.startsWith("whsec_")
+  )
+  .map(([, valor]) => valor);
 
 Deno.serve(async (req) => {
   const signature = req.headers.get("stripe-signature");

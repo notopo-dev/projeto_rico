@@ -352,11 +352,23 @@ export default function StoreCheckout() {
     }
   }
 
-  function handlePagamentoConfirmado() {
+  /**
+   * Pagamento confirmado no formulário da Stripe.
+   *
+   * O status vai junto na URL para a tela de confirmação poder dizer
+   * a verdade: "aprovado" quando foi aprovado, "em processamento"
+   * quando ainda está liquidando. Antes ela não recebia nada e
+   * dizia sempre a mesma coisa.
+   */
+  function handlePagamentoConfirmado(statusPagamento: string | null) {
     clear();
-    navigate(
-      `/loja/${store.slug}/pedido-confirmado?numero=${orderNumero}&metodo=${metodo}`,
-    );
+    const params = new URLSearchParams({
+      numero: String(orderNumero ?? ""),
+      metodo,
+    });
+    if (statusPagamento) params.set("status", statusPagamento);
+
+    navigate(`/loja/${store.slug}/pedido-confirmado?${params.toString()}`);
   }
 
   return (
