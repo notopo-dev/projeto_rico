@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
 
     const { data: store } = await supabase
       .from("stores")
-      .select("id, stripe_account_id, stripe_tipo_pessoa, stripe_documento_enviado")
+      .select("id, stripe_account_id, stripe_tipo_pessoa, stripe_documento_enviado, aceita_pix, aceita_cartao")
       .eq("owner_id", user.id)
       .single();
 
@@ -83,6 +83,14 @@ Deno.serve(async (req) => {
     const payoutsEnabled =
       conta.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers
         ?.status === "active";
+
+    // Quais meios a Stripe liberou PARA ESTA CONTA.
+    // Cartão vem junto com a liberação de cobrança; Pix, no Brasil,
+    // exige ativação à parte e por isso costuma vir desligado.
+    const capacidades = conta.configuration?.merchant?.capabilities ?? {};
+    const pixLiberado =
+      capacidades.pix_payments?.status === "active" ||
+      capacidades.pix?.status === "active";
 
     const requisitos =
       conta.requirements?.entries?.map((r: any) => ({
@@ -165,6 +173,13 @@ Deno.serve(async (req) => {
         tipoPessoa: store.stripe_tipo_pessoa,
         charges_enabled: chargesEnabled,
         payouts_enabled: payoutsEnabled,
+        // "liberado" é o que a Stripe permite; "aceita" é o que o
+        // lojista escolheu oferecer. O checkout só mostra quando os
+        // dois são verdade.
+        metodos: {
+          cartao: { liberado: chargesEnabled, aceita: store.aceita_cartao !== false },
+          pix: { liberado: pixLiberado, aceita: store.aceita_pix === true },
+        },
         requisitos,
         documento_enviado: store.stripe_documento_enviado,
         dados: {

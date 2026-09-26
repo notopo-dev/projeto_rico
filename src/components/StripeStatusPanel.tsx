@@ -10,7 +10,6 @@ import {
   Landmark,
   RefreshCw,
   ShieldCheck,
-  ChevronDown,
 } from "lucide-react";
 import {
   consultarStatusStripe,
@@ -19,6 +18,7 @@ import {
 import StripeCustomOnboarding from "./StripeCustomOnboarding";
 import StripeEmbeddedOnboarding from "./StripeEmbeddedOnboarding";
 import PreparoVerificacao from "./PreparoVerificacao";
+import FormasPagamento from "./FormasPagamento";
 import {
   PainelGerenciarConta,
   PainelNotificacoes,
@@ -40,8 +40,10 @@ function traduzirRequisito(campo: string | null): string {
     "configuration.merchant.support.address": "Endereço de suporte",
     "defaults.profile.business_url": "Endereço (URL) da loja",
     "defaults.profile.product_description": "Descrição do que a loja vende",
-    "identity.attestations.terms_of_service.account.date": "Aceite dos termos de uso",
-    "identity.attestations.terms_of_service.account.ip": "Aceite dos termos de uso",
+    "identity.attestations.terms_of_service.account.date":
+      "Aceite dos termos de uso",
+    "identity.attestations.terms_of_service.account.ip":
+      "Aceite dos termos de uso",
     "identity.business_details.monthly_estimated_revenue.amount":
       "Faturamento mensal estimado",
     "identity.business_details.monthly_estimated_revenue.currency":
@@ -55,12 +57,14 @@ function traduzirRequisito(campo: string | null): string {
     "individual.surname": "Sobrenome do titular",
     "individual.email": "E-mail do titular",
     "individual.phone": "Telefone do titular",
-    "individual.documents.primary_verification": "Documento de identidade (RG ou CNH)",
+    "individual.documents.primary_verification":
+      "Documento de identidade (RG ou CNH)",
     "business_details.id_numbers": "CNPJ da empresa",
     "business_details.registered_name": "Razão social",
     "business_details.registered_address": "Endereço da empresa",
     "business_details.phone": "Telefone da empresa",
-    "configuration.recipient.default_outbound_destination": "Conta bancária para recebimento",
+    "configuration.recipient.default_outbound_destination":
+      "Conta bancária para recebimento",
     external_account: "Conta bancária para recebimento",
     tos_acceptance: "Aceite dos termos de uso",
   };
@@ -94,8 +98,6 @@ export default function StripeStatusPanel() {
   const [preparoVisto, setPreparoVisto] = useState(false);
   // Acabou de enviar a verificação nesta visita — muda a mensagem de topo.
   const [enviadoAgora, setEnviadoAgora] = useState(false);
-  // Sanfonado dos dados da conta.
-  const [dadosAbertos, setDadosAbertos] = useState(false);
 
   const temporizadores = useRef<number[]>([]);
 
@@ -121,7 +123,9 @@ export default function StripeStatusPanel() {
       if (data?.situacao === "ativo") pararAcompanhamento();
     } catch (err) {
       if (!silencioso) {
-        setErro(err instanceof Error ? err.message : "Erro ao consultar status.");
+        setErro(
+          err instanceof Error ? err.message : "Erro ao consultar status.",
+        );
       }
     } finally {
       if (!silencioso) setCarregando(false);
@@ -137,9 +141,7 @@ export default function StripeStatusPanel() {
   function acompanharAnalise() {
     pararAcompanhamento();
     [3000, 8000, 15000, 25000, 40000, 60000, 90000].forEach((ms) => {
-      temporizadores.current.push(
-        window.setTimeout(() => carregar(true), ms)
-      );
+      temporizadores.current.push(window.setTimeout(() => carregar(true), ms));
     });
   }
 
@@ -168,7 +170,10 @@ export default function StripeStatusPanel() {
       <div className="bg-white border border-[#e4e4e7] rounded-[6px] px-4 py-4">
         <div className="flex items-center justify-between gap-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 text-[12px] text-[#b91c1c]">
           <span>{erro}</span>
-          <button onClick={carregar} className="shrink-0 font-semibold underline">
+          <button
+            onClick={carregar}
+            className="shrink-0 font-semibold underline"
+          >
             Tentar novamente
           </button>
         </div>
@@ -179,7 +184,11 @@ export default function StripeStatusPanel() {
   const contaExiste = Boolean(status?.accountId);
 
   // ETAPA 1 — conta ainda não existe: formulário nosso, que a cria.
-  if (!status || status.situacao === "nao_iniciado" || (modoEdicao && !contaExiste)) {
+  if (
+    !status ||
+    status.situacao === "nao_iniciado" ||
+    (modoEdicao && !contaExiste)
+  ) {
     return (
       <div>
         {modoEdicao && (
@@ -271,7 +280,9 @@ export default function StripeStatusPanel() {
 
   const dados = status.dados;
   const ehEmpresa = status.tipoPessoa === "company";
-  const temPendencias = Boolean(status.requisitos && status.requisitos.length > 0);
+  const temPendencias = Boolean(
+    status.requisitos && status.requisitos.length > 0,
+  );
 
   const situacaoVisual = {
     ativo: {
@@ -348,9 +359,8 @@ export default function StripeStatusPanel() {
                 Recebemos seus dados
               </p>
               <p className="text-[11px] text-[#166534] leading-snug">
-                Não precisa preencher de novo. Esta tela se atualiza
-                sozinha assim que a análise terminar — pode sair e
-                voltar depois.
+                Não precisa preencher de novo. Esta tela se atualiza sozinha
+                assim que a análise terminar — pode sair e voltar depois.
               </p>
             </div>
           </div>
@@ -362,7 +372,9 @@ export default function StripeStatusPanel() {
         <PainelNotificacoes />
 
         {/* Situação atual */}
-        <div className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 ${situacaoVisual.cor}`}>
+        <div
+          className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 ${situacaoVisual.cor}`}
+        >
           {situacaoVisual.icone}
           <div>
             <p className={`text-[13px] font-medium ${situacaoVisual.titulo}`}>
@@ -385,7 +397,9 @@ export default function StripeStatusPanel() {
                   o lojista (por exemplo data e IP do aceite de termos).
                   Mostramos uma linha só — repetir confunde. */}
               {Array.from(
-                new Set(status.requisitos!.map((r) => traduzirRequisito(r.campo)))
+                new Set(
+                  status.requisitos!.map((r) => traduzirRequisito(r.campo)),
+                ),
               ).map((texto) => (
                 <li
                   key={texto}
@@ -430,7 +444,9 @@ export default function StripeStatusPanel() {
                     {dados.empresa.razao_social ?? "—"}
                   </p>
                   {dados.empresa.telefone && (
-                    <p className="text-[11px] text-[#6b7280]">{dados.empresa.telefone}</p>
+                    <p className="text-[11px] text-[#6b7280]">
+                      {dados.empresa.telefone}
+                    </p>
                   )}
                 </>
               ) : dados?.individual ? (
@@ -441,11 +457,15 @@ export default function StripeStatusPanel() {
                       .join(" ") || "—"}
                   </p>
                   {dados.individual.email && (
-                    <p className="text-[11px] text-[#6b7280]">{dados.individual.email}</p>
+                    <p className="text-[11px] text-[#6b7280]">
+                      {dados.individual.email}
+                    </p>
                   )}
                 </>
               ) : (
-                <p className="text-[13px] text-[#9ca3af] mt-0.5">Não informado</p>
+                <p className="text-[13px] text-[#9ca3af] mt-0.5">
+                  Não informado
+                </p>
               )}
             </div>
           </div>
@@ -470,7 +490,9 @@ export default function StripeStatusPanel() {
                   )}
                 </>
               ) : (
-                <p className="text-[13px] text-[#9ca3af] mt-0.5">Não cadastrada</p>
+                <p className="text-[13px] text-[#9ca3af] mt-0.5">
+                  Não cadastrada
+                </p>
               )}
             </div>
           </div>
@@ -478,32 +500,14 @@ export default function StripeStatusPanel() {
 
         {/* O lojista edita os próprios dados aqui dentro. Exigido pela
             Stripe junto com o banner acima. */}
-        {/* Sanfonado controlado, e não <details>.
-            Os componentes embutidos da Stripe medem a própria altura
-            no momento em que montam. Dentro de um <details> fechado
-            eles montavam escondidos, com altura zero, e continuavam
-            em branco depois de abrir — era o "não aparece nada".
-            Agora só montam quando a seção abre de fato. */}
-        <div className="rounded-xl border border-[#e4e4e7]">
-          <button
-            onClick={() => setDadosAbertos((v) => !v)}
-            aria-expanded={dadosAbertos}
-            className="w-full px-3.5 py-3 flex items-center justify-between gap-2 text-left text-[13px] font-medium text-[#374151]"
-          >
+        <details className="rounded-xl border border-[#e4e4e7]">
+          <summary className="px-3.5 py-3 text-[13px] font-medium text-[#374151] cursor-pointer select-none">
             Dados da conta de recebimento
-            <ChevronDown
-              size={16}
-              className={`shrink-0 text-[#9ca3af] transition-transform ${
-                dadosAbertos ? "rotate-180" : ""
-              }`}
-            />
-          </button>
-          {dadosAbertos && (
-            <div className="border-t border-[#f0f0f1] px-3.5 pb-3 pt-3">
-              <PainelGerenciarConta />
-            </div>
-          )}
-        </div>
+          </summary>
+          <div className="px-3.5 pb-3">
+            <PainelGerenciarConta />
+          </div>
+        </details>
 
         {/* Ação */}
         <button

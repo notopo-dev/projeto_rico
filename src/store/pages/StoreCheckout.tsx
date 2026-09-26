@@ -1,6 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, MessageCircle, CreditCard, QrCode, Loader2, Truck } from "lucide-react";
+import {
+  ChevronLeft,
+  MessageCircle,
+  CreditCard,
+  QrCode,
+  Loader2,
+  Truck,
+} from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import { useCart } from "../context/CartContext";
 import { createPublicOrder, type EnderecoEntrega } from "../lib/storeApi";
@@ -15,7 +22,10 @@ function onlyDigits(s: string) {
   return s.replace(/\D/g, "");
 }
 
-function descricaoVariacao(corSelecionada?: string, tamanhoSelecionado?: string) {
+function descricaoVariacao(
+  corSelecionada?: string,
+  tamanhoSelecionado?: string,
+) {
   return [
     corSelecionada && `Cor: ${corSelecionada}`,
     tamanhoSelecionado && `Tamanho: ${tamanhoSelecionado}`,
@@ -27,9 +37,33 @@ function descricaoVariacao(corSelecionada?: string, tamanhoSelecionado?: string)
 type Etapa = "dados" | "pagamento";
 
 const estadosBR = [
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
-  "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC",
-  "SP", "SE", "TO",
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
 ];
 
 function formatarCep(v: string) {
@@ -70,9 +104,15 @@ export default function StoreCheckout() {
   const [telefone, setTelefone] = useState("");
   const [cpf, setCpf] = useState("");
   const [email, setEmail] = useState("");
-  const [metodo, setMetodo] = useState<"whatsapp" | "pix" | "cartao">(
-    store?.modo_compra === "pagamento" ? "pix" : "whatsapp"
-  );
+  const [metodo, setMetodo] = useState<"whatsapp" | "pix" | "cartao">(() => {
+    if (store?.modo_compra !== "pagamento") return "whatsapp";
+    // Começa pelo meio que a loja de fato oferece. Antes começava
+    // sempre no Pix, inclusive em loja sem Pix ativado — o cliente
+    // entrava num caminho que não existia e só descobria no fim.
+    if (store.aceita_cartao !== false) return "cartao";
+    if (store.aceita_pix) return "pix";
+    return "whatsapp";
+  });
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -88,10 +128,57 @@ export default function StoreCheckout() {
   });
   const [buscandoFrete, setBuscandoFrete] = useState(false);
   const [opcoesFrete, setOpcoesFrete] = useState<OpcaoFrete[]>([]);
-  const [freteSelecionado, setFreteSelecionado] = useState<OpcaoFrete | null>(null);
+  const [freteSelecionado, setFreteSelecionado] = useState<OpcaoFrete | null>(
+    null,
+  );
   const [erroFrete, setErroFrete] = useState<string | null>(null);
   // Loja sem Melhor Envio configurado: frete é combinado depois
   const [freteACombinar, setFreteACombinar] = useState(false);
+
+  /**
+   * O que ESTA loja oferece.
+   *
+   * Antes Pix e cartão apareciam sempre, chumbados no JSX: o cliente
+   * escolhia Pix, ia até o fim, e a Stripe recusava — porque o Pix
+   * exige ativação à parte. Agora a loja diz o que aceita, e o
+   * servidor confere de novo antes de cobrar.
+   *
+   * Calculado aqui em cima, e não lá embaixo, porque o efeito que
+   * corrige o meio escolhido é um hook: precisa rodar em TODO render,
+   * inclusive antes de a loja carregar. Depois do `return null` ele
+   * seria pulado nos primeiros renders e o React quebraria na
+   * contagem de hooks.
+   */
+  const permiteWhatsapp =
+    store?.modo_compra === "whatsapp" || store?.modo_compra === "ambos";
+  const permitePagamento =
+    store?.modo_compra === "pagamento" || store?.modo_compra === "ambos";
+  const ofereceCartao = permitePagamento && store?.aceita_cartao !== false;
+  const oferecePix = permitePagamento && store?.aceita_pix === true;
+  const ofereceAlgumPagamento = ofereceCartao || oferecePix;
+
+  // Se o meio escolhido não for um dos oferecidos, corrige.
+  useEffect(() => {
+    if (!store) return;
+    if (metodo === "pix" && !oferecePix) {
+      setMetodo(ofereceCartao ? "cartao" : "whatsapp");
+    } else if (metodo === "cartao" && !ofereceCartao) {
+      setMetodo(oferecePix ? "pix" : "whatsapp");
+    } else if (
+      metodo === "whatsapp" &&
+      !permiteWhatsapp &&
+      ofereceAlgumPagamento
+    ) {
+      setMetodo(ofereceCartao ? "cartao" : "pix");
+    }
+  }, [
+    store,
+    metodo,
+    oferecePix,
+    ofereceCartao,
+    permiteWhatsapp,
+    ofereceAlgumPagamento,
+  ]);
 
   if (!store) return null;
 
@@ -116,13 +203,13 @@ export default function StoreCheckout() {
         calcularFrete(
           store.id,
           digitos,
-          items.map((i) => ({ product_id: i.productId, quantidade: i.quantidade }))
+          items.map((i) => ({
+            product_id: i.productId,
+            quantidade: i.quantidade,
+          })),
         ).catch((err: Error) => {
           const msg = err.message ?? "";
-          if (
-            msg.includes("não configurou") ||
-            msg.includes("CEP de origem")
-          ) {
+          if (msg.includes("não configurou") || msg.includes("CEP de origem")) {
             setFreteACombinar(true);
           } else {
             setErroFrete(msg || "Não foi possível calcular o frete.");
@@ -147,9 +234,6 @@ export default function StoreCheckout() {
       setBuscandoFrete(false);
     }
   }
-
-  const permiteWhatsapp = store.modo_compra === "whatsapp" || store.modo_compra === "ambos";
-  const permitePagamento = store.modo_compra === "pagamento" || store.modo_compra === "ambos";
 
   /**
    * Passo 1: cria o pedido no banco (sempre, para os 3 métodos).
@@ -190,7 +274,7 @@ export default function StoreCheckout() {
       setErro(
         buscandoFrete
           ? "Aguarde o cálculo do frete."
-          : "Escolha uma opção de frete."
+          : "Escolha uma opção de frete.",
       );
       return;
     }
@@ -225,7 +309,10 @@ export default function StoreCheckout() {
         const baseUrl = window.location.origin;
         const linhas = items
           .map((i) => {
-            const variacao = descricaoVariacao(i.corSelecionada, i.tamanhoSelecionado);
+            const variacao = descricaoVariacao(
+              i.corSelecionada,
+              i.tamanhoSelecionado,
+            );
             const detalhe = variacao ? ` (${variacao})` : "";
             const linkProduto = `${baseUrl}/loja/${store.slug}/produto/${i.productSlug}`;
             let linha = `• ${i.quantidade}x ${i.nome}${detalhe} — ${formatBRL(i.preco * i.quantidade)}\n  ${linkProduto}`;
@@ -243,7 +330,7 @@ export default function StoreCheckout() {
               : `Frete: a combinar\n`) +
             `*Total: ${formatBRL(totalComFrete)}*\n\n` +
             `Nome: ${nome}\n` +
-            `Entrega: ${endereco.logradouro}, ${endereco.numero}${endereco.complemento ? ` - ${endereco.complemento}` : ""}, ${endereco.bairro}, ${endereco.cidade}/${endereco.uf} - CEP ${endereco.cep}`
+            `Entrega: ${endereco.logradouro}, ${endereco.numero}${endereco.complemento ? ` - ${endereco.complemento}` : ""}, ${endereco.bairro}, ${endereco.cidade}/${endereco.uf} - CEP ${endereco.cep}`,
         );
         const numeroLoja = store.whatsapp ? onlyDigits(store.whatsapp) : "";
         clear();
@@ -267,14 +354,18 @@ export default function StoreCheckout() {
 
   function handlePagamentoConfirmado() {
     clear();
-    navigate(`/loja/${store.slug}/pedido-confirmado?numero=${orderNumero}&metodo=${metodo}`);
+    navigate(
+      `/loja/${store.slug}/pedido-confirmado?numero=${orderNumero}&metodo=${metodo}`,
+    );
   }
 
   return (
     <div className="min-h-dvh bg-[#fafafa] pb-32">
       <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md px-4 py-3 flex items-center gap-3 border-b border-black/5">
         <button
-          onClick={() => (etapa === "pagamento" ? setEtapa("dados") : navigate(-1))}
+          onClick={() =>
+            etapa === "pagamento" ? setEtapa("dados") : navigate(-1)
+          }
           className="w-9 h-9 rounded-full bg-[#f4f4f5] flex items-center justify-center shrink-0"
           aria-label="Voltar"
         >
@@ -289,7 +380,9 @@ export default function StoreCheckout() {
         <div className="px-4 pt-4 space-y-4">
           {/* Dados do cliente */}
           <div className="bg-white rounded-2xl border border-black/5 p-4">
-            <h2 className="text-[13px] font-bold text-[#111827] mb-3">Seus dados</h2>
+            <h2 className="text-[13px] font-bold text-[#111827] mb-3">
+              Seus dados
+            </h2>
             <div className="space-y-3">
               <div>
                 <label className="block text-[12px] font-medium text-[#6b7280] mb-1">
@@ -324,7 +417,9 @@ export default function StoreCheckout() {
                   inputMode="numeric"
                   value={cpf}
                   onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+                    const digits = e.target.value
+                      .replace(/\D/g, "")
+                      .slice(0, 11);
                     const formatted = digits
                       .replace(/(\d{3})(\d)/, "$1.$2")
                       .replace(/(\d{3})(\d)/, "$1.$2")
@@ -388,7 +483,10 @@ export default function StoreCheckout() {
                       type="text"
                       value={endereco.logradouro}
                       onChange={(e) =>
-                        setEndereco((x) => ({ ...x, logradouro: e.target.value }))
+                        setEndereco((x) => ({
+                          ...x,
+                          logradouro: e.target.value,
+                        }))
                       }
                       className={inputCls}
                     />
@@ -411,7 +509,10 @@ export default function StoreCheckout() {
                         type="text"
                         value={endereco.complemento ?? ""}
                         onChange={(e) =>
-                          setEndereco((x) => ({ ...x, complemento: e.target.value }))
+                          setEndereco((x) => ({
+                            ...x,
+                            complemento: e.target.value,
+                          }))
                         }
                         placeholder="Opcional"
                         className={inputCls}
@@ -482,7 +583,8 @@ export default function StoreCheckout() {
                               {op.transportadora} {op.nome}
                             </p>
                             <p className="text-[11px] text-[#9ca3af]">
-                              Até {op.prazo_dias} dia{op.prazo_dias !== 1 ? "s" : ""} úte
+                              Até {op.prazo_dias} dia
+                              {op.prazo_dias !== 1 ? "s" : ""} úte
                               {op.prazo_dias !== 1 ? "is" : "il"}
                             </p>
                           </div>
@@ -511,7 +613,7 @@ export default function StoreCheckout() {
           </div>
 
           {/* Forma de recebimento do pedido */}
-          {(permiteWhatsapp && permitePagamento) && (
+          {(permiteWhatsapp || ofereceAlgumPagamento) && (
             <div className="bg-white rounded-2xl border border-black/5 p-4">
               <h2 className="text-[13px] font-bold text-[#111827] mb-3">
                 Como você quer finalizar?
@@ -537,39 +639,39 @@ export default function StoreCheckout() {
                     </div>
                   </button>
                 )}
-                {permitePagamento && (
-                  <>
-                    <button
-                      onClick={() => setMetodo("pix")}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
-                        metodo === "pix"
-                          ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
-                          : "border-[#e4e4e7]"
-                      }`}
-                    >
-                      <QrCode size={20} className="text-[#374151]" />
-                      <div className="text-left">
-                        <p className="text-[13px] font-semibold text-[#111827]">
-                          Pagar com Pix
-                        </p>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => setMetodo("cartao")}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
-                        metodo === "cartao"
-                          ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
-                          : "border-[#e4e4e7]"
-                      }`}
-                    >
-                      <CreditCard size={20} className="text-[#374151]" />
-                      <div className="text-left">
-                        <p className="text-[13px] font-semibold text-[#111827]">
-                          Pagar com cartão
-                        </p>
-                      </div>
-                    </button>
-                  </>
+                {oferecePix && (
+                  <button
+                    onClick={() => setMetodo("pix")}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                      metodo === "pix"
+                        ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
+                        : "border-[#e4e4e7]"
+                    }`}
+                  >
+                    <QrCode size={20} className="text-[#374151]" />
+                    <div className="text-left">
+                      <p className="text-[13px] font-semibold text-[#111827]">
+                        Pagar com Pix
+                      </p>
+                    </div>
+                  </button>
+                )}
+                {ofereceCartao && (
+                  <button
+                    onClick={() => setMetodo("cartao")}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                      metodo === "cartao"
+                        ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
+                        : "border-[#e4e4e7]"
+                    }`}
+                  >
+                    <CreditCard size={20} className="text-[#374151]" />
+                    <div className="text-left">
+                      <p className="text-[13px] font-semibold text-[#111827]">
+                        Pagar com cartão
+                      </p>
+                    </div>
+                  </button>
                 )}
               </div>
             </div>
@@ -577,10 +679,15 @@ export default function StoreCheckout() {
 
           {/* Resumo */}
           <div className="bg-white rounded-2xl border border-black/5 p-4">
-            <h2 className="text-[13px] font-bold text-[#111827] mb-3">Resumo</h2>
+            <h2 className="text-[13px] font-bold text-[#111827] mb-3">
+              Resumo
+            </h2>
             <div className="space-y-2">
               {items.map((i) => {
-                const variacao = descricaoVariacao(i.corSelecionada, i.tamanhoSelecionado);
+                const variacao = descricaoVariacao(
+                  i.corSelecionada,
+                  i.tamanhoSelecionado,
+                );
                 return (
                   <div
                     key={`${i.productId}-${i.corSelecionada ?? ""}-${i.tamanhoSelecionado ?? ""}`}
@@ -591,7 +698,9 @@ export default function StoreCheckout() {
                         {i.quantidade}x {i.nome}
                       </p>
                       {variacao && (
-                        <p className="text-[11px] text-[#9ca3af] mt-0.5">{variacao}</p>
+                        <p className="text-[11px] text-[#9ca3af] mt-0.5">
+                          {variacao}
+                        </p>
                       )}
                     </div>
                     <span className="font-medium text-[#111827] shrink-0">
@@ -612,12 +721,14 @@ export default function StoreCheckout() {
                   {freteSelecionado
                     ? formatBRL(valorFrete)
                     : freteACombinar
-                    ? "A combinar"
-                    : "—"}
+                      ? "A combinar"
+                      : "—"}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-1.5">
-                <span className="text-[13px] font-semibold text-[#111827]">Total</span>
+                <span className="text-[13px] font-semibold text-[#111827]">
+                  Total
+                </span>
                 <span className="text-[16px] font-extrabold text-[#111827]">
                   {formatBRL(totalComFrete)}
                 </span>
@@ -637,7 +748,9 @@ export default function StoreCheckout() {
         <div className="px-4 pt-4 space-y-4">
           <div className="bg-white rounded-2xl border border-black/5 p-4">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#f0f0f1]">
-              <span className="text-[13px] text-[#6b7280]">Pedido #{orderNumero}</span>
+              <span className="text-[13px] text-[#6b7280]">
+                Pedido #{orderNumero}
+              </span>
               <span className="text-[16px] font-extrabold text-[#111827]">
                 {formatBRL(totalComFrete)}
               </span>
@@ -672,8 +785,8 @@ export default function StoreCheckout() {
             {enviando
               ? "Enviando..."
               : metodo === "whatsapp"
-              ? "Enviar pedido no WhatsApp"
-              : "Continuar para pagamento"}
+                ? "Enviar pedido no WhatsApp"
+                : "Continuar para pagamento"}
           </button>
         </div>
       )}

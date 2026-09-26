@@ -14,6 +14,10 @@ export interface PublicStore {
   politica_troca: string | null;
   politica_frete: string | null;
   modo_compra: "whatsapp" | "pagamento" | "ambos";
+  /** O lojista quer oferecer cartão no checkout. */
+  aceita_cartao: boolean;
+  /** O lojista quer oferecer Pix. Depende também da liberação na Stripe. */
+  aceita_pix: boolean;
   ativo: boolean;
 }
 
@@ -61,7 +65,7 @@ function mapProduct(p: any): PublicProduct {
     ...p,
     categoria_nome: p.categories?.nome ?? null,
     imagens: (p.product_images ?? []).sort(
-      (a: any, b: any) => a.posicao - b.posicao
+      (a: any, b: any) => a.posicao - b.posicao,
     ),
     cores: p.product_colors ?? [],
     tamanhos: p.product_sizes ?? [],
@@ -69,11 +73,13 @@ function mapProduct(p: any): PublicProduct {
   };
 }
 
-export async function getStoreBySlug(slug: string): Promise<PublicStore | null> {
+export async function getStoreBySlug(
+  slug: string,
+): Promise<PublicStore | null> {
   const { data, error } = await supabase
     .from("stores")
     .select(
-      "id, nome, slug, descricao, logo_url, banner_url, cor_primaria, cor_secundaria, whatsapp, email, politica_troca, politica_frete, modo_compra, ativo"
+      "id, nome, slug, descricao, logo_url, banner_url, cor_primaria, cor_secundaria, whatsapp, email, politica_troca, politica_frete, modo_compra, aceita_cartao, aceita_pix, ativo",
     )
     .eq("slug", slug)
     .eq("ativo", true)
@@ -84,7 +90,7 @@ export async function getStoreBySlug(slug: string): Promise<PublicStore | null> 
 }
 
 export async function listPublicCategories(
-  storeId: string
+  storeId: string,
 ): Promise<PublicCategory[]> {
   const { data, error } = await supabase
     .from("categories")
@@ -98,7 +104,7 @@ export async function listPublicCategories(
 }
 
 export async function listPublicProducts(
-  storeId: string
+  storeId: string,
 ): Promise<PublicProduct[]> {
   const { data, error } = await supabase
     .from("products")
@@ -113,7 +119,7 @@ export async function listPublicProducts(
 
 export async function getPublicProductBySlug(
   storeId: string,
-  productSlug: string
+  productSlug: string,
 ): Promise<PublicProduct | null> {
   const { data, error } = await supabase
     .from("products")
@@ -213,7 +219,7 @@ export async function createPublicOrder(input: CheckoutInput) {
   // 2. Cria o pedido
   const subtotal = input.itens.reduce(
     (sum, item) => sum + item.preco_unitario * item.quantidade,
-    0
+    0,
   );
   const valorFrete = input.frete?.preco ?? 0;
 
@@ -286,7 +292,7 @@ export interface PedidoConsultado {
 export async function consultarPedidosPublico(
   storeId: string,
   cpf: string,
-  telefone: string
+  telefone: string,
 ): Promise<PedidoConsultado[]> {
   const { data, error } = await supabase.rpc("consultar_pedidos_publico", {
     p_store_id: storeId,

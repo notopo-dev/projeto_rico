@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 
     const { data: store } = await admin
       .from("stores")
-      .select("id, ativo, stripe_account_id, stripe_charges_enabled")
+      .select("id, ativo, stripe_account_id, stripe_charges_enabled, aceita_pix, aceita_cartao")
       .eq("id", storeId)
       .maybeSingle();
 
@@ -75,6 +75,22 @@ Deno.serve(async (req) => {
     if (!store.stripe_account_id || !store.stripe_charges_enabled) {
       return json(
         { error: "Esta loja ainda não pode receber pagamentos com cartão." },
+        400
+      );
+    }
+
+    // O meio escolhido é oferecido por esta loja?
+    // A tela pública já filtra, mas ela é o navegador do cliente —
+    // quem decide de verdade é aqui.
+    const aceita = metodo === "pix" ? store.aceita_pix : store.aceita_cartao;
+    if (!aceita) {
+      return json(
+        {
+          error:
+            metodo === "pix"
+              ? "Esta loja não está aceitando Pix no momento."
+              : "Esta loja não está aceitando cartão no momento.",
+        },
         400
       );
     }
@@ -151,10 +167,35 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error("Erro ao criar PaymentIntent:", err);
-    const msg =
+
+    const bruto =
       err && typeof err === "object" && "message" in err
         ? String((err as { message: unknown }).message)
-        : "Erro ao iniciar o pagamento.";
-    return json({ error: msg }, 500);
+        : "";
+
+    // A Stripe recusa o meio quando ele não está ativado na conta.
+    // A mensagem dela vem em inglês e com link do painel dela — o
+    // cliente final da loja não pode ver isso. Traduzimos para algo
+    // que faça sentido para quem está comprando, e o detalhe técnico
+    // fica no log, para o lojista.
+    if (
+      /payment method type/i.test(bruto) &&
+      /invalid|not activated|activated/i.test(bruto)
+    ) {
+      return json(
+        {
+          error:
+            "Esta forma de pagamento ainda não está liberada nesta loja. " +
+            "Escolha outra forma ou fale com a loja.",
+          codigo: "meio_nao_ativado",
+        },
+        400
+      );
+    }
+
+    return json(
+      { error: bruto || "Erro ao iniciar o pagamento." },
+      500
+    );
   }
 });

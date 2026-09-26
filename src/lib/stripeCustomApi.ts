@@ -49,7 +49,7 @@ export interface StatusContaCustom {
 }
 
 export async function salvarDadosStripeCustom(
-  input: CriarContaCustomInput
+  input: CriarContaCustomInput,
 ): Promise<StatusContaCustom> {
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
@@ -69,7 +69,7 @@ export async function salvarDadosStripeCustom(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(input),
-    }
+    },
   );
 
   let corpo: any = null;
@@ -81,7 +81,7 @@ export async function salvarDadosStripeCustom(
 
   if (!res.ok) {
     throw new Error(
-      corpo?.error ?? `Erro ao salvar dados (status ${res.status}).`
+      corpo?.error ?? `Erro ao salvar dados (status ${res.status}).`,
     );
   }
 
@@ -100,7 +100,7 @@ export async function salvarDadosStripeCustom(
 export async function enviarDocumentoIdentidade(
   file: File | null,
   side: "front" | "back",
-  testToken?: string
+  testToken?: string,
 ): Promise<void> {
   const formData = new FormData();
   if (testToken) {
@@ -122,7 +122,7 @@ export async function enviarDocumentoIdentidade(
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: formData,
-    }
+    },
   );
 
   let corpo: any = null;
@@ -133,7 +133,9 @@ export async function enviarDocumentoIdentidade(
   }
 
   if (!res.ok || corpo?.error) {
-    throw new Error(corpo?.error ?? `Erro ao enviar documento (status ${res.status}).`);
+    throw new Error(
+      corpo?.error ?? `Erro ao enviar documento (status ${res.status}).`,
+    );
   }
 }
 
@@ -162,6 +164,17 @@ export interface StatusCompletoStripe {
   tipoPessoa?: "individual" | "company" | null;
   charges_enabled?: boolean;
   payouts_enabled?: boolean;
+  /**
+   * Formas de pagamento da loja.
+   *
+   * "liberado" é o que a Stripe permite para esta conta; "aceita" é o
+   * que o lojista escolheu oferecer. O checkout só mostra a forma
+   * quando os dois são verdade — daí serem dois campos e não um.
+   */
+  metodos?: {
+    cartao: { liberado: boolean; aceita: boolean };
+    pix: { liberado: boolean; aceita: boolean };
+  };
   requisitos?: RequisitoPendente[];
   documento_enviado?: boolean;
   dados?: {
@@ -217,8 +230,35 @@ export async function consultarStatusStripe(): Promise<StatusCompletoStripe> {
   }
 
   if (!res.ok || corpo?.error) {
-    throw new Error(corpo?.error ?? `Erro ao consultar status (status ${res.status}).`);
+    throw new Error(
+      corpo?.error ?? `Erro ao consultar status (status ${res.status}).`,
+    );
   }
 
   return corpo as StatusCompletoStripe;
+}
+/**
+ * Liga ou desliga uma forma de pagamento da loja.
+ *
+ * Só mexe na vontade do lojista. Se a Stripe não tiver liberado
+ * aquele meio para a conta, ligar aqui não faz o checkout oferecer —
+ * quem responde por isso é a `stripe-create-payment-intent`, que
+ * confere os dois antes de criar a cobrança.
+ */
+export async function salvarFormaPagamento(
+  forma: "pix" | "cartao",
+  ativo: boolean,
+): Promise<void> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const user = sessionData.session?.user;
+  if (!user) throw new Error("Sessão expirada. Entre novamente.");
+
+  const coluna = forma === "pix" ? "aceita_pix" : "aceita_cartao";
+
+  const { error } = await supabase
+    .from("stores")
+    .update({ [coluna]: ativo })
+    .eq("owner_id", user.id);
+
+  if (error) throw error;
 }

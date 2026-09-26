@@ -41,6 +41,9 @@ export interface Store {
   manter_estoque: boolean;
   exibir_sem_estoque: boolean;
   modo_compra: "whatsapp" | "pagamento" | "ambos";
+  /** Formas de pagamento que o lojista escolheu oferecer no checkout. */
+  aceita_cartao: boolean;
+  aceita_pix: boolean;
   plano: string;
   plano_renovacao: string | null;
   // Endereço de origem (de onde a encomenda é postada)
