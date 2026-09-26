@@ -113,12 +113,60 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    if (!pagamento?.stripe_payment_intent_id) {
+    // ---------- 4b. sem registro? pergunta para a Stripe ----------
+    //
+    // A linha em `payments` é só a NOSSA cópia. Se a gravação dela
+    // falhou — e ela pode falhar sem derrubar a venda, porque o
+    // dinheiro já entrou antes —, o pedido ficava sem devolução
+    // possível pelo painel: "este pedido não tem cobrança pela
+    // Stripe", mesmo com a cobrança existindo.
+    //
+    // A verdade sobre a cobrança está na Stripe, não aqui. Então,
+    // quando não achamos a linha, procuramos lá pelo order_id que
+    // gravamos no metadata do PaymentIntent.
+    let intentId = pagamento?.stripe_payment_intent_id ?? null;
+
+    if (!intentId) {
+      try {
+        const busca = await stripe.paymentIntents.search(
+          {
+            query: `metadata['order_id']:'${order.id}' AND status:'succeeded'`,
+            limit: 1,
+          },
+          { stripeAccount: store.stripe_account_id }
+        );
+        intentId = busca.data[0]?.id ?? null;
+
+        // Achou na Stripe e não tinha aqui: conserta a nossa cópia,
+        // para o relatório e a próxima devolução encontrarem.
+        if (intentId) {
+          await admin.from("payments").upsert(
+            {
+              store_id: store.id,
+              order_id: order.id,
+              transacao_id: intentId,
+              metodo: "cartao_stripe",
+              valor_bruto: order.total,
+              taxa: 0,
+              valor_liquido: order.total,
+              status: "recebido",
+              stripe_payment_intent_id: intentId,
+              stripe_account_id: store.stripe_account_id,
+            },
+            { onConflict: "store_id,transacao_id" }
+          );
+        }
+      } catch (e) {
+        console.error("Busca de PaymentIntent na Stripe falhou:", e);
+      }
+    }
+
+    if (!intentId) {
       return json(
         {
           error:
-            "Este pedido não tem cobrança pela Stripe (pode ter sido pago por fora). " +
-            "Marque como cancelado e acerte com o cliente diretamente.",
+            "Não encontramos cobrança pela Stripe neste pedido — ele pode ter sido " +
+            "pago por fora. Cancele o pedido e acerte com o cliente diretamente.",
         },
         400
       );
@@ -170,7 +218,7 @@ Deno.serve(async (req) => {
 
     const refund = await stripe.refunds.create(
       {
-        payment_intent: pagamento.stripe_payment_intent_id,
+        payment_intent: intentId,
         amount: centavos,
         reason: motivoStripe,
         metadata: {
@@ -218,7 +266,7 @@ Deno.serve(async (req) => {
       await admin
         .from("payments")
         .update({ status: "estornado" })
-        .eq("id", pagamento.id)
+        .eq("stripe_payment_intent_id", intentId)
         .eq("store_id", store.id);
     }
 

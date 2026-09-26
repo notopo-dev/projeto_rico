@@ -142,7 +142,12 @@ Deno.serve(async (req) => {
     // upsert e não insert: com a idempotência acima, uma segunda
     // tentativa devolve o MESMO id — um insert quebraria na chave
     // única (store_id, transacao_id).
-    await admin.from("payments").upsert(
+    //
+    // O erro é CONFERIDO e registrado. Antes era ignorado: se a
+    // gravação falhasse, a venda seguia (o dinheiro já tinha
+    // entrado) mas o pedido ficava sem registro de cobrança, e só
+    // aparecia dias depois, na hora de devolver.
+    const { error: erroPagamento } = await admin.from("payments").upsert(
       {
         store_id: store.id,
         order_id: order.id,
@@ -156,6 +161,16 @@ Deno.serve(async (req) => {
       },
       { onConflict: "store_id,transacao_id" }
     );
+
+    if (erroPagamento) {
+      // Não derruba a venda: o PaymentIntent já existe e o cliente
+      // está esperando a tela de pagamento. Mas fica no log, e o
+      // webhook conserta quando o pagamento for aprovado.
+      console.error(
+        `Falha ao gravar payments do pedido ${order.id}:`,
+        erroPagamento
+      );
+    }
 
     return json({
       clientSecret: paymentIntent.client_secret,

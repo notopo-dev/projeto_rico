@@ -27,6 +27,7 @@ import {
 import {
   atualizarStatusPedido,
   buscarPedido,
+  corrigirStatusPedido,
   listarPedidos,
   reembolsarPedido,
   salvarCodigoRastreio,
@@ -52,6 +53,21 @@ import { ListaCarregando } from "../components/Carregando";
  */
 
 const TODOS = "todos";
+
+/**
+ * Status que o lojista pode corrigir à mão.
+ *
+ * "devolvido" fica de fora de propósito: ele significa que o
+ * dinheiro voltou de verdade, e quem escreve isso é a devolução,
+ * depois da confirmação da Stripe.
+ */
+const STATUS_CORRIGIVEIS: StatusPedido[] = [
+  "pendente",
+  "pago",
+  "enviado",
+  "entregue",
+  "cancelado",
+];
 
 const ABAS: { id: string; rotulo: string }[] = [
   { id: TODOS, rotulo: "Todos" },
@@ -286,6 +302,7 @@ function Detalhe({
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [painel, setPainel] = useState<Painel>(null);
+  const [corrigindoStatus, setCorrigindoStatus] = useState(false);
 
   const [valorDevolucao, setValorDevolucao] = useState("");
   const [motivoDevolucao, setMotivoDevolucao] = useState(
@@ -305,6 +322,9 @@ function Detalhe({
   const corpoRef = useRef<HTMLDivElement>(null);
 
   const proximos = PROXIMOS_STATUS[pedido.status] ?? [];
+  /** O passo natural — tudo menos cancelar, que não é "avançar". */
+  const avancoPrincipal = proximos.find((s) => s !== "cancelado") ?? null;
+  const podeCancelar = proximos.includes("cancelado");
   const subtotal = pedido.total - pedido.frete;
   const devolvivel = pedido.total - pedido.valor_reembolsado;
   const podeDevolver =
@@ -366,6 +386,14 @@ function Detalhe({
       await atualizarStatusPedido(pedido.id, novo, pedido.status);
       await recarregar();
       setAviso(`Pedido marcado como ${ROTULO_STATUS[novo].toLowerCase()}.`);
+    });
+
+  const corrigirStatus = (novo: StatusPedido) =>
+    executar(`corrigir-${novo}`, async () => {
+      await corrigirStatusPedido(pedido.id, novo);
+      await recarregar();
+      setCorrigindoStatus(false);
+      setAviso(`Status corrigido para ${ROTULO_STATUS[novo].toLowerCase()}.`);
     });
 
   const criarEtiqueta = () =>
@@ -947,33 +975,76 @@ function Detalhe({
 
           {/* ---------------- rodapé fixo: o próximo passo ---------------- */}
           <div className="folha-rodape border-t border-[#e7e7ea] bg-white px-4 py-3 safe-bottom">
-            {proximos.length > 0 ? (
-              <div className="flex gap-2">
-                {proximos.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => mudarStatus(s)}
-                    disabled={ocupado !== null}
-                    className={
-                      s === "cancelado"
-                        ? "btn-app-claro text-[#b91c1c] border-[#fecaca]"
-                        : "btn-app"
-                    }
-                  >
-                    {ocupado === `status-${s}` ? (
-                      <RefreshCw size={15} className="animate-spin" />
-                    ) : (
-                      <Check size={15} />
-                    )}
-                    {ROTULO_STATUS[s]}
-                  </button>
-                ))}
-              </div>
+            {/* Um botão grande só: o próximo passo natural.
+                Antes "Enviado" e "Cancelado" dividiam a barra com o
+                mesmo tamanho, e no celular o dedo errava — um toque
+                fora do lugar mandava o pedido adiante sem volta. O
+                cancelamento virou link, e existe um conserto para
+                quando o erro acontece mesmo assim. */}
+            {avancoPrincipal ? (
+              <button
+                onClick={() => mudarStatus(avancoPrincipal)}
+                disabled={ocupado !== null}
+                className="btn-app"
+              >
+                {ocupado === `status-${avancoPrincipal}` ? (
+                  <RefreshCw size={15} className="animate-spin" />
+                ) : (
+                  <Check size={15} />
+                )}
+                Marcar como {ROTULO_STATUS[avancoPrincipal].toLowerCase()}
+              </button>
             ) : (
               <p className="text-[12.5px] text-[#9ca3af] text-center py-1.5">
                 Pedido {ROTULO_STATUS[pedido.status].toLowerCase()} — nada a
                 fazer aqui.
               </p>
+            )}
+
+            <div className="mt-2 flex items-center justify-center gap-4">
+              {podeCancelar && (
+                <button
+                  onClick={() => mudarStatus("cancelado")}
+                  disabled={ocupado !== null}
+                  className="sem-toque-minimo text-[12px] font-semibold text-[#b91c1c] underline"
+                >
+                  {ocupado === "status-cancelado"
+                    ? "Cancelando…"
+                    : "Cancelar pedido"}
+                </button>
+              )}
+              <button
+                onClick={() => setCorrigindoStatus((v) => !v)}
+                className="sem-toque-minimo text-[12px] text-[#6b7280] underline"
+              >
+                Corrigir status
+              </button>
+            </div>
+
+            {corrigindoStatus && (
+              <div className="mt-2.5 rounded-xl border border-[#e7e7ea] p-2.5">
+                <p className="text-[11.5px] text-[#6b7280] leading-snug mb-2">
+                  Marcou sem querer? Escolha onde o pedido realmente está. Isto
+                  não mexe em dinheiro — só arruma a etiqueta.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {STATUS_CORRIGIVEIS.filter((s) => s !== pedido.status).map(
+                    (s) => (
+                      <button
+                        key={s}
+                        onClick={() => corrigirStatus(s)}
+                        disabled={ocupado !== null}
+                        className="btn-app-pequeno border border-[#e7e7ea] bg-white text-[#374151]"
+                      >
+                        {ocupado === `corrigir-${s}` ? (
+                          <RefreshCw size={13} className="animate-spin" />
+                        ) : null}
+                        {ROTULO_STATUS[s]}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>

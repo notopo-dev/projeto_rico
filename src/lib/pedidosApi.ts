@@ -249,6 +249,37 @@ export async function atualizarStatusPedido(
   if (error) throw error;
 }
 
+/**
+ * Corrige o status de um pedido, sem seguir o fluxo normal.
+ *
+ * Existe porque o fluxo é de mão única — "enviado" não volta para
+ * "pago" — e um toque errado num celular deixava o pedido preso no
+ * lugar errado para sempre. Isto é conserto, não atalho: continua
+ * proibido marcar "devolvido" à mão, porque esse status significa
+ * que o dinheiro voltou de verdade, e quem escreve ele é a função
+ * de reembolso, depois de a Stripe confirmar.
+ */
+export async function corrigirStatusPedido(
+  pedidoId: string,
+  novo: StatusPedido,
+): Promise<void> {
+  if (novo === "devolvido") {
+    throw new Error(
+      'Só a devolução do dinheiro marca um pedido como "devolvido".',
+    );
+  }
+
+  const storeId = await getCurrentStoreId();
+
+  const { error } = await supabase
+    .from("orders")
+    .update({ status: novo })
+    .eq("id", pedidoId)
+    .eq("store_id", storeId);
+
+  if (error) throw error;
+}
+
 /** Anotações que só o lojista vê. */
 export async function salvarObservacoes(
   pedidoId: string,
