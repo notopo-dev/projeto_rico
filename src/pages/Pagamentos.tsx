@@ -6,6 +6,7 @@ import {
   PainelRepasses,
   PainelSaldos,
 } from "../components/StripeConnectPaineis";
+import { StripeConnectProvider } from "../components/StripeConnectContexto";
 
 /**
  * Financeiro da loja: pagamentos recebidos, repasses para o banco,
@@ -85,10 +86,14 @@ export default function Pagamentos() {
         </div>
 
         <div className="px-4 py-4">
-          {aba === "pagamentos" && <PainelPagamentos />}
-          {aba === "repasses" && <PainelRepasses />}
-          {aba === "saldos" && <PainelSaldos />}
-          {aba === "documentos" && <PainelDocumentos />}
+          {/* Uma instância só para as quatro abas: trocar de aba não
+              refaz a sessão nem abre outra conexão com a Stripe. */}
+          <StripeConnectProvider>
+            {aba === "pagamentos" && <PainelPagamentos />}
+            {aba === "repasses" && <PainelRepasses />}
+            {aba === "saldos" && <PainelSaldos />}
+            {aba === "documentos" && <PainelDocumentos />}
+          </StripeConnectProvider>
         </div>
       </div>
 

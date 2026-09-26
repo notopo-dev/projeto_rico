@@ -1,4 +1,5 @@
 import StripeStatusPanel from "../components/StripeStatusPanel";
+import { StripeConnectProvider } from "../components/StripeConnectContexto";
 
 /**
  * Tela dedicada à conta de recebimento.
@@ -25,7 +26,12 @@ export default function Recebimentos() {
         </p>
       </div>
 
-      <StripeStatusPanel />
+      {/* Uma instância do Connect para a página inteira. O painel de
+          status, o banner de avisos e o formulário de verificação
+          compartilham ela — criar uma por componente travava a tela. */}
+      <StripeConnectProvider>
+        <StripeStatusPanel />
+      </StripeConnectProvider>
 
       <div className="cartao-app p-4">
         <h2 className="text-[13px] font-semibold text-[#0f1117]">

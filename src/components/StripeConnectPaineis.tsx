@@ -1,152 +1,44 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { loadConnectAndInitialize } from "@stripe/connect-js";
-import type { StripeConnectInstance } from "@stripe/connect-js";
 import {
   ConnectAccountManagement,
   ConnectBalances,
-  ConnectComponentsProvider,
   ConnectDocuments,
   ConnectNotificationBanner,
   ConnectPayments,
   ConnectPayouts,
 } from "@stripe/react-connect-js";
-import { Loader2 } from "lucide-react";
-import { supabase } from "../lib/supabaseClient";
+import { Loader2, RefreshCw } from "lucide-react";
+import { useStripeConnect } from "./StripeConnectContexto";
 
 /**
  * Painéis embutidos da conta de recebimento.
  *
- * Por que existem: quando a Stripe é responsável pelos saldos negativos
- * (nossa configuração), ela EXIGE que a plataforma tenha os componentes
- * de notificação e de gerenciamento de conta no próprio site. Sem eles,
- * ela recusa criar sessões em produção:
- *   "You cannot create livemode account sessions or account links until
- *    you have supplied URLs at .../connect/site-links"
+ * Todos consomem a MESMA instância do Connect, criada uma única vez
+ * pelo <StripeConnectProvider> que envolve a página. Antes cada um
+ * criava a sua e chamava a Edge Function por conta própria — três
+ * instâncias e quatro chamadas na mesma tela, o que travava o
+ * carregamento.
  *
- * As URLs cadastradas em site-links precisam ser páginas que realmente
- * renderizem estes componentes — a Stripe valida.
+ * Onde cada um vive:
+ *   Recebimentos -> PainelNotificacoes, PainelGerenciarConta
+ *   Pagamentos   -> PainelPagamentos, PainelRepasses, PainelSaldos,
+ *                   PainelDocumentos
  *
- * Onde cada um vai:
- *   Configurações  -> <PainelNotificacoes /> e <PainelGerenciarConta />
- *   Pagamentos     -> <PainelPagamentos />, <PainelRepasses />,
- *                     <PainelSaldos /> e <PainelDocumentos />
+ * As páginas que os usam estão cadastradas em site-links no Dashboard
+ * da Stripe. Trocar a rota de uma delas exige atualizar lá também,
+ * senão as sessões param de ser criadas em produção.
  */
-
-async function buscarClientSecret(): Promise<{
-  client_secret: string;
-  publishable_key: string;
-}> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData.session?.access_token;
-  if (!token) throw new Error("Sessão expirada. Faça login novamente.");
-
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const res = await fetch(`${supabaseUrl}/functions/v1/stripe-account-session`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: "{}",
-  });
-
-  let corpo: any = null;
-  try {
-    corpo = await res.json();
-  } catch {
-    corpo = null;
-  }
-
-  if (!res.ok || corpo?.error) {
-    throw new Error(corpo?.error ?? `Erro ao abrir o painel (${res.status}).`);
-  }
-  return corpo;
-}
-
-/**
- * Cria UMA instância do Connect e reaproveita para todos os componentes
- * da página. A Stripe recomenda uma instância por sessão, não uma por
- * componente.
- */
-function useConnect(corPrimaria: string) {
-  const [connect, setConnect] = useState<StripeConnectInstance | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(true);
-  const primeiroSecret = useRef<string | null>(null);
-
-  const fetchClientSecret = useCallback(async () => {
-    if (primeiroSecret.current) {
-      const s = primeiroSecret.current;
-      primeiroSecret.current = null;
-      return s;
-    }
-    const r = await buscarClientSecret();
-    return r.client_secret;
-  }, []);
-
-  useEffect(() => {
-    let vivo = true;
-
-    (async () => {
-      try {
-        const { client_secret, publishable_key } = await buscarClientSecret();
-        primeiroSecret.current = client_secret;
-
-        const pk =
-          publishable_key || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-        if (!pk || !String(pk).startsWith("pk_")) {
-          throw new Error("Configuração de pagamento incompleta.");
-        }
-
-        const instancia = loadConnectAndInitialize({
-          publishableKey: pk,
-          fetchClientSecret,
-          appearance: {
-            overlays: "dialog",
-            variables: {
-              colorPrimary: corPrimaria,
-              colorBackground: "#ffffff",
-              colorText: "#0f1117",
-              borderRadius: "10px",
-              fontFamily:
-                "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif",
-              spacingUnit: "9px",
-            },
-          },
-        });
-
-        if (vivo) {
-          setConnect(instancia);
-          setCarregando(false);
-        }
-      } catch (e) {
-        if (vivo) {
-          setErro(e instanceof Error ? e.message : "Erro ao abrir o painel.");
-          setCarregando(false);
-        }
-      }
-    })();
-
-    return () => {
-      vivo = false;
-    };
-  }, [fetchClientSecret, corPrimaria]);
-
-  return { connect, erro, carregando };
-}
 
 interface PainelProps {
-  corPrimaria?: string;
-  /** Some em silêncio se a conta ainda não existir (não polui a tela). */
+  /** Some em silêncio quando a conta ainda não existe ou falhou. */
   silencioso?: boolean;
 }
 
 function Moldura({
-  corPrimaria = "#0f1117",
   silencioso = false,
   children,
-}: PainelProps & { children: (c: StripeConnectInstance) => React.ReactNode }) {
-  const { connect, erro, carregando } = useConnect(corPrimaria);
+}: PainelProps & { children: React.ReactNode }) {
+  const { connect, carregando, erro, semConta, tentarDeNovo } =
+    useStripeConnect();
 
   if (carregando) {
     return (
@@ -157,54 +49,80 @@ function Moldura({
     );
   }
 
+  // Conta ainda não criada: quem trata isso é a tela de cadastro.
+  if (semConta) return null;
+
   if (erro) {
     if (silencioso) return null;
     return (
-      <p className="text-[12px] text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-xl px-3.5 py-2.5">
-        {erro}
-      </p>
+      <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3">
+        <p className="text-[12.5px] text-[#b91c1c] break-words">{erro}</p>
+        <button
+          onClick={tentarDeNovo}
+          className="btn-app-pequeno mt-2.5 bg-white border border-[#fecaca] text-[#991b1b]"
+        >
+          <RefreshCw size={14} />
+          Tentar novamente
+        </button>
+      </div>
     );
   }
 
   if (!connect) return null;
 
-  return (
-    <ConnectComponentsProvider connectInstance={connect}>
-      {children(connect)}
-    </ConnectComponentsProvider>
-  );
+  return <>{children}</>;
 }
 
 /** Avisos da conta: pendências de verificação, risco, conformidade. */
-export function PainelNotificacoes(props: PainelProps) {
+export function PainelNotificacoes() {
   return (
-    <Moldura {...props} silencioso>
-      {() => <ConnectNotificationBanner />}
+    <Moldura silencioso>
+      <ConnectNotificationBanner />
     </Moldura>
   );
 }
 
 /** O lojista edita dados do negócio, documentos e conta bancária. */
-export function PainelGerenciarConta(props: PainelProps) {
-  return <Moldura {...props}>{() => <ConnectAccountManagement />}</Moldura>;
+export function PainelGerenciarConta() {
+  return (
+    <Moldura>
+      <ConnectAccountManagement />
+    </Moldura>
+  );
 }
 
 /** Histórico de pagamentos, reembolsos e contestações. */
-export function PainelPagamentos(props: PainelProps) {
-  return <Moldura {...props}>{() => <ConnectPayments />}</Moldura>;
+export function PainelPagamentos() {
+  return (
+    <Moldura>
+      <ConnectPayments />
+    </Moldura>
+  );
 }
 
 /** Histórico de repasses para a conta bancária. */
-export function PainelRepasses(props: PainelProps) {
-  return <Moldura {...props}>{() => <ConnectPayouts />}</Moldura>;
+export function PainelRepasses() {
+  return (
+    <Moldura>
+      <ConnectPayouts />
+    </Moldura>
+  );
 }
 
 /** Saldo disponível, a caminho e cronograma de repasse. */
-export function PainelSaldos(props: PainelProps) {
-  return <Moldura {...props}>{() => <ConnectBalances />}</Moldura>;
+export function PainelSaldos() {
+  return (
+    <Moldura>
+      <ConnectBalances />
+    </Moldura>
+  );
 }
 
 /** Faturas e informes fiscais para download. */
-export function PainelDocumentos(props: PainelProps) {
-  return <Moldura {...props}>{() => <ConnectDocuments />}</Moldura>;
+export function PainelDocumentos() {
+  return (
+    <Moldura>
+      <ConnectDocuments />
+    </Moldura>
+  );
 }
