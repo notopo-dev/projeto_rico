@@ -10,6 +10,7 @@ import {
   Landmark,
   RefreshCw,
   ShieldCheck,
+  ChevronDown,
 } from "lucide-react";
 import {
   consultarStatusStripe,
@@ -93,6 +94,8 @@ export default function StripeStatusPanel() {
   const [preparoVisto, setPreparoVisto] = useState(false);
   // Acabou de enviar a verificação nesta visita — muda a mensagem de topo.
   const [enviadoAgora, setEnviadoAgora] = useState(false);
+  // Sanfonado dos dados da conta.
+  const [dadosAbertos, setDadosAbertos] = useState(false);
 
   const temporizadores = useRef<number[]>([]);
 
@@ -475,14 +478,32 @@ export default function StripeStatusPanel() {
 
         {/* O lojista edita os próprios dados aqui dentro. Exigido pela
             Stripe junto com o banner acima. */}
-        <details className="rounded-xl border border-[#e4e4e7]">
-          <summary className="px-3.5 py-3 text-[13px] font-medium text-[#374151] cursor-pointer select-none">
+        {/* Sanfonado controlado, e não <details>.
+            Os componentes embutidos da Stripe medem a própria altura
+            no momento em que montam. Dentro de um <details> fechado
+            eles montavam escondidos, com altura zero, e continuavam
+            em branco depois de abrir — era o "não aparece nada".
+            Agora só montam quando a seção abre de fato. */}
+        <div className="rounded-xl border border-[#e4e4e7]">
+          <button
+            onClick={() => setDadosAbertos((v) => !v)}
+            aria-expanded={dadosAbertos}
+            className="w-full px-3.5 py-3 flex items-center justify-between gap-2 text-left text-[13px] font-medium text-[#374151]"
+          >
             Dados da conta de recebimento
-          </summary>
-          <div className="px-3.5 pb-3">
-            <PainelGerenciarConta />
-          </div>
-        </details>
+            <ChevronDown
+              size={16}
+              className={`shrink-0 text-[#9ca3af] transition-transform ${
+                dadosAbertos ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+          {dadosAbertos && (
+            <div className="border-t border-[#f0f0f1] px-3.5 pb-3 pt-3">
+              <PainelGerenciarConta />
+            </div>
+          )}
+        </div>
 
         {/* Ação */}
         <button

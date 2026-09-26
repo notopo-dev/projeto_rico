@@ -1,73 +1,25 @@
 // ============================================================
 // stripe-webhook
-// Recebe eventos do Stripe e atualiza pedido/pagamento/conta no
-// banco. É a ÚNICA fonte de verdade sobre "o pagamento realmente
-// aconteceu" — nunca confiar só no retorno do frontend.
+// Única fonte de verdade sobre "o pagamento aconteceu mesmo".
+// O retorno do navegador NUNCA é suficiente: qualquer pessoa
+// consegue forjar a tela de sucesso; forjar um evento assinado
+// pela Stripe, não.
 // https://docs.stripe.com/webhooks
 //
-// Trata três famílias de evento:
-//   A) v2  — v2.core.account[...].updated
-//            -> status da verificação do lojista
-//   B) v1 de CONTA CONECTADA (cobrança direta) — payment_intent.*
-//            -> marca pedido como pago / falhou
-//   C) v1 de assinatura (mensalidade) — invoice.* / subscription.*
-//            -> marca a loja como adimplente / inadimplente
-//
-// ⚠️ No Dashboard, este endpoint precisa estar marcado para receber
-//    eventos DE CONTAS CONECTADAS (Connect). Sem isso os
-//    payment_intent das cobranças diretas não chegam, porque agora
-//    a cobrança acontece na conta do lojista, não na plataforma.
+// ⚠️ COBRANÇA DIRETA: os eventos de pagamento nascem na conta
+// CONECTADA do lojista, não na da plataforma. Eles chegam com
+// `event.account` preenchido — e só chegam se o endpoint estiver
+// cadastrado no Dashboard como endpoint de CONNECT ("Events on
+// connected accounts"). Num endpoint comum, nada chega.
 // ============================================================
 import Stripe from "https://esm.sh/stripe@17.4.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
-const STRIPE_VERSION_V2 = "2026-08-26.preview";
-
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
+const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2024-12-18.acacia",
 });
 
-// Se você usa um "event destination" v2 separado, ponha o segredo
-// dele em STRIPE_WEBHOOK_SECRET_V2. Se não houver, usamos o mesmo.
 const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
-const webhookSecretV2 =
-  Deno.env.get("STRIPE_WEBHOOK_SECRET_V2") ?? webhookSecret;
-
-const supabaseAdmin = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
-
-/** Busca a conta na API v2 (os eventos v2 não trazem o objeto inteiro). */
-async function buscarContaV2(accountId: string) {
-  const res = await fetch(
-    `https://api.stripe.com/v2/core/accounts/${accountId}` +
-      `?include[0]=requirements&include[1]=configuration.merchant`,
-    {
-      headers: {
-        Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
-        "Stripe-Version": STRIPE_VERSION_V2,
-      },
-    }
-  );
-  if (!res.ok) {
-    console.error("Falha ao buscar conta v2:", await res.text());
-    return null;
-  }
-  return await res.json();
-}
-
-/** Registra o evento; devolve false se já tínhamos processado. */
-async function eventoNovo(id: string, tipo: string, payload: unknown) {
-  const { error } = await supabaseAdmin
-    .from("stripe_events")
-    .insert({ id, tipo, payload });
-
-  // 23505 = chave duplicada -> já processamos este evento
-  if (error && error.code === "23505") return false;
-  return true;
-}
 
 Deno.serve(async (req) => {
   const signature = req.headers.get("stripe-signature");
@@ -77,197 +29,208 @@ Deno.serve(async (req) => {
     return new Response("Falta assinatura do webhook.", { status: 400 });
   }
 
-  // Verificação criptográfica: garante que o evento veio mesmo da
-  // Stripe. Tenta os dois segredos (endpoint v1 e destination v2).
-  let event: any = null;
-  for (const segredo of [webhookSecret, webhookSecretV2]) {
-    if (!segredo) continue;
-    try {
-      event = await stripe.webhooks.constructEventAsync(
-        body,
-        signature,
-        segredo
-      );
-      break;
-    } catch {
-      // tenta o próximo
-    }
-  }
-
-  if (!event) {
-    console.error("Assinatura de webhook inválida.");
+  let event: Stripe.Event;
+  try {
+    // Verificação criptográfica: garante que o evento veio mesmo da
+    // Stripe, e não de alguém batendo na URL.
+    event = await stripe.webhooks.constructEventAsync(
+      body,
+      signature,
+      webhookSecret
+    );
+  } catch (err) {
+    console.error("Assinatura de webhook inválida:", err);
     return new Response("Assinatura inválida.", { status: 400 });
   }
 
-  const tipo: string = event.type ?? "";
-  const eventoId: string = event.id ?? crypto.randomUUID();
+  const admin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
 
-  // Idempotência: a Stripe reenvia em caso de timeout.
-  if (!(await eventoNovo(eventoId, tipo, event))) {
-    return new Response(JSON.stringify({ duplicado: true }), {
-      status: 200,
+  // ---------------------------------------------------------------
+  // Idempotência.
+  // A Stripe reenvia o mesmo evento quando não recebe 200 a tempo.
+  // A chave primária de stripe_events é o id do evento: a segunda
+  // gravação falha, e é assim que sabemos que já processamos.
+  // ---------------------------------------------------------------
+  const { error: erroClaim } = await admin.from("stripe_events").insert({
+    id: event.id,
+    tipo: event.type,
+    payload: { account: (event as any).account ?? null },
+  });
+
+  if (erroClaim) {
+    // Duplicado: já processado. Responder 200 encerra as retentativas.
+    console.log(`Evento ${event.id} já processado — ignorando.`);
+    return new Response(JSON.stringify({ received: true, duplicado: true }), {
       headers: { "Content-Type": "application/json" },
     });
   }
 
+  /** Conta conectada de onde o evento veio (vazio = conta da plataforma). */
+  const contaConectada = (event as any).account as string | undefined;
+
+  /** A loja dona daquela conta conectada. */
+  async function lojaDaConta(): Promise<string | null> {
+    if (!contaConectada) return null;
+    const { data } = await admin
+      .from("stores")
+      .select("id")
+      .eq("stripe_account_id", contaConectada)
+      .maybeSingle();
+    return data?.id ?? null;
+  }
+
   try {
-    // ================================================================
-    // A) Conta conectada (Accounts v2)
-    // ================================================================
-    if (tipo.startsWith("v2.core.account")) {
-      const accountId: string | undefined =
-        event.related_object?.id ?? event.data?.id ?? event.context;
+    switch (event.type) {
+      // -----------------------------------------------------------
+      // Pagamento aprovado
+      // -----------------------------------------------------------
+      case "payment_intent.succeeded": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const orderId = pi.metadata?.order_id;
+        const storeId = pi.metadata?.store_id ?? (await lojaDaConta());
 
-      if (accountId) {
-        const conta = await buscarContaV2(accountId);
+        await admin
+          .from("payments")
+          .update({
+            status: "recebido",
+            stripe_charge_id:
+              typeof pi.latest_charge === "string" ? pi.latest_charge : null,
+            stripe_account_id: contaConectada ?? null,
+          })
+          .eq("stripe_payment_intent_id", pi.id);
 
-        const entries = conta?.requirements?.entries ?? [];
-        const pendentes = entries
-          .filter(
-            (e: any) =>
-              e?.minimum_deadline?.status === "currently_due" ||
-              e?.minimum_deadline?.status === "past_due"
-          )
-          .map((e: any) => ({
-            campo: e?.requirement?.field_reference ?? null,
-            motivo: e?.description ?? null,
-            status: e?.minimum_deadline?.status ?? null,
-          }));
+        if (orderId) {
+          // O filtro por loja é redundante com o id do pedido, mas
+          // custa nada e fecha a porta de um evento apontar para
+          // pedido de outra loja.
+          const q = admin
+            .from("orders")
+            .update({ status: "pago" })
+            .eq("id", orderId)
+            .eq("status", "pendente");
 
-        const cardPayments =
-          conta?.configuration?.merchant?.capabilities?.card_payments?.status;
-        const chargesEnabled = cardPayments === "active";
+          await (storeId ? q.eq("store_id", storeId) : q);
+        }
+        break;
+      }
 
-        await supabaseAdmin
+      // -----------------------------------------------------------
+      // Pagamento recusado
+      // -----------------------------------------------------------
+      case "payment_intent.payment_failed": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        await admin
+          .from("payments")
+          .update({
+            status: "falhou",
+            erro_mensagem: pi.last_payment_error?.message ?? null,
+          })
+          .eq("stripe_payment_intent_id", pi.id);
+        break;
+      }
+
+      // -----------------------------------------------------------
+      // Reembolso
+      // Cobre o caso do lojista devolver pelo painel da Stripe em vez
+      // do nosso — sem isto o pedido continuaria "pago" aqui dentro.
+      // -----------------------------------------------------------
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        const piId =
+          typeof charge.payment_intent === "string"
+            ? charge.payment_intent
+            : null;
+        if (!piId) break;
+
+        const { data: pagamento } = await admin
+          .from("payments")
+          .select("id, order_id, store_id")
+          .eq("stripe_payment_intent_id", piId)
+          .maybeSingle();
+
+        if (!pagamento) break;
+
+        const devolvido = (charge.amount_refunded ?? 0) / 100;
+        const totalCobrado = (charge.amount ?? 0) / 100;
+        const devolvidoPorInteiro =
+          (charge.amount_refunded ?? 0) >= (charge.amount ?? 0);
+
+        await admin
+          .from("orders")
+          .update({
+            valor_reembolsado: devolvido,
+            reembolsado_em: new Date().toISOString(),
+            ...(devolvidoPorInteiro ? { status: "devolvido" } : {}),
+          })
+          .eq("id", pagamento.order_id)
+          .eq("store_id", pagamento.store_id);
+
+        if (devolvidoPorInteiro) {
+          await admin
+            .from("payments")
+            .update({ status: "estornado" })
+            .eq("id", pagamento.id);
+        }
+
+        console.log(
+          `Reembolso sincronizado: pedido ${pagamento.order_id}, ` +
+            `${devolvido} de ${totalCobrado}.`
+        );
+        break;
+      }
+
+      // -----------------------------------------------------------
+      // Status da conta do lojista mudou
+      // As contas nascem pela API v2, que emite o evento com outro
+      // nome; tratamos os dois para não depender da versão.
+      // -----------------------------------------------------------
+      case "account.updated": {
+        const conta = event.data.object as Stripe.Account;
+        await admin
           .from("stores")
           .update({
-            stripe_charges_enabled: chargesEnabled,
-            stripe_onboarding_completo:
-              chargesEnabled && pendentes.length === 0,
-            stripe_requisitos_pendentes: pendentes,
+            stripe_charges_enabled: conta.charges_enabled,
+            stripe_payouts_enabled: conta.payouts_enabled,
+            stripe_onboarding_completo: conta.details_submitted,
             stripe_atualizado_em: new Date().toISOString(),
           })
-          .eq("stripe_account_id", accountId);
+          .eq("stripe_account_id", conta.id);
+        break;
       }
-    }
 
-    // ================================================================
-    // B) Pagamentos das lojas (cobrança direta)
-    // ================================================================
-    else if (tipo === "payment_intent.succeeded") {
-      const pi = event.data.object as Stripe.PaymentIntent;
-      const orderId = pi.metadata?.order_id;
-
-      await supabaseAdmin
-        .from("payments")
-        .update({
-          status: "recebido",
-          stripe_charge_id:
-            typeof pi.latest_charge === "string" ? pi.latest_charge : null,
-          erro_mensagem: null,
-        })
-        .eq("stripe_payment_intent_id", pi.id);
-
-      if (orderId) {
-        await supabaseAdmin
-          .from("orders")
-          .update({ status: "pago" })
-          .eq("id", orderId);
+      default: {
+        // v2.core.account... — o SDK ainda tipa esses como desconhecidos.
+        const tipo = event.type as string;
+        if (tipo.startsWith("v2.core.account")) {
+          const contaId =
+            (event as any).related_object?.id ?? contaConectada ?? null;
+          if (contaId) {
+            // O payload v2 não traz os flags prontos; marcamos a hora
+            // e o painel reconsulta o status por conta própria.
+            await admin
+              .from("stores")
+              .update({ stripe_atualizado_em: new Date().toISOString() })
+              .eq("stripe_account_id", contaId);
+          }
+        }
+        // Os demais eventos são ignorados de propósito.
+        break;
       }
-    } else if (
-      tipo === "payment_intent.payment_failed" ||
-      tipo === "payment_intent.canceled"
-    ) {
-      const pi = event.data.object as Stripe.PaymentIntent;
-
-      await supabaseAdmin
-        .from("payments")
-        .update({
-          status: tipo === "payment_intent.canceled" ? "cancelado" : "falhou",
-          erro_mensagem: pi.last_payment_error?.message ?? null,
-        })
-        .eq("stripe_payment_intent_id", pi.id);
-    }
-
-    // ================================================================
-    // C) Mensalidade da plataforma
-    // ================================================================
-    else if (tipo === "invoice.paid" || tipo === "invoice.payment_succeeded") {
-      const inv = event.data.object as any;
-      if (inv.subscription) {
-        await supabaseAdmin
-          .from("stores")
-          .update({
-            assinatura_status: "ativa",
-            assinatura_proxima_cobranca: inv.period_end
-              ? new Date(inv.period_end * 1000).toISOString()
-              : null,
-          })
-          .eq("stripe_subscription_id", inv.subscription);
-      }
-    } else if (tipo === "invoice.payment_failed") {
-      const inv = event.data.object as any;
-      if (inv.subscription) {
-        await supabaseAdmin
-          .from("stores")
-          .update({ assinatura_status: "inadimplente" })
-          .eq("stripe_subscription_id", inv.subscription);
-      }
-    } else if (tipo === "customer.subscription.deleted") {
-      const sub = event.data.object as any;
-      await supabaseAdmin
-        .from("stores")
-        .update({ assinatura_status: "cancelada" })
-        .eq("stripe_subscription_id", sub.id);
-    } else if (tipo === "customer.subscription.updated") {
-      const sub = event.data.object as any;
-      const mapa: Record<string, string> = {
-        active: "ativa",
-        trialing: "ativa",
-        past_due: "inadimplente",
-        unpaid: "inadimplente",
-        canceled: "cancelada",
-        incomplete: "incompleta",
-        incomplete_expired: "cancelada",
-      };
-      await supabaseAdmin
-        .from("stores")
-        .update({
-          assinatura_status: mapa[sub.status] ?? "incompleta",
-          assinatura_proxima_cobranca: sub.current_period_end
-            ? new Date(sub.current_period_end * 1000).toISOString()
-            : null,
-        })
-        .eq("stripe_subscription_id", sub.id);
-    }
-
-    // ================================================================
-    // Compatibilidade: contas v1 antigas
-    // ================================================================
-    else if (tipo === "account.updated") {
-      const account = event.data.object as Stripe.Account;
-      await supabaseAdmin
-        .from("stores")
-        .update({
-          stripe_charges_enabled: account.charges_enabled,
-          stripe_payouts_enabled: account.payouts_enabled,
-          stripe_onboarding_completo: account.details_submitted,
-          stripe_atualizado_em: new Date().toISOString(),
-        })
-        .eq("stripe_account_id", account.id);
     }
 
     return new Response(JSON.stringify({ received: true }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("Erro ao processar webhook", tipo, err);
-    // 200 de propósito: a Stripe pararia de reenviar só depois de
-    // muitas tentativas, e o evento já ficou salvo em stripe_events
-    // para investigação.
-    return new Response(
-      JSON.stringify({ received: true, erro: String(err) }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
+    console.error(`Erro ao processar ${event.type} (${event.id}):`, err);
+
+    // Libera a marca de processado: assim a retentativa da Stripe
+    // encontra o caminho livre em vez de ser descartada como duplicada.
+    await admin.from("stripe_events").delete().eq("id", event.id);
+
+    return new Response("Erro ao processar evento.", { status: 500 });
   }
 });

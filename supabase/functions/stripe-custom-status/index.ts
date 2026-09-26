@@ -118,6 +118,35 @@ Deno.serve(async (req) => {
       // Sem conta bancária cadastrada ainda — não é erro
     }
 
+    // -------------------------------------------------------------
+    // Espelha o estado real da Stripe no nosso banco.
+    //
+    // O checkout da loja pública recusa a venda quando
+    // stripe_charges_enabled é falso — e essa coluna só era escrita
+    // pelo webhook. Se o evento se perdesse, a conta ficava ativa na
+    // Stripe e a loja continuava sem vender, sem nada explicando por
+    // quê. Como esta função roda toda vez que o painel abre, é aqui
+    // que a coluna se conserta sozinha.
+    //
+    // Precisa de service role: o dono da loja não tem permissão de
+    // escrever nessas colunas pelo RLS, e é bom que não tenha —
+    // quem decide se a loja pode cobrar é a Stripe, não o lojista.
+    // -------------------------------------------------------------
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    await admin
+      .from("stores")
+      .update({
+        stripe_charges_enabled: chargesEnabled,
+        stripe_payouts_enabled: payoutsEnabled,
+        stripe_requisitos_pendentes: requisitos,
+        stripe_atualizado_em: new Date().toISOString(),
+      })
+      .eq("id", store.id);
+
     let situacao: string;
     if (chargesEnabled && payoutsEnabled) {
       situacao = "ativo";

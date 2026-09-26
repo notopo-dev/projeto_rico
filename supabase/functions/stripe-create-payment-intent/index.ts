@@ -1,27 +1,17 @@
 // ============================================================
 // stripe-create-payment-intent
-// Cria um PaymentIntent para o checkout da loja pública.
+// Cria o PaymentIntent do checkout da loja pública.
 //
-// MUDOU: era "destination charge" (o dinheiro passava pela
-// plataforma e era repassado). Agora é COBRANÇA DIRETA — o
-// cliente paga direto a conta do lojista, via header
-// Stripe-Account.
+// COBRANÇA DIRETA (direct charge): o pagamento nasce DENTRO da
+// conta Connect do lojista — daí o `{ stripeAccount }` no segundo
+// argumento. O dinheiro nunca passa pela plataforma, e não há
+// application_fee: a plataforma cobra mensalidade, não percentual
+// sobre a venda.
 // https://docs.stripe.com/connect/direct-charges
 //
-// Por quê: a plataforma não cobra % da venda, só mensalidade.
-// Na cobrança direta o lojista é o "merchant of record" — é o
-// nome dele na fatura do cartão, o chargeback é dele, e a
-// plataforma não precisa se enquadrar como instituição de
-// pagamento. É o modelo recomendado para SaaS.
-//
-// Como não há comissão, NÃO enviamos application_fee_amount.
-//
-// Body: { storeId, orderId, amountInCents, metodo }
-// Retorna: { clientSecret, stripeAccount, publishableKey }
-//
-// ⚠️ O frontend precisa inicializar o Stripe.js apontando para a
-//    conta conectada: loadStripe(pk, { stripeAccount }).
-//    Sem isso o clientSecret é recusado.
+// Por isso a resposta devolve `stripeAccount` e `publishableKey`:
+// o Stripe.js do checkout precisa ser inicializado com a conta do
+// lojista, senão o clientSecret é recusado.
 // ============================================================
 import Stripe from "https://esm.sh/stripe@17.4.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -31,20 +21,17 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2024-12-18.acacia",
 });
 
-const PUBLISHABLE_KEY = Deno.env.get("STRIPE_PUBLISHABLE_KEY") ?? "";
+const json = (corpo: unknown, status = 200) =>
+  new Response(JSON.stringify(corpo), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
 interface RequestBody {
   storeId: string;
   orderId: string;
   amountInCents: number;
   metodo: "pix" | "card";
-}
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
 }
 
 Deno.serve(async (req) => {
@@ -59,79 +46,69 @@ Deno.serve(async (req) => {
     if (
       !storeId ||
       !orderId ||
+      !amountInCents ||
+      amountInCents < 50 ||
       (metodo !== "pix" && metodo !== "card")
     ) {
       return json({ error: "Dados inválidos para criar o pagamento." }, 400);
     }
 
-    // Service role: quem chama é o CLIENTE FINAL (anônimo, sem login).
-    // A segurança é: loja ativa + com Stripe habilitado, e o pedido
-    // tem que pertencer a essa loja.
-    const supabaseAdmin = createClient(
+    // Service role aqui porque quem chama é o CLIENTE FINAL — anônimo,
+    // sem login, sem sessão para autenticar. A proteção é outra: a loja
+    // precisa estar ativa e habilitada, o pedido precisa ser dela, e o
+    // valor precisa bater com o total gravado no banco.
+    const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data: store, error: storeError } = await supabaseAdmin
+    const { data: store } = await admin
       .from("stores")
-      .select("id, nome, ativo, stripe_account_id, stripe_charges_enabled")
+      .select("id, ativo, stripe_account_id, stripe_charges_enabled")
       .eq("id", storeId)
-      .single();
+      .maybeSingle();
 
-    if (storeError || !store || !store.ativo) {
+    if (!store || !store.ativo) {
       return json({ error: "Loja não encontrada ou inativa." }, 404);
     }
 
     if (!store.stripe_account_id || !store.stripe_charges_enabled) {
       return json(
-        { error: "Esta loja ainda não pode receber pagamentos online." },
+        { error: "Esta loja ainda não pode receber pagamentos com cartão." },
         400
       );
     }
 
-    const { data: order, error: orderError } = await supabaseAdmin
+    const { data: order } = await admin
       .from("orders")
       .select("id, numero, store_id, total, status")
       .eq("id", orderId)
-      .eq("store_id", storeId)
-      .single();
+      .eq("store_id", store.id)
+      .maybeSingle();
 
-    if (orderError || !order) {
-      return json({ error: "Pedido não encontrado." }, 404);
+    if (!order) return json({ error: "Pedido não encontrado." }, 404);
+
+    // Um pedido já pago não gera cobrança nova.
+    if (order.status !== "pendente") {
+      return json({ error: "Este pedido já foi processado." }, 400);
     }
 
-    if (order.status === "pago") {
-      return json({ error: "Este pedido já foi pago." }, 409);
-    }
-
-    // O valor que vale é o do BANCO, nunca o que veio do navegador.
-    // (o amountInCents recebido serve só de conferência)
+    // O valor vem do navegador do cliente — quem manda é o banco.
     const totalEmCentavos = Math.round(Number(order.total) * 100);
-
-    if (!Number.isFinite(totalEmCentavos) || totalEmCentavos < 50) {
-      return json({ error: "Valor do pedido inválido." }, 400);
-    }
-
-    if (
-      typeof amountInCents === "number" &&
-      amountInCents > 0 &&
-      totalEmCentavos !== amountInCents
-    ) {
+    if (totalEmCentavos !== amountInCents) {
       return json(
         { error: "Valor do pagamento não confere com o pedido." },
         400
       );
     }
 
-    // ---- COBRANÇA DIRETA -------------------------------------------
-    // O segundo argumento { stripeAccount } é o que manda o
-    // PaymentIntent ser criado DENTRO da conta do lojista.
     const paymentIntent = await stripe.paymentIntents.create(
       {
         amount: totalEmCentavos,
         currency: "brl",
+        // Restringe à forma escolhida na loja (Pix XOR cartão), em vez
+        // de mostrar as duas juntas via automatic_payment_methods.
         payment_method_types: [metodo],
-        description: `Pedido #${order.numero} — ${store.nome}`,
         metadata: {
           order_id: order.id,
           store_id: store.id,
@@ -140,15 +117,19 @@ Deno.serve(async (req) => {
       },
       {
         stripeAccount: store.stripe_account_id,
-        // Reenvio do mesmo pedido não gera cobrança duplicada.
+        // Recarregar a tela de pagamento não cria uma segunda cobrança:
+        // mesma chave, mesmo PaymentIntent de volta.
         idempotencyKey: `pi_${order.id}_${totalEmCentavos}_${metodo}`,
       }
     );
 
-    await supabaseAdmin.from("payments").upsert(
+    // upsert e não insert: com a idempotência acima, uma segunda
+    // tentativa devolve o MESMO id — um insert quebraria na chave
+    // única (store_id, transacao_id).
+    await admin.from("payments").upsert(
       {
-        store_id: storeId,
-        order_id: orderId,
+        store_id: store.id,
+        order_id: order.id,
         transacao_id: paymentIntent.id,
         metodo: metodo === "pix" ? "pix" : "cartao_stripe",
         valor_bruto: order.total,
@@ -156,22 +137,24 @@ Deno.serve(async (req) => {
         valor_liquido: order.total,
         status: "pendente",
         stripe_payment_intent_id: paymentIntent.id,
-        stripe_account_id: store.stripe_account_id,
       },
-      { onConflict: "stripe_payment_intent_id" }
+      { onConflict: "store_id,transacao_id" }
     );
 
     return json({
       clientSecret: paymentIntent.client_secret,
+      // A conta do lojista: é o que faz o clientSecret da cobrança
+      // direta ser aceito pelo Stripe.js da loja.
       stripeAccount: store.stripe_account_id,
-      publishableKey: PUBLISHABLE_KEY,
-      valorCentavos: totalEmCentavos,
+      // Vem do servidor para o .env do front nunca ficar defasado.
+      publishableKey: Deno.env.get("STRIPE_PUBLISHABLE_KEY") ?? "",
     });
   } catch (err) {
     console.error("Erro ao criar PaymentIntent:", err);
-    return json(
-      { error: err instanceof Error ? err.message : "Erro desconhecido." },
-      500
-    );
+    const msg =
+      err && typeof err === "object" && "message" in err
+        ? String((err as { message: unknown }).message)
+        : "Erro ao iniciar o pagamento.";
+    return json({ error: msg }, 500);
   }
 });
