@@ -8,8 +8,15 @@ import {
   Mail,
   X,
   ChevronDown,
+  IdCard,
+  Check,
+  Loader2,
 } from "lucide-react";
-import { listarClientes, type Cliente } from "../lib/clientesApi";
+import {
+  listarClientes,
+  salvarCpfCliente,
+  type Cliente,
+} from "../lib/clientesApi";
 import {
   descreverPagamento,
   listarPedidosDoCliente,
@@ -89,14 +96,40 @@ function inicial(nome: string) {
 function Ficha({
   cliente,
   onFechar,
+  aoSalvar,
 }: {
   cliente: Cliente;
   onFechar: () => void;
+  aoSalvar: () => void;
 }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState<string | null>(null);
+
+  /* Preenchimento do CPF que falta nos cadastros antigos. */
+  const [editandoCpf, setEditandoCpf] = useState(false);
+  const [cpfDigitado, setCpfDigitado] = useState("");
+  const [salvandoCpf, setSalvandoCpf] = useState(false);
+  const [erroCpf, setErroCpf] = useState<string | null>(null);
+  const [cpfSalvo, setCpfSalvo] = useState<string | null>(null);
+
+  async function salvarCpf() {
+    setSalvandoCpf(true);
+    setErroCpf(null);
+    try {
+      await salvarCpfCliente(cliente.id, cpfDigitado);
+      setCpfSalvo(cpfDigitado.replace(/\D/g, ""));
+      setEditandoCpf(false);
+      aoSalvar();
+    } catch (e) {
+      setErroCpf(
+        e instanceof Error ? e.message : "Não foi possível salvar o CPF.",
+      );
+    } finally {
+      setSalvandoCpf(false);
+    }
+  }
 
   useEffect(() => {
     let vivo = true;
@@ -202,13 +235,78 @@ function Ficha({
               {cliente.telefone && (
                 <p className="text-[13px] text-[#374151]">{cliente.telefone}</p>
               )}
-              {cliente.cpf && (
-                <p className="text-[12.5px] text-[#6b7280]">CPF {cliente.cpf}</p>
+              {(cliente.cpf || cpfSalvo) && (
+                <p className="text-[12.5px] text-[#6b7280]">
+                  CPF {cliente.cpf ?? cpfSalvo}
+                </p>
               )}
               {!cliente.email && !cliente.telefone && (
                 <p className="text-[13px] text-[#9ca3af]">Sem contato salvo.</p>
               )}
             </div>
+
+            {/* CPF faltando: o cliente não consegue consultar os
+                próprios pedidos na loja sem ele, porque a consulta
+                exige CPF e telefone. Quem completa é o lojista, aqui —
+                no checkout isso abriria a porta para alguém que soubesse
+                um telefone carimbar o próprio CPF num cadastro alheio. */}
+            {!cliente.cpf && !cpfSalvo && (
+              <div className="mt-2.5 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2.5">
+                {editandoCpf ? (
+                  <div className="space-y-2">
+                    <input
+                      value={cpfDigitado}
+                      onChange={(e) => setCpfDigitado(e.target.value)}
+                      inputMode="numeric"
+                      autoFocus
+                      placeholder="000.000.000-00"
+                      className="campo-app"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={salvarCpf}
+                        disabled={salvandoCpf}
+                        className="btn-app"
+                      >
+                        {salvandoCpf ? (
+                          <Loader2 size={15} className="animate-spin" />
+                        ) : (
+                          <Check size={15} />
+                        )}
+                        Salvar CPF
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditandoCpf(false);
+                          setErroCpf(null);
+                        }}
+                        className="btn-app-claro"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                    {erroCpf && (
+                      <p className="text-[11.5px] text-[#b91c1c]">{erroCpf}</p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[11.5px] text-[#92400e] leading-snug">
+                      Sem CPF, este cliente não consegue acompanhar os
+                      pedidos dele na loja — a consulta pede CPF e
+                      telefone. Cadastros antigos ficaram sem.
+                    </p>
+                    <button
+                      onClick={() => setEditandoCpf(true)}
+                      className="mt-2 sem-toque-minimo inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#92400e] underline"
+                    >
+                      <IdCard size={13} />
+                      Adicionar CPF
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
 
             <div className="mt-2.5 flex gap-2">
               {zap && (
@@ -615,6 +713,7 @@ export default function Customers() {
           key={aberta.id}
           cliente={aberta}
           onFechar={() => setAbertoId(null)}
+          aoSalvar={carregar}
         />
       )}
     </div>

@@ -258,6 +258,18 @@ export async function createPublicOrder(input: CheckoutInput) {
       store_id: input.storeId,
       customer_id: customerId,
       status: "pendente",
+
+      // A identidade desta compra fica NO PEDIDO.
+      //
+      // É o que o comprador acabou de digitar, e é com isso que ele
+      // consulta "Meus pedidos" depois. Guardar aqui — e não completar
+      // o cadastro — é de propósito: o cadastro é compartilhado, e
+      // quem estivesse comprando poderia carimbar o próprio CPF no
+      // registro de outra pessoa e passar a enxergar o histórico dela.
+      // Assim, cada pedido responde apenas por si.
+      cpf_comprador: cpfDigits || null,
+      telefone_comprador: telefoneDigits || null,
+
       metodo_pagamento: input.metodoPagamento,
       subtotal,
       frete: valorFrete,

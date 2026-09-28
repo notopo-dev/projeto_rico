@@ -84,3 +84,51 @@ export async function listarClientes(): Promise<Cliente[]> {
     };
   });
 }
+
+/**
+ * Completa o CPF de um cliente.
+ *
+ * Existe para os cadastros antigos, criados antes de a loja passar a
+ * pedir CPF. Sem ele, o cliente não consegue consultar os próprios
+ * pedidos na loja — a consulta exige CPF e telefone.
+ *
+ * Por que isso é feito AQUI, no painel, e não no checkout: o checkout
+ * roda no navegador de quem está comprando, sem login. Se ele pudesse
+ * gravar CPF num cadastro existente, bastaria saber o telefone de
+ * alguém para carimbar o próprio CPF ali e passar a enxergar o
+ * histórico da vítima. Aqui exige o seu login, e o RLS garante que é
+ * um cliente da sua loja.
+ */
+export async function salvarCpfCliente(
+  clienteId: string,
+  cpf: string
+): Promise<void> {
+  const digitos = cpf.replace(/\D/g, "");
+
+  if (digitos.length !== 11) {
+    throw new Error("O CPF precisa ter 11 dígitos.");
+  }
+
+  const storeId = await getCurrentStoreId();
+
+  const { error } = await supabase
+    .from("customers")
+    .update({ cpf: digitos })
+    .eq("id", clienteId)
+    .eq("store_id", storeId);
+
+  if (error) throw error;
+
+  // Os pedidos antigos desse cliente herdam a identidade, para ele
+  // conseguir consultar o histórico inteiro e não só o que veio
+  // depois. Só preenche o que está vazio — nunca sobrescreve a
+  // identidade que a própria compra registrou.
+  const { error: erroPedidos } = await supabase
+    .from("orders")
+    .update({ cpf_comprador: digitos })
+    .eq("customer_id", clienteId)
+    .eq("store_id", storeId)
+    .is("cpf_comprador", null);
+
+  if (erroPedidos) throw erroPedidos;
+}

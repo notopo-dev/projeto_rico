@@ -73,7 +73,18 @@ begin
     o.frete,
     o.total,
     coalesce(o.valor_reembolsado, 0),
-    o.created_at,
+    -- orders.created_at está gravado como timestamp SEM fuso, e o
+    -- retorno é declarado COM fuso — o Postgres recusa a diferença.
+    --
+    -- Converter para naive e depois dizer "isto é UTC" acerta nos dois
+    -- casos: se a coluna já tiver fuso, o `::timestamp` a traz para o
+    -- fuso da sessão (UTC no Supabase) e o `at time zone` a devolve ao
+    -- mesmo instante. Nada é deslocado.
+    --
+    -- Importa porque o navegador faz `new Date(...)`: sem o fuso na
+    -- string, ele assume o horário LOCAL de quem está olhando, e o
+    -- pedido apareceria com a hora errada para o cliente.
+    (o.created_at::timestamp at time zone 'UTC'),
     o.codigo_rastreio,
     o.frete_transportadora,
     o.frete_prazo_dias,
