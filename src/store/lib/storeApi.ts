@@ -297,13 +297,19 @@ export async function createPublicOrder(input: CheckoutInput) {
 }
 
 export interface PedidoConsultado {
+  /** Necessário para o rastreio; só chega a quem já provou CPF + telefone. */
+  id: string;
   numero: string;
   status: string;
   metodo_pagamento: string | null;
   subtotal: number;
   frete: number;
   total: number;
+  valor_reembolsado: number;
   criado_em: string;
+  codigo_rastreio: string | null;
+  frete_transportadora: string | null;
+  frete_prazo_dias: number | null;
   itens: {
     nome_produto: string;
     quantidade: number;
@@ -315,8 +321,13 @@ export interface PedidoConsultado {
 }
 
 /**
- * Consulta os pedidos do cliente por CPF + telefone (os dois
- * precisam bater), via função segura no banco.
+ * Consulta os pedidos do cliente por CPF + telefone — os dois
+ * precisam bater — através de uma função no banco.
+ *
+ * Só o CPF não basta, de propósito: com um campo só daria para
+ * descobrir pedido de terceiro tentando CPFs. E a função nunca diz se
+ * o CPF existe — CPF errado e cliente sem pedido devolvem a mesma
+ * coisa, uma lista vazia.
  */
 export async function consultarPedidosPublico(
   storeId: string,
