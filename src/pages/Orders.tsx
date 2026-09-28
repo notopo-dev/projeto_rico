@@ -28,6 +28,8 @@ import {
   atualizarStatusPedido,
   buscarPedido,
   corrigirStatusPedido,
+  descreverPagamento,
+  divergenciaCartao,
   listarPedidos,
   reembolsarPedido,
   salvarCodigoRastreio,
@@ -35,7 +37,6 @@ import {
   MOTIVOS_DEVOLUCAO,
   PROXIMOS_STATUS,
   ROTULO_CURTO,
-  ROTULO_PAGAMENTO,
   ROTULO_STATUS,
   type Pedido,
   type StatusPedido,
@@ -204,12 +205,7 @@ function Comprovante({ pedido }: { pedido: Pedido }) {
 
       <p style={{ margin: "0 0 4px" }}>
         <strong>Situação:</strong> {ROTULO_STATUS[pedido.status]}
-        {pedido.metodo_pagamento
-          ? ` · ${
-              ROTULO_PAGAMENTO[pedido.metodo_pagamento] ??
-              pedido.metodo_pagamento
-            }`
-          : ""}
+        {` · ${descreverPagamento(pedido)}`}
       </p>
 
       <h2 style={{ fontSize: "13pt", margin: "16px 0 4px" }}>Destinatário</h2>
@@ -786,11 +782,19 @@ function Detalhe({
                     </div>
                   </>
                 )}
-                {pedido.metodo_pagamento && (
-                  <p className="text-[11.5px] text-[#9ca3af] pt-1">
-                    Pago com{" "}
-                    {ROTULO_PAGAMENTO[pedido.metodo_pagamento] ??
-                      pedido.metodo_pagamento}
+                {/* O que a Stripe viu, não o que o cliente disse:
+                    tipo, bandeira e final vêm do BIN do cartão, lidos
+                    no momento da cobrança. */}
+                <p className="text-[11.5px] text-[#9ca3af] pt-1">
+                  Pago com {descreverPagamento(pedido)}
+                </p>
+                {/* Cartão múltiplo é crédito e débito no mesmo
+                    plástico: o cliente escolhe um e a Stripe processa
+                    pelo BIN. Avisar evita o lojista achar que o
+                    relatório está errado. */}
+                {divergenciaCartao(pedido) && (
+                  <p className="text-[11px] text-[#b45309] leading-snug pt-0.5">
+                    {divergenciaCartao(pedido)}
                   </p>
                 )}
               </div>
@@ -1238,11 +1242,7 @@ export default function Orders() {
                     <p className="text-[11.5px] text-[#9ca3af] mt-0.5">
                       {dataCurta(p.created_at)} · {totalItens}{" "}
                       {totalItens === 1 ? "item" : "itens"}
-                      {p.metodo_pagamento &&
-                        ` · ${
-                          ROTULO_PAGAMENTO[p.metodo_pagamento] ??
-                          p.metodo_pagamento
-                        }`}
+                      {` · ${descreverPagamento(p)}`}
                     </p>
                   </div>
 

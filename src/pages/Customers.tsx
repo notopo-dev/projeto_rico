@@ -11,9 +11,9 @@ import {
 } from "lucide-react";
 import { listarClientes, type Cliente } from "../lib/clientesApi";
 import {
+  descreverPagamento,
   listarPedidosDoCliente,
   ROTULO_CURTO,
-  ROTULO_PAGAMENTO,
   type Pedido,
   type StatusPedido,
 } from "../lib/pedidosApi";
@@ -279,11 +279,7 @@ function Ficha({
                           <p className="text-[11.5px] text-[#9ca3af] mt-1">
                             {dataHora(p.created_at)} · {totalItens}{" "}
                             {totalItens === 1 ? "item" : "itens"}
-                            {p.metodo_pagamento &&
-                              ` · ${
-                                ROTULO_PAGAMENTO[p.metodo_pagamento] ??
-                                p.metodo_pagamento
-                              }`}
+                            {` · ${descreverPagamento(p)}`}
                           </p>
                         </div>
 

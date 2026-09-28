@@ -59,11 +59,30 @@ export interface LinhaCliente {
 
 const NOMES_METODO: Record<string, string> = {
   pix: "Pix",
+  cartao_credito: "Cartão de crédito",
+  cartao_debito: "Cartão de débito",
   cartao_stripe: "Cartão",
   card: "Cartão",
   boleto: "Boleto",
   dinheiro: "Dinheiro",
   whatsapp: "Combinado no WhatsApp",
+};
+
+/**
+ * Crédito e débito viram linhas separadas no relatório.
+ *
+ * Para a Stripe os dois são o mesmo tipo de pagamento — quem separa é
+ * o BIN do cartão, que ela lê no momento da cobrança e o webhook grava
+ * em `payments.cartao_tipo`. É por isso que o relatório olha ali, e
+ * não para o que o cliente escolheu na tela: essa parte da informação
+ * não existe na hora do checkout.
+ *
+ * Pedido antigo, de antes desse registro, continua como "Cartão".
+ */
+const NOMES_CARTAO: Record<string, string> = {
+  credit: "Cartão de crédito",
+  debit: "Cartão de débito",
+  prepaid: "Cartão pré-pago",
 };
 
 const DIAS_POR_PERIODO: Record<Periodo, number> = {
@@ -275,7 +294,9 @@ export async function getVendasPorPagamento(
 
   const { data, error } = await supabase
     .from("orders")
-    .select("total, valor_reembolsado, metodo_pagamento, status")
+    .select(
+      "total, valor_reembolsado, metodo_pagamento, status, payments(cartao_tipo, status)"
+    )
     .eq("store_id", storeId)
     .gte("created_at", inicio.toISOString());
 
@@ -287,7 +308,18 @@ export async function getVendasPorPagamento(
     .filter((o: any) => !STATUS_IGNORADOS.includes(o.status))
     .forEach((o: any) => {
       const bruto = o.metodo_pagamento ?? "outro";
-      const metodo = NOMES_METODO[bruto] ?? bruto;
+
+      // Um pedido pode ter mais de uma tentativa; vale a recebida.
+      const pagamentos = (o.payments ?? []) as any[];
+      const valendo =
+        pagamentos.find((p) => p.status === "recebido") ??
+        pagamentos[pagamentos.length - 1] ??
+        null;
+
+      const metodo =
+        (valendo?.cartao_tipo && NOMES_CARTAO[valendo.cartao_tipo]) ||
+        NOMES_METODO[bruto] ||
+        bruto;
       const atual = mapa.get(metodo) ?? { metodo, pedidos: 0, receita: 0 };
       atual.pedidos += 1;
       atual.receita += liquido(o);

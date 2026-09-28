@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   MessageCircle,
   CreditCard,
+  Landmark,
   QrCode,
   Loader2,
   Truck,
@@ -87,6 +88,29 @@ async function buscarCep(cep: string) {
   }
 }
 
+/** O que o cliente escolhe na tela. */
+type Metodo = "whatsapp" | "pix" | "credito" | "debito";
+
+/** Crédito e débito seguem o mesmo caminho de cobrança. */
+function ehCartao(m: Metodo) {
+  return m === "credito" || m === "debito";
+}
+
+/**
+ * Da escolha da tela para o que fica gravado no pedido.
+ * WhatsApp não é forma de pagamento — é combinar por fora, e por isso
+ * grava nulo.
+ */
+const METODO_NO_BANCO: Record<
+  Metodo,
+  "pix" | "cartao_credito" | "cartao_debito" | null
+> = {
+  whatsapp: null,
+  pix: "pix",
+  credito: "cartao_credito",
+  debito: "cartao_debito",
+};
+
 const inputCls =
   "w-full h-12 px-3.5 rounded-xl border border-[#e4e4e7] bg-white text-[15px] outline-none focus:border-[var(--store-primary)]";
 const labelCls = "block text-[12px] font-medium text-[#6b7280] mb-1";
@@ -104,12 +128,20 @@ export default function StoreCheckout() {
   const [telefone, setTelefone] = useState("");
   const [cpf, setCpf] = useState("");
   const [email, setEmail] = useState("");
-  const [metodo, setMetodo] = useState<"whatsapp" | "pix" | "cartao">(() => {
+  /**
+   * Crédito e débito são escolhas separadas na tela porque é assim que
+   * o brasileiro espera pagar. Na cobrança viram a MESMA coisa: a
+   * Stripe não distingue os dois na hora de cobrar — quem distingue é
+   * o BIN do cartão, lido depois. A escolha fica gravada no pedido; o
+   * que saiu de fato fica em payments.cartao_tipo.
+   *
+   * Começa pelo meio que a loja de fato oferece. Antes começava sempre
+   * no Pix, inclusive em loja sem Pix ativado — o cliente entrava num
+   * caminho que não existia e só descobria no fim.
+   */
+  const [metodo, setMetodo] = useState<Metodo>(() => {
     if (store?.modo_compra !== "pagamento") return "whatsapp";
-    // Começa pelo meio que a loja de fato oferece. Antes começava
-    // sempre no Pix, inclusive em loja sem Pix ativado — o cliente
-    // entrava num caminho que não existia e só descobria no fim.
-    if (store.aceita_cartao !== false) return "cartao";
+    if (store.aceita_cartao !== false) return "credito";
     if (store.aceita_pix) return "pix";
     return "whatsapp";
   });
@@ -161,15 +193,15 @@ export default function StoreCheckout() {
   useEffect(() => {
     if (!store) return;
     if (metodo === "pix" && !oferecePix) {
-      setMetodo(ofereceCartao ? "cartao" : "whatsapp");
-    } else if (metodo === "cartao" && !ofereceCartao) {
+      setMetodo(ofereceCartao ? "credito" : "whatsapp");
+    } else if (ehCartao(metodo) && !ofereceCartao) {
       setMetodo(oferecePix ? "pix" : "whatsapp");
     } else if (
       metodo === "whatsapp" &&
       !permiteWhatsapp &&
       ofereceAlgumPagamento
     ) {
-      setMetodo(ofereceCartao ? "cartao" : "pix");
+      setMetodo(ofereceCartao ? "credito" : "pix");
     }
   }, [
     store,
@@ -291,7 +323,7 @@ export default function StoreCheckout() {
           cor_selecionada: i.corSelecionada,
           tamanho_selecionado: i.tamanhoSelecionado,
         })),
-        metodoPagamento: metodo === "whatsapp" ? null : metodo,
+        metodoPagamento: METODO_NO_BANCO[metodo],
         cliente: { nome, telefone, cpf: cpfDigits, email: email || undefined },
         enderecoEntrega: { ...endereco, cep: cepDigits },
         frete: freteSelecionado
@@ -352,23 +384,11 @@ export default function StoreCheckout() {
     }
   }
 
-  /**
-   * Pagamento confirmado no formulário da Stripe.
-   *
-   * O status vai junto na URL para a tela de confirmação poder dizer
-   * a verdade: "aprovado" quando foi aprovado, "em processamento"
-   * quando ainda está liquidando. Antes ela não recebia nada e
-   * dizia sempre a mesma coisa.
-   */
-  function handlePagamentoConfirmado(statusPagamento: string | null) {
+  function handlePagamentoConfirmado() {
     clear();
-    const params = new URLSearchParams({
-      numero: String(orderNumero ?? ""),
-      metodo,
-    });
-    if (statusPagamento) params.set("status", statusPagamento);
-
-    navigate(`/loja/${store.slug}/pedido-confirmado?${params.toString()}`);
+    navigate(
+      `/loja/${store.slug}/pedido-confirmado?numero=${orderNumero}&metodo=${metodo}`,
+    );
   }
 
   return (
@@ -669,21 +689,38 @@ export default function StoreCheckout() {
                   </button>
                 )}
                 {ofereceCartao && (
-                  <button
-                    onClick={() => setMetodo("cartao")}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
-                      metodo === "cartao"
-                        ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
-                        : "border-[#e4e4e7]"
-                    }`}
-                  >
-                    <CreditCard size={20} className="text-[#374151]" />
-                    <div className="text-left">
-                      <p className="text-[13px] font-semibold text-[#111827]">
-                        Pagar com cartão
-                      </p>
-                    </div>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setMetodo("credito")}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                        metodo === "credito"
+                          ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
+                          : "border-[#e4e4e7]"
+                      }`}
+                    >
+                      <CreditCard size={20} className="text-[#374151]" />
+                      <div className="text-left">
+                        <p className="text-[13px] font-semibold text-[#111827]">
+                          Cartão de crédito
+                        </p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setMetodo("debito")}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                        metodo === "debito"
+                          ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
+                          : "border-[#e4e4e7]"
+                      }`}
+                    >
+                      <Landmark size={20} className="text-[#374151]" />
+                      <div className="text-left">
+                        <p className="text-[13px] font-semibold text-[#111827]">
+                          Cartão de débito
+                        </p>
+                      </div>
+                    </button>
+                  </>
                 )}
               </div>
             </div>

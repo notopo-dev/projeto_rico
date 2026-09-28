@@ -158,7 +158,19 @@ export interface FreteEscolhido {
 export interface CheckoutInput {
   storeId: string;
   itens: CartItemInput[];
-  metodoPagamento: "pix" | "cartao" | null;
+  /**
+   * O que o cliente ESCOLHEU no checkout.
+   *
+   * Crédito e débito são escolhas separadas na tela porque é assim
+   * que o brasileiro espera pagar — mas viram a MESMA cobrança na
+   * Stripe, que não distingue os dois na hora de cobrar. O que foi
+   * de fato usado é lido do cartão e gravado em payments.cartao_tipo.
+   */
+  metodoPagamento:
+    | "pix"
+    | "cartao_credito"
+    | "cartao_debito"
+    | null;
   cliente: {
     nome: string;
     telefone: string;

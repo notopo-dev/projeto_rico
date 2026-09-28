@@ -125,14 +125,52 @@ Deno.serve(async (req) => {
         const pi = event.data.object as Stripe.PaymentIntent;
         const orderId = pi.metadata?.order_id;
         const storeId = pi.metadata?.store_id ?? (await lojaDaConta());
+        const chargeId =
+          typeof pi.latest_charge === "string" ? pi.latest_charge : null;
+
+        // Crédito ou débito, bandeira e final do cartão.
+        //
+        // Nada disso é perguntado ao cliente: a Stripe identifica pelo
+        // BIN no momento da cobrança. Perguntar registraria o que ele
+        // DISSE — e erra muito, ainda mais com cartão múltiplo, que é
+        // crédito e débito no mesmo plástico.
+        //
+        // O evento do PaymentIntent traz só o ID da cobrança, então
+        // buscamos a cobrança para ler os detalhes. Na conta conectada,
+        // porque é lá que a cobrança vive.
+        let cartao: {
+          cartao_tipo?: string | null;
+          cartao_bandeira?: string | null;
+          cartao_final?: string | null;
+        } = {};
+
+        if (chargeId && contaConectada) {
+          try {
+            const charge = await stripe.charges.retrieve(chargeId, {
+              stripeAccount: contaConectada,
+            });
+            const c = charge.payment_method_details?.card;
+            if (c) {
+              cartao = {
+                cartao_tipo: c.funding ?? null,
+                cartao_bandeira: c.brand ?? null,
+                cartao_final: c.last4 ?? null,
+              };
+            }
+          } catch (e) {
+            // Detalhe do cartão é informativo: se falhar, o pagamento
+            // continua sendo marcado como recebido.
+            console.error("Não foi possível ler os dados do cartão:", e);
+          }
+        }
 
         await admin
           .from("payments")
           .update({
             status: "recebido",
-            stripe_charge_id:
-              typeof pi.latest_charge === "string" ? pi.latest_charge : null,
+            stripe_charge_id: chargeId,
             stripe_account_id: contaConectada ?? null,
+            ...cartao,
           })
           .eq("stripe_payment_intent_id", pi.id);
 

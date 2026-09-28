@@ -76,6 +76,14 @@ export interface Pedido {
 
   observacoes_internas: string | null;
 
+  /**
+   * Como o cartão foi de fato usado, dito pela Stripe — não perguntado
+   * ao cliente. Nulo em pedido sem cartão ou anterior a este registro.
+   */
+  cartao_tipo: "credit" | "debit" | "prepaid" | "unknown" | null;
+  cartao_bandeira: string | null;
+  cartao_final: string | null;
+
   itens: ItemPedido[];
 }
 
@@ -98,9 +106,93 @@ export const ROTULO_CURTO: Record<StatusPedido, string> = {
   devolvido: "Devolvido",
 };
 
+/** Como a Stripe nomeia o tipo de cartão, em português. */
+export const ROTULO_CARTAO: Record<string, string> = {
+  credit: "Crédito",
+  debit: "Débito",
+  prepaid: "Pré-pago",
+  unknown: "Cartão",
+};
+
+/** Bandeiras com grafia que o lojista reconhece. */
+export const ROTULO_BANDEIRA: Record<string, string> = {
+  visa: "Visa",
+  mastercard: "Mastercard",
+  amex: "American Express",
+  elo: "Elo",
+  hipercard: "Hipercard",
+  diners: "Diners",
+  discover: "Discover",
+  jcb: "JCB",
+  unionpay: "UnionPay",
+  unknown: "Bandeira não identificada",
+};
+
+/**
+ * Como descrever o pagamento numa linha só.
+ * Ex.: "Crédito · Mastercard ••••4178"
+ */
+export function descreverPagamento(p: {
+  metodo_pagamento: string | null;
+  cartao_tipo: string | null;
+  cartao_bandeira: string | null;
+  cartao_final: string | null;
+}): string {
+  if (!p.cartao_tipo && !p.cartao_bandeira) {
+    return p.metodo_pagamento
+      ? (ROTULO_PAGAMENTO[p.metodo_pagamento] ?? p.metodo_pagamento)
+      : "Não informado";
+  }
+
+  const partes: string[] = [];
+  if (p.cartao_tipo) partes.push(ROTULO_CARTAO[p.cartao_tipo] ?? "Cartão");
+
+  const bandeira = p.cartao_bandeira
+    ? (ROTULO_BANDEIRA[p.cartao_bandeira] ?? p.cartao_bandeira)
+    : null;
+
+  if (bandeira && p.cartao_final) partes.push(`${bandeira} ••••${p.cartao_final}`);
+  else if (bandeira) partes.push(bandeira);
+  else if (p.cartao_final) partes.push(`••••${p.cartao_final}`);
+
+  return partes.join(" · ");
+}
+
+/**
+ * O cliente escolheu uma coisa e o cartão era outra?
+ *
+ * Acontece de verdade, e não é erro de ninguém: cartão múltiplo é
+ * crédito e débito no mesmo plástico, e a maquininha da Stripe decide
+ * pelo BIN. Vale mostrar no pedido para o lojista não achar que o
+ * relatório está errado.
+ */
+export function divergenciaCartao(p: {
+  metodo_pagamento: string | null;
+  cartao_tipo: string | null;
+}): string | null {
+  if (!p.cartao_tipo || !p.metodo_pagamento) return null;
+
+  const escolheu =
+    p.metodo_pagamento === "cartao_credito"
+      ? "credit"
+      : p.metodo_pagamento === "cartao_debito"
+        ? "debit"
+        : null;
+
+  if (!escolheu || escolheu === p.cartao_tipo) return null;
+
+  return `O cliente escolheu ${
+    escolheu === "credit" ? "crédito" : "débito"
+  }, mas o cartão foi processado como ${
+    p.cartao_tipo === "credit" ? "crédito" : "débito"
+  }.`;
+}
+
 export const ROTULO_PAGAMENTO: Record<string, string> = {
   pix: "Pix",
   cartao: "Cartão",
+  cartao_credito: "Cartão de crédito",
+  cartao_debito: "Cartão de débito",
   cartao_stripe: "Cartão",
   card: "Cartão",
   boleto: "Boleto",
@@ -139,6 +231,7 @@ const CAMPOS = `
   valor_reembolsado, reembolsado_em, motivo_reembolso,
   observacoes_internas,
   customers(nome, telefone, email, cpf),
+  payments(cartao_tipo, cartao_bandeira, cartao_final, status, created_at),
   order_items(
     id, nome_produto, quantidade, preco_unitario, subtotal,
     cor_selecionada, tamanho_selecionado
@@ -176,6 +269,22 @@ function montar(o: any): Pedido {
     motivo_reembolso: o.motivo_reembolso ?? null,
 
     observacoes_internas: o.observacoes_internas ?? null,
+
+    ...(() => {
+      // Um pedido pode ter mais de uma tentativa de cobrança; a que
+      // vale é a que foi recebida. Sem nenhuma recebida, fica a última.
+      const pagamentos = (o.payments ?? []) as any[];
+      const valendo =
+        pagamentos.find((p) => p.status === "recebido") ??
+        pagamentos[pagamentos.length - 1] ??
+        null;
+
+      return {
+        cartao_tipo: valendo?.cartao_tipo ?? null,
+        cartao_bandeira: valendo?.cartao_bandeira ?? null,
+        cartao_final: valendo?.cartao_final ?? null,
+      };
+    })(),
 
     itens: (o.order_items ?? []).map((i: any) => ({
       id: i.id,
