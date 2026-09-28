@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
@@ -9,6 +9,8 @@ import {
   Loader2,
   Truck,
   UserCheck,
+  Store as StoreIcon,
+  Home,
 } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import { useCart } from "../context/CartContext";
@@ -117,6 +119,31 @@ const METODO_NO_BANCO: Record<
   debito: "cartao_debito",
 };
 
+/**
+ * Uma opção de entrega já pronta para a tela, venha ela de onde vier:
+ * da tabela das transportadoras, do valor fixo da loja, do frete
+ * grátis ou da retirada no balcão.
+ *
+ * Antes a tela falava direto em `OpcaoFrete` do Melhor Envio — e por
+ * isso quem não tinha conta lá simplesmente não tinha frete. Este tipo
+ * é o que permite as outras formas existirem sem espalhar "se for
+ * Melhor Envio faz assim, senão assado" por toda a tela.
+ */
+interface OpcaoEntrega {
+  chave: string;
+  nome: string;
+  transportadora: string;
+  preco: number;
+  prazoDias: number | null;
+  /** Só a tabela das transportadoras tem: é o que compra a etiqueta. */
+  servicoId: number | null;
+}
+
+function textoPrazo(dias: number | null) {
+  if (dias === null || dias <= 0) return null;
+  return `Até ${dias} dia${dias !== 1 ? "s" : ""} úte${dias !== 1 ? "is" : "il"}`;
+}
+
 const inputCls =
   "w-full h-12 px-3.5 rounded-xl border border-[#e4e4e7] bg-white text-[15px] outline-none focus:border-[var(--store-primary)]";
 const labelCls = "block text-[12px] font-medium text-[#6b7280] mb-1";
@@ -175,13 +202,16 @@ export default function StoreCheckout() {
     uf: "",
   });
   const [buscandoFrete, setBuscandoFrete] = useState(false);
-  const [opcoesFrete, setOpcoesFrete] = useState<OpcaoFrete[]>([]);
-  const [freteSelecionado, setFreteSelecionado] = useState<OpcaoFrete | null>(
-    null,
-  );
+  /** Cru, como veio do Melhor Envio. Vazio nos outros modos. */
+  const [opcoesME, setOpcoesME] = useState<OpcaoFrete[]>([]);
+  /** Guarda a ESCOLHA, não o objeto: a lista é recalculada a cada
+      mudança do carrinho, e um objeto guardado ficaria velho. */
+  const [chaveFrete, setChaveFrete] = useState<string | null>(null);
   const [erroFrete, setErroFrete] = useState<string | null>(null);
-  // Loja sem Melhor Envio configurado: frete é combinado depois
-  const [freteACombinar, setFreteACombinar] = useState(false);
+  /** A tabela das transportadoras não respondeu ou não está ligada. */
+  const [freteIndisponivel, setFreteIndisponivel] = useState(false);
+  /** Receber em casa ou buscar no balcão. */
+  const [entrega, setEntrega] = useState<"entrega" | "retirada">("entrega");
 
   /**
    * O que ESTA loja oferece.
@@ -275,42 +305,140 @@ export default function StoreCheckout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cepARecalcular]);
 
+  /**
+   * As opções de entrega desta loja, para este carrinho.
+   *
+   * Calculado a partir das regras, e não guardado em estado: o
+   * carrinho muda de valor (e o frete grátis liga e desliga junto), e
+   * uma lista guardada ficaria mostrando o preço de antes.
+   */
+  const opcoesEntrega = useMemo<OpcaoEntrega[]>(() => {
+    if (!store || entrega === "retirada") return [];
+
+    const gratis =
+      store.frete_gratis_acima !== null && total >= store.frete_gratis_acima;
+
+    if (store.frete_modo === "melhor_envio") {
+      // Mesmo de graça a transportadora continua sendo escolhida: é o
+      // serviço escolhido que compra a etiqueta depois. Quem paga passa
+      // a ser a loja.
+      return opcoesME.map((op) => ({
+        chave: `me-${op.id}`,
+        nome: op.nome,
+        transportadora: op.transportadora,
+        preco: gratis ? 0 : op.preco,
+        prazoDias: op.prazo_dias,
+        servicoId: op.id,
+      }));
+    }
+
+    if (gratis) {
+      return [
+        {
+          chave: "gratis",
+          nome: "Frete grátis",
+          transportadora: "",
+          preco: 0,
+          prazoDias: store.frete_fixo_prazo_dias,
+          servicoId: null,
+        },
+      ];
+    }
+
+    if (store.frete_modo === "fixo" && store.frete_fixo !== null) {
+      return [
+        {
+          chave: "fixo",
+          nome: store.frete_fixo_nome?.trim() || "Entrega",
+          transportadora: "",
+          preco: store.frete_fixo,
+          prazoDias: store.frete_fixo_prazo_dias,
+          servicoId: null,
+        },
+      ];
+    }
+
+    return [];
+  }, [store, entrega, total, opcoesME]);
+
+  const freteSelecionado =
+    opcoesEntrega.find((o) => o.chave === chaveFrete) ?? null;
+
+  /* A escolha some quando a lista muda: escolhe a mais barata. */
+  useEffect(() => {
+    if (opcoesEntrega.length === 0) {
+      if (chaveFrete !== null) setChaveFrete(null);
+      return;
+    }
+    if (!opcoesEntrega.some((o) => o.chave === chaveFrete)) {
+      setChaveFrete(opcoesEntrega[0].chave);
+    }
+  }, [opcoesEntrega, chaveFrete]);
+
   if (!store) return null;
 
-  const valorFrete = freteSelecionado?.preco ?? 0;
+  /**
+   * Pedido fecha sem frete, para acertar depois. Acontece quando a
+   * loja escolheu esse modo, e também quando ela usa transportadora
+   * mas a cotação não veio — melhor deixar comprar e combinar do que
+   * perder a venda numa tela travada.
+   */
+  const freteACombinar =
+    entrega === "entrega" &&
+    opcoesEntrega.length === 0 &&
+    (store.frete_modo === "combinar" || freteIndisponivel);
+
+  const valorFrete = entrega === "retirada" ? 0 : (freteSelecionado?.preco ?? 0);
   const totalComFrete = total + valorFrete;
 
   async function handleCepChange(valor: string) {
     const formatado = formatarCep(valor);
     setEndereco((e) => ({ ...e, cep: formatado }));
-    setOpcoesFrete([]);
-    setFreteSelecionado(null);
+    setOpcoesME([]);
     setErroFrete(null);
-    setFreteACombinar(false);
+    setFreteIndisponivel(false);
 
     const digitos = formatado.replace(/\D/g, "");
     if (digitos.length !== 8 || !store) return;
+
+    // Só a tabela das transportadoras depende do CEP. Valor fixo,
+    // frete grátis e retirada já estão decididos — nem vale a chamada.
+    const usaTransportadora = store.frete_modo === "melhor_envio";
+
+    // Bandeira local: `erroFrete` aqui dentro ainda é o valor de antes
+    // do setState, então ler o estado daria a resposta errada.
+    let houveErro = false;
 
     setBuscandoFrete(true);
     try {
       const [dadosCep, opcoes] = await Promise.all([
         buscarCep(digitos),
-        calcularFrete(
+        !usaTransportadora
+          ? Promise.resolve([] as OpcaoFrete[])
+          : calcularFrete(
           store.id,
           digitos,
           items.map((i) => ({
             product_id: i.productId,
             quantidade: i.quantidade,
           })),
-        ).catch((err: Error) => {
-          const msg = err.message ?? "";
-          if (msg.includes("não configurou") || msg.includes("CEP de origem")) {
-            setFreteACombinar(true);
-          } else {
-            setErroFrete(msg || "Não foi possível calcular o frete.");
-          }
-          return [] as OpcaoFrete[];
-        }),
+            ).catch((err: Error) => {
+              const msg = err.message ?? "";
+              // Loja que ainda não ligou a transportadora não é erro do
+              // cliente: vira "a combinar" em silêncio. Já falta de
+              // medida no produto o cliente precisa ver, senão fica
+              // esperando uma lista que nunca vem.
+              if (
+                msg.includes("não configurou") ||
+                msg.includes("CEP de origem")
+              ) {
+                setFreteIndisponivel(true);
+              } else {
+                houveErro = true;
+                setErroFrete(msg || "Não foi possível calcular o frete.");
+              }
+              return [] as OpcaoFrete[];
+            }),
       ]);
 
       if (dadosCep) {
@@ -323,8 +451,10 @@ export default function StoreCheckout() {
         }));
       }
 
-      setOpcoesFrete(opcoes);
-      if (opcoes.length > 0) setFreteSelecionado(opcoes[0]);
+      setOpcoesME(opcoes);
+      if (usaTransportadora && opcoes.length === 0 && !houveErro) {
+        setFreteIndisponivel(true);
+      }
     } finally {
       setBuscandoFrete(false);
     }
@@ -353,25 +483,30 @@ export default function StoreCheckout() {
       return;
     }
 
+    // Quem vai buscar no balcão não tem endereço de entrega para dar,
+    // nem frete para escolher.
     const cepDigits = endereco.cep.replace(/\D/g, "");
-    if (
-      cepDigits.length !== 8 ||
-      !endereco.logradouro.trim() ||
-      !endereco.numero.trim() ||
-      !endereco.bairro.trim() ||
-      !endereco.cidade.trim() ||
-      !endereco.uf
-    ) {
-      setErro("Preencha o endereço de entrega completo.");
-      return;
-    }
-    if (!freteSelecionado && !freteACombinar) {
-      setErro(
-        buscandoFrete
-          ? "Aguarde o cálculo do frete."
-          : "Escolha uma opção de frete.",
-      );
-      return;
+
+    if (entrega === "entrega") {
+      if (
+        cepDigits.length !== 8 ||
+        !endereco.logradouro.trim() ||
+        !endereco.numero.trim() ||
+        !endereco.bairro.trim() ||
+        !endereco.cidade.trim() ||
+        !endereco.uf
+      ) {
+        setErro("Preencha o endereço de entrega completo.");
+        return;
+      }
+      if (!freteSelecionado && !freteACombinar) {
+        setErro(
+          buscandoFrete
+            ? "Aguarde o cálculo do frete."
+            : "Escolha uma opção de entrega.",
+        );
+        return;
+      }
     }
 
     setEnviando(true);
@@ -388,16 +523,30 @@ export default function StoreCheckout() {
         })),
         metodoPagamento: METODO_NO_BANCO[metodo],
         cliente: { nome, telefone, cpf: cpfDigits, email: email || undefined },
-        enderecoEntrega: { ...endereco, cep: cepDigits },
-        frete: freteSelecionado
-          ? {
-              servicoId: freteSelecionado.id,
-              nome: freteSelecionado.nome,
-              transportadora: freteSelecionado.transportadora,
-              preco: freteSelecionado.preco,
-              prazoDias: freteSelecionado.prazo_dias,
-            }
-          : null,
+        enderecoEntrega:
+          entrega === "retirada" ? null : { ...endereco, cep: cepDigits },
+        frete:
+          entrega === "retirada"
+            ? {
+                // Sem serviço de transportadora: é isso que faz a
+                // geração de etiqueta recusar com uma mensagem clara,
+                // em vez de tentar comprar frete de um pedido que o
+                // cliente vem buscar a pé.
+                servicoId: null,
+                nome: "Retirada na loja",
+                transportadora: "",
+                preco: 0,
+                prazoDias: null,
+              }
+            : freteSelecionado
+              ? {
+                  servicoId: freteSelecionado.servicoId,
+                  nome: freteSelecionado.nome,
+                  transportadora: freteSelecionado.transportadora,
+                  preco: freteSelecionado.preco,
+                  prazoDias: freteSelecionado.prazoDias,
+                }
+              : null,
       });
 
       // Pedido aceito: guarda no aparelho para a próxima compra vir
@@ -437,12 +586,20 @@ export default function StoreCheckout() {
         const mensagem = encodeURIComponent(
           `Olá! Quero fazer um pedido na ${store.nome} (#${order.numero}):\n\n${linhas}\n\n` +
             `Subtotal: ${formatBRL(total)}\n` +
-            (freteSelecionado
-              ? `Frete (${freteSelecionado.transportadora} ${freteSelecionado.nome}, ${freteSelecionado.prazo_dias} dias úteis): ${formatBRL(valorFrete)}\n`
-              : `Frete: a combinar\n`) +
+            (entrega === "retirada"
+              ? `Retirada na loja\n`
+              : freteSelecionado
+                ? `Frete (${[freteSelecionado.transportadora, freteSelecionado.nome].filter(Boolean).join(" ")}${
+                    freteSelecionado.prazoDias
+                      ? `, ${freteSelecionado.prazoDias} dias úteis`
+                      : ""
+                  }): ${formatBRL(valorFrete)}\n`
+                : `Frete: a combinar\n`) +
             `*Total: ${formatBRL(totalComFrete)}*\n\n` +
             `Nome: ${nome}\n` +
-            `Entrega: ${endereco.logradouro}, ${endereco.numero}${endereco.complemento ? ` - ${endereco.complemento}` : ""}, ${endereco.bairro}, ${endereco.cidade}/${endereco.uf} - CEP ${endereco.cep}`,
+            (entrega === "retirada"
+              ? `O cliente vai retirar na loja.`
+              : `Entrega: ${endereco.logradouro}, ${endereco.numero}${endereco.complemento ? ` - ${endereco.complemento}` : ""}, ${endereco.bairro}, ${endereco.cidade}/${endereco.uf} - CEP ${endereco.cep}`),
         );
         const numeroLoja = store.whatsapp ? onlyDigits(store.whatsapp) : "";
         clear();
@@ -481,9 +638,9 @@ export default function StoreCheckout() {
       cidade: "",
       uf: "",
     });
-    setOpcoesFrete([]);
-    setFreteSelecionado(null);
-    setFreteACombinar(false);
+    setOpcoesME([]);
+    setChaveFrete(null);
+    setFreteIndisponivel(false);
     setErro(null);
   }
 
@@ -611,10 +768,69 @@ export default function StoreCheckout() {
           {/* Entrega */}
           <div className="bg-white rounded-2xl border border-black/5 p-4">
             <div className="flex items-center gap-1.5 mb-3">
-              <Truck size={15} className="text-[#374151]" />
+              {entrega === "retirada" ? (
+                <StoreIcon size={15} className="text-[#374151]" />
+              ) : (
+                <Truck size={15} className="text-[#374151]" />
+              )}
               <h2 className="text-[13px] font-bold text-[#111827]">Entrega</h2>
             </div>
             <div className="space-y-3">
+              {/* Receber em casa ou buscar no balcão. Só aparece se a
+                  loja oferecer retirada — senão é uma escolha de um
+                  item só, que não é escolha. */}
+              {store.retirada_na_loja && (
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      ["entrega", "Receber em casa", Home],
+                      ["retirada", "Retirar na loja", StoreIcon],
+                    ] as ["entrega" | "retirada", string, typeof Home][]
+                  ).map(([id, rotulo, Icone]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setEntrega(id)}
+                      aria-pressed={entrega === id}
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-colors ${
+                        entrega === id
+                          ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
+                          : "border-[#e4e4e7]"
+                      }`}
+                    >
+                      <Icone
+                        size={17}
+                        className={
+                          entrega === id
+                            ? "text-[var(--store-primary)]"
+                            : "text-[#9ca3af]"
+                        }
+                      />
+                      <span className="text-[12.5px] font-semibold text-[#111827] text-center leading-snug">
+                        {rotulo}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {entrega === "retirada" && (
+                <div className="rounded-xl border border-[#e4e4e7] bg-[#fafafa] px-3.5 py-3">
+                  <p className="text-[12.5px] font-semibold text-[#111827]">
+                    Você retira o pedido na loja
+                  </p>
+                  <p className="text-[12px] text-[#6b7280] leading-snug mt-1 whitespace-pre-line">
+                    {store.retirada_instrucoes?.trim() ||
+                      "A loja entra em contato com o endereço e o horário para você buscar."}
+                  </p>
+                  <p className="text-[11.5px] text-[#9ca3af] mt-1.5">
+                    Sem frete e sem endereço de entrega.
+                  </p>
+                </div>
+              )}
+
+              {entrega === "entrega" && (
+                <>
               <div>
                 <label className={labelCls}>CEP</label>
                 <div className="relative">
@@ -721,38 +937,53 @@ export default function StoreCheckout() {
                     </div>
                   </div>
 
-                  {/* Opções de frete */}
-                  {opcoesFrete.length > 0 && (
+                  {/* Opções de entrega */}
+                  {opcoesEntrega.length > 0 && (
                     <div className="pt-1 space-y-2">
-                      <p className="text-[12px] font-medium text-[#6b7280]">
-                        Escolha o frete
-                      </p>
-                      {opcoesFrete.map((op) => (
-                        <button
-                          key={op.id}
-                          type="button"
-                          onClick={() => setFreteSelecionado(op)}
-                          className={`w-full flex items-center justify-between gap-3 p-3 rounded-xl border-2 text-left transition-colors ${
-                            freteSelecionado?.id === op.id
-                              ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
-                              : "border-[#e4e4e7]"
-                          }`}
-                        >
-                          <div>
-                            <p className="text-[13px] font-semibold text-[#111827]">
-                              {op.transportadora} {op.nome}
-                            </p>
-                            <p className="text-[11px] text-[#9ca3af]">
-                              Até {op.prazo_dias} dia
-                              {op.prazo_dias !== 1 ? "s" : ""} úte
-                              {op.prazo_dias !== 1 ? "is" : "il"}
-                            </p>
-                          </div>
-                          <span className="text-[14px] font-bold text-[#111827] shrink-0">
-                            {formatBRL(op.preco)}
-                          </span>
-                        </button>
-                      ))}
+                      {opcoesEntrega.length > 1 && (
+                        <p className="text-[12px] font-medium text-[#6b7280]">
+                          Escolha o frete
+                        </p>
+                      )}
+                      {opcoesEntrega.map((op) => {
+                        const prazo = textoPrazo(op.prazoDias);
+                        const escolhida = op.chave === chaveFrete;
+                        return (
+                          <button
+                            key={op.chave}
+                            type="button"
+                            onClick={() => setChaveFrete(op.chave)}
+                            aria-pressed={escolhida}
+                            className={`w-full flex items-center justify-between gap-3 p-3 rounded-xl border-2 text-left transition-colors ${
+                              escolhida
+                                ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
+                                : "border-[#e4e4e7]"
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <p className="text-[13px] font-semibold text-[#111827]">
+                                {[op.transportadora, op.nome]
+                                  .filter(Boolean)
+                                  .join(" ")}
+                              </p>
+                              {prazo && (
+                                <p className="text-[11px] text-[#9ca3af]">
+                                  {prazo}
+                                </p>
+                              )}
+                            </div>
+                            <span
+                              className={`text-[14px] font-bold shrink-0 ${
+                                op.preco === 0
+                                  ? "text-[#15803d]"
+                                  : "text-[#111827]"
+                              }`}
+                            >
+                              {op.preco === 0 ? "Grátis" : formatBRL(op.preco)}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -767,6 +998,8 @@ export default function StoreCheckout() {
                       {erroFrete}
                     </p>
                   )}
+                </>
+              )}
                 </>
               )}
             </div>
@@ -893,13 +1126,26 @@ export default function StoreCheckout() {
                 <span className="text-[#111827]">{formatBRL(total)}</span>
               </div>
               <div className="flex items-center justify-between text-[13px]">
-                <span className="text-[#6b7280]">Frete</span>
-                <span className="text-[#111827]">
-                  {freteSelecionado
-                    ? formatBRL(valorFrete)
-                    : freteACombinar
-                      ? "A combinar"
-                      : "—"}
+                <span className="text-[#6b7280]">
+                  {entrega === "retirada" ? "Retirada" : "Frete"}
+                </span>
+                <span
+                  className={
+                    valorFrete === 0 &&
+                    (entrega === "retirada" || freteSelecionado)
+                      ? "text-[#15803d] font-semibold"
+                      : "text-[#111827]"
+                  }
+                >
+                  {entrega === "retirada"
+                    ? "Grátis"
+                    : freteSelecionado
+                      ? valorFrete === 0
+                        ? "Grátis"
+                        : formatBRL(valorFrete)
+                      : freteACombinar
+                        ? "A combinar"
+                        : "—"}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-1.5">

@@ -48,6 +48,16 @@ export interface Store {
   plano_renovacao: string | null;
   // Endereço de origem (de onde a encomenda é postada)
   cep_origem: string | null;
+
+  /* Regras de frete — 14_frete.sql */
+  frete_modo: "melhor_envio" | "fixo" | "combinar";
+  frete_fixo: number | null;
+  frete_fixo_prazo_dias: number | null;
+  frete_fixo_nome: string | null;
+  frete_gratis_acima: number | null;
+  retirada_na_loja: boolean;
+  retirada_instrucoes: string | null;
+
   endereco_logradouro: string | null;
   endereco_numero: string | null;
   endereco_complemento: string | null;

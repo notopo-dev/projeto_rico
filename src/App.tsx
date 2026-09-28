@@ -10,6 +10,7 @@ import Categorias from "./pages/Categorias";
 import Orders from "./pages/Orders";
 import Customers from "./pages/Customers";
 import Estoque from "./pages/Estoque";
+import Frete from "./pages/Frete";
 import Vendas from "./pages/Vendas";
 import Pagamentos from "./pages/Pagamentos";
 import Recebimentos from "./pages/Recebimentos";
@@ -28,6 +29,7 @@ const pageConfig: Record<Page, { title: string; component: ReactNode }> = {
   pedidos: { title: "Pedidos", component: <Orders /> },
   clientes: { title: "Clientes", component: <Customers /> },
   estoque: { title: "Estoque", component: <Estoque /> },
+  frete: { title: "Frete", component: <Frete /> },
   vendas: { title: "Vendas", component: <Vendas /> },
   pagamentos: { title: "Pagamentos", component: <Pagamentos /> },
   recebimentos: { title: "Recebimentos", component: <Recebimentos /> },

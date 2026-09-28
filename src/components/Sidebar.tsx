@@ -13,6 +13,7 @@ import {
   Settings,
   ChevronDown,
   Landmark,
+  Truck,
   X,
 } from "lucide-react";
 
@@ -27,6 +28,7 @@ export type Page =
   | "pedidos"
   | "clientes"
   | "estoque"
+  | "frete"
   | "vendas"
   | "pagamentos"
   | "whatsapp"
@@ -88,6 +90,11 @@ const groups: {
         id: "estoque",
         label: "Estoque",
         icon: BarChart2,
+      },
+      {
+        id: "frete",
+        label: "Frete",
+        icon: Truck,
       },
     ],
   },

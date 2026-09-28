@@ -10,14 +10,21 @@ export interface NotificacoesSettings {
   notif_marketing: boolean;
 }
 
-export interface IntegracoesSettings {
-  melhor_envio_token: string | null;
-  correios_login: string | null;
-  pix_chave: string | null;
-  mercado_pago_token: string | null;
-}
-
-export type StoreSettings = NotificacoesSettings & IntegracoesSettings;
+/**
+ * As integrações saíram daqui.
+ *
+ * O Melhor Envio virou tela própria (Frete), junto com as regras de
+ * frete e o botão de testar a conexão — token sem ambiente e sem teste
+ * era exatamente o que fazia o lojista achar que estava configurado
+ * quando não estava.
+ *
+ * Correios (SIGEP), chave Pix e token do Mercado Pago foram embora
+ * porque nenhuma linha do sistema lia esses campos: eram três caixas
+ * de texto que gravavam no banco e não faziam nada. A chave Pix ainda
+ * dava a entender que o Pix da loja saía dali, quando o Pix é da
+ * Stripe, configurado em Recebimentos.
+ */
+export type StoreSettings = NotificacoesSettings;
 
 /**
  * Busca as configurações da loja. A linha em store_settings é
@@ -30,7 +37,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
   const { data, error } = await supabase
     .from("store_settings")
     .select(
-      "notif_novo_pedido, notif_pedido_cancelado, notif_estoque_minimo, notif_novo_cliente, notif_relatorio_semanal, notif_marketing, melhor_envio_token, correios_login, pix_chave, mercado_pago_token"
+      "notif_novo_pedido, notif_pedido_cancelado, notif_estoque_minimo, notif_novo_cliente, notif_relatorio_semanal, notif_marketing"
     )
     .eq("store_id", storeId)
     .maybeSingle();
@@ -43,7 +50,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
       .from("store_settings")
       .insert({ store_id: storeId })
       .select(
-        "notif_novo_pedido, notif_pedido_cancelado, notif_estoque_minimo, notif_novo_cliente, notif_relatorio_semanal, notif_marketing, melhor_envio_token, correios_login, pix_chave, mercado_pago_token"
+        "notif_novo_pedido, notif_pedido_cancelado, notif_estoque_minimo, notif_novo_cliente, notif_relatorio_semanal, notif_marketing"
       )
       .single();
 
@@ -62,24 +69,6 @@ export async function updateNotificacoes(
   const { error } = await supabase
     .from("store_settings")
     .update(input)
-    .eq("store_id", storeId);
-
-  if (error) throw error;
-}
-
-export async function updateIntegracoes(
-  input: IntegracoesSettings
-): Promise<void> {
-  const storeId = await getCurrentStoreId();
-
-  const { error } = await supabase
-    .from("store_settings")
-    .update({
-      melhor_envio_token: input.melhor_envio_token || null,
-      correios_login: input.correios_login || null,
-      pix_chave: input.pix_chave || null,
-      mercado_pago_token: input.mercado_pago_token || null,
-    })
     .eq("store_id", storeId);
 
   if (error) throw error;

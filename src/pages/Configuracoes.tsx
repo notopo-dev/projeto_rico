@@ -19,20 +19,18 @@ import {
 import {
   getStoreSettings,
   updateNotificacoes,
-  updateIntegracoes,
   getDadosConta,
   updateNomeConta,
   alterarSenha,
   alterarEmail,
 } from "../lib/settingsApi";
 
-type Tab = "conta" | "loja" | "notificacoes" | "integracoes";
+type Tab = "conta" | "loja" | "notificacoes";
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "conta", label: "Conta" },
   { id: "loja", label: "Aparência" },
   { id: "notificacoes", label: "Notificações" },
-  { id: "integracoes", label: "Integrações" },
 ];
 
 function SaveButton({
@@ -313,22 +311,14 @@ export default function Configuracoes() {
     notif_relatorio_semanal: false,
     notif_marketing: false,
   });
-  const [integ, setInteg] = useState({
-    melhor_envio_token: "",
-    correios_login: "",
-    pix_chave: "",
-    mercado_pago_token: "",
-  });
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [erroSettings, setErroSettings] = useState<string | null>(null);
 
   const [savingNotif, setSavingNotif] = useState(false);
   const [savedNotif, setSavedNotif] = useState(false);
-  const [savingInteg, setSavingInteg] = useState(false);
-  const [savedInteg, setSavedInteg] = useState(false);
 
   useEffect(() => {
-    if (tab !== "notificacoes" && tab !== "integracoes") return;
+    if (tab !== "notificacoes") return;
     let mounted = true;
     setLoadingSettings(true);
     setErroSettings(null);
@@ -342,12 +332,6 @@ export default function Configuracoes() {
           notif_novo_cliente: s.notif_novo_cliente,
           notif_relatorio_semanal: s.notif_relatorio_semanal,
           notif_marketing: s.notif_marketing,
-        });
-        setInteg({
-          melhor_envio_token: s.melhor_envio_token ?? "",
-          correios_login: s.correios_login ?? "",
-          pix_chave: s.pix_chave ?? "",
-          mercado_pago_token: s.mercado_pago_token ?? "",
         });
       })
       .catch((err) => {
@@ -372,20 +356,6 @@ export default function Configuracoes() {
       setErroSettings(err instanceof Error ? err.message : "Erro ao salvar notificações.");
     } finally {
       setSavingNotif(false);
-    }
-  }
-
-  async function handleSaveInteg() {
-    setErroSettings(null);
-    setSavingInteg(true);
-    try {
-      await updateIntegracoes(integ);
-      setSavedInteg(true);
-      setTimeout(() => setSavedInteg(false), 2500);
-    } catch (err) {
-      setErroSettings(err instanceof Error ? err.message : "Erro ao salvar integrações.");
-    } finally {
-      setSavingInteg(false);
     }
   }
 
@@ -750,66 +720,6 @@ export default function Configuracoes() {
         </div>
       )}
 
-      {/* ======================= INTEGRAÇÕES ======================= */}
-      {tab === "integracoes" && (
-        <div className="space-y-4">
-          {loadingSettings ? (
-            <div className="flex items-center gap-2 text-[13px] text-[#6b7280] py-8 justify-center">
-              <Loader2 size={16} className="animate-spin" />
-              Carregando...
-            </div>
-          ) : (
-            <>
-              <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
-                <SectionHeader title="Frete" />
-                <div className="px-4 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field
-                    label="Token Melhor Envio"
-                    value={integ.melhor_envio_token}
-                    onChange={(v) => setInteg((i) => ({ ...i, melhor_envio_token: v }))}
-                    type="password"
-                    placeholder="Token de acesso"
-                  />
-                  <Field
-                    label="Login Correios (SIGEP)"
-                    value={integ.correios_login}
-                    onChange={(v) => setInteg((i) => ({ ...i, correios_login: v }))}
-                    placeholder="CNPJ ou login"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
-                <SectionHeader
-                  title="Outros meios de pagamento"
-                  description="Configurações adicionais, se sua loja também usar outros provedores."
-                />
-                <div className="px-4 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field
-                    label="Chave Pix"
-                    value={integ.pix_chave}
-                    onChange={(v) => setInteg((i) => ({ ...i, pix_chave: v }))}
-                    placeholder="CPF, CNPJ, e-mail ou telefone"
-                  />
-                  <Field
-                    label="Token Mercado Pago"
-                    value={integ.mercado_pago_token}
-                    onChange={(v) => setInteg((i) => ({ ...i, mercado_pago_token: v }))}
-                    type="password"
-                    placeholder="Access token"
-                  />
-                </div>
-              </div>
-
-              {erroSettings && <Mensagem tipo="erro" texto={erroSettings} />}
-
-              <div className="flex justify-end">
-                <SaveButton onSave={handleSaveInteg} saving={savingInteg} saved={savedInteg} />
-              </div>
-            </>
-          )}
-        </div>
-      )}
     </div>
   );
 }

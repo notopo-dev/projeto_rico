@@ -15,6 +15,21 @@ export interface PublicStore {
   politica_frete: string | null;
   modo_compra: "whatsapp" | "pagamento" | "ambos";
   ativo: boolean;
+
+  /* Meios de pagamento que a loja oferece (06_formas_pagamento.sql). */
+  aceita_cartao?: boolean;
+  aceita_pix?: boolean;
+
+  /* Regras de frete (14_frete.sql).
+     Ficam em `stores` justamente para a loja pública poder lê-las sem
+     login — não são segredo, é preço de entrega. */
+  frete_modo: "melhor_envio" | "fixo" | "combinar";
+  frete_fixo: number | null;
+  frete_fixo_prazo_dias: number | null;
+  frete_fixo_nome: string | null;
+  frete_gratis_acima: number | null;
+  retirada_na_loja: boolean;
+  retirada_instrucoes: string | null;
 }
 
 export interface PublicCategory {
@@ -73,14 +88,31 @@ export async function getStoreBySlug(slug: string): Promise<PublicStore | null> 
   const { data, error } = await supabase
     .from("stores")
     .select(
-      "id, nome, slug, descricao, logo_url, banner_url, cor_primaria, cor_secundaria, whatsapp, email, politica_troca, politica_frete, modo_compra, ativo"
+      "id, nome, slug, descricao, logo_url, banner_url, cor_primaria, cor_secundaria, whatsapp, email, politica_troca, politica_frete, modo_compra, ativo, aceita_cartao, aceita_pix, frete_modo, frete_fixo, frete_fixo_prazo_dias, frete_fixo_nome, frete_gratis_acima, retirada_na_loja, retirada_instrucoes"
     )
     .eq("slug", slug)
     .eq("ativo", true)
     .maybeSingle();
 
   if (error) throw error;
-  return data;
+  if (!data) return null;
+
+  // numeric do Postgres chega como string no JS. Sem converter aqui,
+  // "199.00" >= 150 compara texto com número lá no checkout e o frete
+  // grátis liga na hora errada.
+  return {
+    ...data,
+    frete_modo: (data as any).frete_modo ?? "combinar",
+    frete_fixo: numeroOuNulo((data as any).frete_fixo),
+    frete_gratis_acima: numeroOuNulo((data as any).frete_gratis_acima),
+    retirada_na_loja: Boolean((data as any).retirada_na_loja),
+  } as PublicStore;
+}
+
+function numeroOuNulo(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 export async function listPublicCategories(
@@ -148,11 +180,19 @@ export interface EnderecoEntrega {
 }
 
 export interface FreteEscolhido {
-  servicoId: number;
+  /**
+   * Código do serviço no Melhor Envio.
+   *
+   * NULO quando a entrega não passa por transportadora — valor fixo,
+   * frete grátis ou retirada no balcão. É de propósito: é assim que a
+   * geração de etiqueta sabe que não há nada para comprar lá, e recusa
+   * com uma mensagem em vez de mandar lixo para a API deles.
+   */
+  servicoId: number | null;
   nome: string;
   transportadora: string;
   preco: number;
-  prazoDias: number;
+  prazoDias: number | null;
 }
 
 export interface CheckoutInput {
@@ -276,7 +316,8 @@ export async function createPublicOrder(input: CheckoutInput) {
       total: subtotal + valorFrete,
       endereco_entrega: input.enderecoEntrega ?? null,
       cep_entrega: input.enderecoEntrega?.cep?.replace(/\D/g, "") || null,
-      frete_servico: input.frete ? String(input.frete.servicoId) : null,
+      frete_servico:
+        input.frete?.servicoId != null ? String(input.frete.servicoId) : null,
       frete_transportadora: input.frete
         ? `${input.frete.transportadora} ${input.frete.nome}`.trim()
         : null,
