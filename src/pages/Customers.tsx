@@ -8,13 +8,14 @@ import {
   Mail,
   X,
   ChevronDown,
-  IdCard,
   Check,
   Loader2,
+  Pencil,
+  AlertTriangle,
 } from "lucide-react";
 import {
+  atualizarCliente,
   listarClientes,
-  salvarCpfCliente,
   type Cliente,
 } from "../lib/clientesApi";
 import {
@@ -107,27 +108,43 @@ function Ficha({
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState<string | null>(null);
 
-  /* Preenchimento do CPF que falta nos cadastros antigos. */
-  const [editandoCpf, setEditandoCpf] = useState(false);
-  const [cpfDigitado, setCpfDigitado] = useState("");
-  const [salvandoCpf, setSalvandoCpf] = useState(false);
-  const [erroCpf, setErroCpf] = useState<string | null>(null);
-  const [cpfSalvo, setCpfSalvo] = useState<string | null>(null);
+  /* Edição do cadastro. */
+  const [editando, setEditando] = useState(false);
+  const [form, setForm] = useState({
+    nome: cliente.nome,
+    email: cliente.email ?? "",
+    telefone: cliente.telefone ?? "",
+    cpf: cliente.cpf ?? "",
+  });
+  const [salvando, setSalvando] = useState(false);
+  const [erroForm, setErroForm] = useState<string | null>(null);
 
-  async function salvarCpf() {
-    setSalvandoCpf(true);
-    setErroCpf(null);
+  function abrirEdicao() {
+    setForm({
+      nome: cliente.nome,
+      email: cliente.email ?? "",
+      telefone: cliente.telefone ?? "",
+      cpf: cliente.cpf ?? "",
+    });
+    setErroForm(null);
+    setEditando(true);
+  }
+
+  async function salvarCadastro() {
+    setSalvando(true);
+    setErroForm(null);
     try {
-      await salvarCpfCliente(cliente.id, cpfDigitado);
-      setCpfSalvo(cpfDigitado.replace(/\D/g, ""));
-      setEditandoCpf(false);
+      await atualizarCliente(cliente.id, form);
+      setEditando(false);
       aoSalvar();
     } catch (e) {
-      setErroCpf(
-        e instanceof Error ? e.message : "Não foi possível salvar o CPF.",
+      setErroForm(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível salvar o cadastro.",
       );
     } finally {
-      setSalvandoCpf(false);
+      setSalvando(false);
     }
   }
 
@@ -221,112 +238,203 @@ function Ficha({
             ))}
           </div>
 
-          {/* Contato */}
+          {/* Cadastro */}
           <div className="cartao-app p-3.5">
-            <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold">
-              Contato
-            </p>
-            <div className="mt-1.5 space-y-0.5">
-              {cliente.email && (
-                <p className="text-[13px] text-[#374151] break-all">
-                  {cliente.email}
-                </p>
-              )}
-              {cliente.telefone && (
-                <p className="text-[13px] text-[#374151]">{cliente.telefone}</p>
-              )}
-              {(cliente.cpf || cpfSalvo) && (
-                <p className="text-[12.5px] text-[#6b7280]">
-                  CPF {cliente.cpf ?? cpfSalvo}
-                </p>
-              )}
-              {!cliente.email && !cliente.telefone && (
-                <p className="text-[13px] text-[#9ca3af]">Sem contato salvo.</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold">
+                Cadastro
+              </p>
+              {!editando && (
+                <button
+                  onClick={abrirEdicao}
+                  className="sem-toque-minimo inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#374151]"
+                >
+                  <Pencil size={13} />
+                  Editar
+                </button>
               )}
             </div>
 
-            {/* CPF faltando: o cliente não consegue consultar os
-                próprios pedidos na loja sem ele, porque a consulta
-                exige CPF e telefone. Quem completa é o lojista, aqui —
-                no checkout isso abriria a porta para alguém que soubesse
-                um telefone carimbar o próprio CPF num cadastro alheio. */}
-            {!cliente.cpf && !cpfSalvo && (
-              <div className="mt-2.5 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2.5">
-                {editandoCpf ? (
-                  <div className="space-y-2">
-                    <input
-                      value={cpfDigitado}
-                      onChange={(e) => setCpfDigitado(e.target.value)}
-                      inputMode="numeric"
-                      autoFocus
-                      placeholder="000.000.000-00"
-                      className="campo-app"
+            {editando ? (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[#6b7280] mb-1">
+                    Nome completo
+                  </label>
+                  <input
+                    value={form.nome}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, nome: e.target.value }))
+                    }
+                    autoFocus
+                    placeholder="Nome do cliente"
+                    className="campo-app"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[#6b7280] mb-1">
+                    Telefone / WhatsApp
+                  </label>
+                  <input
+                    value={form.telefone}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, telefone: e.target.value }))
+                    }
+                    inputMode="tel"
+                    placeholder="(00) 00000-0000"
+                    className="campo-app"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[#6b7280] mb-1">
+                    CPF
+                  </label>
+                  <input
+                    value={form.cpf}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, cpf: e.target.value }))
+                    }
+                    inputMode="numeric"
+                    placeholder="000.000.000-00"
+                    className="campo-app"
+                  />
+                  <p className="mt-1 text-[11px] text-[#9ca3af] leading-snug">
+                    CPF e telefone são o que o cliente digita na loja para
+                    acompanhar os pedidos dele.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[#6b7280] mb-1">
+                    E-mail
+                  </label>
+                  <input
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, email: e.target.value }))
+                    }
+                    inputMode="email"
+                    placeholder="cliente@email.com"
+                    className="campo-app"
+                  />
+                </div>
+
+                {erroForm && (
+                  <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2.5">
+                    <p className="text-[12px] text-[#b91c1c] leading-snug">
+                      {erroForm}
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={salvarCadastro}
+                    disabled={salvando}
+                    className="btn-app"
+                  >
+                    {salvando ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <Check size={15} />
+                    )}
+                    Salvar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditando(false);
+                      setErroForm(null);
+                    }}
+                    disabled={salvando}
+                    className="btn-app-claro"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="mt-1.5 space-y-0.5">
+                  <p className="text-[13px] text-[#374151]">
+                    {cliente.telefone || (
+                      <span className="text-[#9ca3af]">Sem telefone</span>
+                    )}
+                  </p>
+                  <p className="text-[13px] text-[#374151] break-all">
+                    {cliente.email || (
+                      <span className="text-[#9ca3af]">Sem e-mail</span>
+                    )}
+                  </p>
+                  <p className="text-[12.5px] text-[#6b7280]">
+                    {cliente.cpf ? (
+                      `CPF ${cliente.cpf}`
+                    ) : (
+                      <span className="text-[#9ca3af]">Sem CPF</span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Sem CPF ou sem telefone o cliente não consegue
+                    consultar os próprios pedidos na loja: a consulta
+                    exige os dois. Cadastros antigos, de antes de a loja
+                    pedir CPF, ficaram assim. Quem completa é você, aqui
+                    — no checkout isso deixaria alguém que soubesse um
+                    telefone carimbar o próprio CPF num cadastro alheio
+                    e passar a enxergar o histórico da vítima. */}
+                {(!cliente.cpf || !cliente.telefone) && (
+                  <div className="mt-2.5 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2.5 flex items-start gap-2.5">
+                    <AlertTriangle
+                      size={14}
+                      className="text-[#b45309] shrink-0 mt-0.5"
                     />
-                    <div className="flex gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[11.5px] text-[#92400e] leading-snug">
+                        Falta{" "}
+                        {!cliente.cpf && !cliente.telefone
+                          ? "o CPF e o telefone"
+                          : !cliente.cpf
+                            ? "o CPF"
+                            : "o telefone"}
+                        . Sem os dois, este cliente não consegue acompanhar
+                        os pedidos dele na loja.
+                      </p>
                       <button
-                        onClick={salvarCpf}
-                        disabled={salvandoCpf}
-                        className="btn-app"
+                        onClick={abrirEdicao}
+                        className="mt-1.5 sem-toque-minimo inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#92400e] underline"
                       >
-                        {salvandoCpf ? (
-                          <Loader2 size={15} className="animate-spin" />
-                        ) : (
-                          <Check size={15} />
-                        )}
-                        Salvar CPF
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditandoCpf(false);
-                          setErroCpf(null);
-                        }}
-                        className="btn-app-claro"
-                      >
-                        Cancelar
+                        <Pencil size={13} />
+                        Completar cadastro
                       </button>
                     </div>
-                    {erroCpf && (
-                      <p className="text-[11.5px] text-[#b91c1c]">{erroCpf}</p>
-                    )}
                   </div>
-                ) : (
-                  <>
-                    <p className="text-[11.5px] text-[#92400e] leading-snug">
-                      Sem CPF, este cliente não consegue acompanhar os
-                      pedidos dele na loja — a consulta pede CPF e
-                      telefone. Cadastros antigos ficaram sem.
-                    </p>
-                    <button
-                      onClick={() => setEditandoCpf(true)}
-                      className="mt-2 sem-toque-minimo inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#92400e] underline"
-                    >
-                      <IdCard size={13} />
-                      Adicionar CPF
-                    </button>
-                  </>
                 )}
-              </div>
-            )}
 
-            <div className="mt-2.5 flex gap-2">
-              {zap && (
-                <a
-                  href={`https://wa.me/55${zap}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-app-claro text-[#15803d] border-[#bbf7d0]"
-                >
-                  <MessageCircle size={15} />
-                  WhatsApp
-                </a>
-              )}
-              {cliente.email && (
-                <a href={`mailto:${cliente.email}`} className="btn-app-claro">
-                  <Mail size={15} />
-                  E-mail
-                </a>
-              )}
-            </div>
+                <div className="mt-2.5 flex gap-2">
+                  {zap && (
+                    <a
+                      href={`https://wa.me/55${zap}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-app-claro text-[#15803d] border-[#bbf7d0]"
+                    >
+                      <MessageCircle size={15} />
+                      WhatsApp
+                    </a>
+                  )}
+                  {cliente.email && (
+                    <a
+                      href={`mailto:${cliente.email}`}
+                      className="btn-app-claro"
+                    >
+                      <Mail size={15} />
+                      E-mail
+                    </a>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Histórico */}

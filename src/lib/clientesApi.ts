@@ -85,50 +85,116 @@ export async function listarClientes(): Promise<Cliente[]> {
   });
 }
 
-/**
- * Completa o CPF de um cliente.
- *
- * Existe para os cadastros antigos, criados antes de a loja passar a
- * pedir CPF. Sem ele, o cliente não consegue consultar os próprios
- * pedidos na loja — a consulta exige CPF e telefone.
- *
- * Por que isso é feito AQUI, no painel, e não no checkout: o checkout
- * roda no navegador de quem está comprando, sem login. Se ele pudesse
- * gravar CPF num cadastro existente, bastaria saber o telefone de
- * alguém para carimbar o próprio CPF ali e passar a enxergar o
- * histórico da vítima. Aqui exige o seu login, e o RLS garante que é
- * um cliente da sua loja.
- */
-export async function salvarCpfCliente(
-  clienteId: string,
-  cpf: string
-): Promise<void> {
-  const digitos = cpf.replace(/\D/g, "");
+/* --------------------------- edição --------------------------- */
 
-  if (digitos.length !== 11) {
+export interface DadosCliente {
+  nome: string;
+  email: string;
+  telefone: string;
+  cpf: string;
+}
+
+function digitos(v: string) {
+  return (v ?? "").replace(/\D/g, "");
+}
+
+/**
+ * Corrige o cadastro de um cliente.
+ *
+ * Por que a edição fica AQUI, no painel, e não no checkout: o checkout
+ * roda no navegador de quem está comprando, sem login nenhum. Se ele
+ * pudesse regravar um cadastro existente, bastaria saber o telefone de
+ * alguém para trocar o CPF dali e passar a enxergar o histórico da
+ * vítima em "Meus pedidos". Aqui exige o seu login, e o RLS confere que
+ * o cliente é da sua loja antes de deixar gravar.
+ */
+export async function atualizarCliente(
+  clienteId: string,
+  dados: DadosCliente,
+): Promise<void> {
+  const nome = dados.nome.trim();
+  const email = dados.email.trim().toLowerCase();
+  const tel = digitos(dados.telefone);
+  const cpf = digitos(dados.cpf);
+
+  if (nome.length < 2) {
+    throw new Error("O nome não pode ficar em branco.");
+  }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+    throw new Error("Esse e-mail não parece válido.");
+  }
+  if (tel && (tel.length < 10 || tel.length > 11)) {
+    throw new Error("O telefone precisa ter DDD + número (10 ou 11 dígitos).");
+  }
+  if (cpf && cpf.length !== 11) {
     throw new Error("O CPF precisa ter 11 dígitos.");
   }
 
   const storeId = await getCurrentStoreId();
 
+  // CPF e telefone são as chaves que o cliente usa para consultar os
+  // próprios pedidos na loja. Se dois cadastros da mesma loja ficassem
+  // com o mesmo número, a consulta passaria a devolver pedido de gente
+  // trocada. Melhor recusar agora e explicar do que deixar acontecer.
+  for (const [coluna, valor, rotulo] of [
+    ["cpf", cpf, "CPF"],
+    ["telefone", tel, "telefone"],
+  ] as const) {
+    if (!valor) continue;
+
+    const { data: conflito, error: erroConflito } = await supabase
+      .from("customers")
+      .select("id, nome")
+      .eq("store_id", storeId)
+      .eq(coluna, valor)
+      .neq("id", clienteId)
+      .limit(1)
+      .maybeSingle();
+
+    if (erroConflito) throw erroConflito;
+    if (conflito) {
+      throw new Error(
+        `Esse ${rotulo} já está no cadastro de ${conflito.nome}. ` +
+          `Confira se não são a mesma pessoa cadastrada duas vezes.`,
+      );
+    }
+  }
+
   const { error } = await supabase
     .from("customers")
-    .update({ cpf: digitos })
+    .update({
+      nome,
+      email: email || null,
+      telefone: tel || null,
+      cpf: cpf || null,
+    })
     .eq("id", clienteId)
     .eq("store_id", storeId);
 
   if (error) throw error;
 
-  // Os pedidos antigos desse cliente herdam a identidade, para ele
-  // conseguir consultar o histórico inteiro e não só o que veio
-  // depois. Só preenche o que está vazio — nunca sobrescreve a
-  // identidade que a própria compra registrou.
-  const { error: erroPedidos } = await supabase
-    .from("orders")
-    .update({ cpf_comprador: digitos })
-    .eq("customer_id", clienteId)
-    .eq("store_id", storeId)
-    .is("cpf_comprador", null);
+  // Os pedidos antigos herdam a identidade corrigida, para o cliente
+  // conseguir consultar o histórico inteiro na loja e não só o que veio
+  // depois. Só preenche o que está VAZIO — nunca sobrescreve a
+  // identidade que a própria compra registrou, que é a prova de quem
+  // comprou naquele dia.
+  if (cpf) {
+    const { error: erroCpf } = await supabase
+      .from("orders")
+      .update({ cpf_comprador: cpf })
+      .eq("customer_id", clienteId)
+      .eq("store_id", storeId)
+      .is("cpf_comprador", null);
+    if (erroCpf) throw erroCpf;
+  }
 
-  if (erroPedidos) throw erroPedidos;
+  if (tel) {
+    const { error: erroTel } = await supabase
+      .from("orders")
+      .update({ telefone_comprador: tel })
+      .eq("customer_id", clienteId)
+      .eq("store_id", storeId)
+      .is("telefone_comprador", null);
+    if (erroTel) throw erroTel;
+  }
 }

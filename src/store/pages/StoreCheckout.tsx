@@ -8,12 +8,18 @@ import {
   QrCode,
   Loader2,
   Truck,
+  UserCheck,
 } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import { useCart } from "../context/CartContext";
 import { createPublicOrder, type EnderecoEntrega } from "../lib/storeApi";
 import { calcularFrete, type OpcaoFrete } from "../lib/freteApi";
 import StripeCardPayment from "../components/StripeCardPayment";
+import {
+  lerComprador,
+  limparComprador,
+  salvarComprador,
+} from "../lib/compradorLocal";
 
 function formatBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -148,6 +154,16 @@ export default function StoreCheckout() {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  /**
+   * Veio preenchido do aparelho (segunda compra). Serve só para avisar
+   * a pessoa — ela precisa SABER que os campos vieram prontos, senão
+   * confirma sem ler, e num celular emprestado compraria com o
+   * cadastro de outra pessoa.
+   */
+  const [preenchidoDoAparelho, setPreenchidoDoAparelho] = useState(false);
+  /** CEP restaurado que ainda precisa recalcular o frete. */
+  const [cepARecalcular, setCepARecalcular] = useState<string | null>(null);
+
   // Entrega
   const [endereco, setEndereco] = useState<EnderecoEntrega>({
     cep: "",
@@ -211,6 +227,53 @@ export default function StoreCheckout() {
     permiteWhatsapp,
     ofereceAlgumPagamento,
   ]);
+
+  /**
+   * Segunda compra: traz o que ficou guardado no aparelho.
+   *
+   * Roda uma vez, e só se a pessoa ainda não digitou nada — para nunca
+   * apagar o que ela mesma escreveu.
+   */
+  useEffect(() => {
+    if (!store) return;
+
+    const salvo = lerComprador(store.id);
+    if (!salvo) return;
+
+    setNome((v) => v || salvo.nome);
+    setTelefone((v) => v || salvo.telefone);
+    setCpf((v) => v || salvo.cpf);
+    setEmail((v) => v || salvo.email);
+    setEndereco((e) =>
+      e.cep
+        ? e
+        : {
+            cep: salvo.cep,
+            logradouro: salvo.logradouro,
+            numero: salvo.numero,
+            complemento: salvo.complemento,
+            bairro: salvo.bairro,
+            cidade: salvo.cidade,
+            uf: salvo.uf,
+          },
+    );
+    setPreenchidoDoAparelho(true);
+
+    // O frete depende do carrinho de AGORA: o que foi calculado na
+    // compra passada não vale mais. Recalcula com o CEP restaurado.
+    if (salvo.cep.replace(/\D/g, "").length === 8) {
+      setCepARecalcular(salvo.cep);
+    }
+    // Só na primeira vez que a loja fica disponível.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store?.id]);
+
+  useEffect(() => {
+    if (!cepARecalcular) return;
+    setCepARecalcular(null);
+    handleCepChange(cepARecalcular);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cepARecalcular]);
 
   if (!store) return null;
 
@@ -337,6 +400,23 @@ export default function StoreCheckout() {
           : null,
       });
 
+      // Pedido aceito: guarda no aparelho para a próxima compra vir
+      // pronta. Só depois de dar certo — dado meio digitado não ajuda
+      // ninguém.
+      salvarComprador(store.id, {
+        nome,
+        telefone,
+        cpf,
+        email,
+        cep: endereco.cep,
+        logradouro: endereco.logradouro,
+        numero: endereco.numero,
+        complemento: endereco.complemento ?? "",
+        bairro: endereco.bairro,
+        cidade: endereco.cidade,
+        uf: endereco.uf,
+      });
+
       if (metodo === "whatsapp") {
         const baseUrl = window.location.origin;
         const linhas = items
@@ -384,6 +464,29 @@ export default function StoreCheckout() {
     }
   }
 
+  /** "Não sou eu": esvazia a tela e esquece o aparelho. */
+  function usarOutrosDados() {
+    limparComprador(store.id);
+    setPreenchidoDoAparelho(false);
+    setNome("");
+    setTelefone("");
+    setCpf("");
+    setEmail("");
+    setEndereco({
+      cep: "",
+      logradouro: "",
+      numero: "",
+      complemento: "",
+      bairro: "",
+      cidade: "",
+      uf: "",
+    });
+    setOpcoesFrete([]);
+    setFreteSelecionado(null);
+    setFreteACombinar(false);
+    setErro(null);
+  }
+
   function handlePagamentoConfirmado() {
     clear();
     navigate(
@@ -415,6 +518,31 @@ export default function StoreCheckout() {
             <h2 className="text-[13px] font-bold text-[#111827] mb-3">
               Seus dados
             </h2>
+
+            {preenchidoDoAparelho && (
+              <div className="mb-3 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-2.5 flex items-start gap-2.5">
+                <UserCheck
+                  size={15}
+                  className="text-[#15803d] shrink-0 mt-0.5"
+                />
+                <div className="min-w-0">
+                  <p className="text-[12px] text-[#15803d] leading-snug font-medium">
+                    Preenchemos com os dados da sua última compra nesta loja.
+                  </p>
+                  <p className="text-[11.5px] text-[#166534] leading-snug mt-0.5">
+                    Confira se está tudo certo — dá para alterar qualquer
+                    campo.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={usarOutrosDados}
+                    className="mt-1.5 text-[11.5px] font-semibold text-[#166534] underline"
+                  >
+                    Não sou eu, limpar
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="space-y-3">
               <div>
                 <label className="block text-[12px] font-medium text-[#6b7280] mb-1">
