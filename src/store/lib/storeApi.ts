@@ -14,10 +14,6 @@ export interface PublicStore {
   politica_troca: string | null;
   politica_frete: string | null;
   modo_compra: "whatsapp" | "pagamento" | "ambos";
-  /** O lojista quer oferecer cartão no checkout. */
-  aceita_cartao: boolean;
-  /** O lojista quer oferecer Pix. Depende também da liberação na Stripe. */
-  aceita_pix: boolean;
   ativo: boolean;
 }
 
@@ -65,7 +61,7 @@ function mapProduct(p: any): PublicProduct {
     ...p,
     categoria_nome: p.categories?.nome ?? null,
     imagens: (p.product_images ?? []).sort(
-      (a: any, b: any) => a.posicao - b.posicao,
+      (a: any, b: any) => a.posicao - b.posicao
     ),
     cores: p.product_colors ?? [],
     tamanhos: p.product_sizes ?? [],
@@ -73,13 +69,11 @@ function mapProduct(p: any): PublicProduct {
   };
 }
 
-export async function getStoreBySlug(
-  slug: string,
-): Promise<PublicStore | null> {
+export async function getStoreBySlug(slug: string): Promise<PublicStore | null> {
   const { data, error } = await supabase
     .from("stores")
     .select(
-      "id, nome, slug, descricao, logo_url, banner_url, cor_primaria, cor_secundaria, whatsapp, email, politica_troca, politica_frete, modo_compra, aceita_cartao, aceita_pix, ativo",
+      "id, nome, slug, descricao, logo_url, banner_url, cor_primaria, cor_secundaria, whatsapp, email, politica_troca, politica_frete, modo_compra, ativo"
     )
     .eq("slug", slug)
     .eq("ativo", true)
@@ -90,7 +84,7 @@ export async function getStoreBySlug(
 }
 
 export async function listPublicCategories(
-  storeId: string,
+  storeId: string
 ): Promise<PublicCategory[]> {
   const { data, error } = await supabase
     .from("categories")
@@ -104,7 +98,7 @@ export async function listPublicCategories(
 }
 
 export async function listPublicProducts(
-  storeId: string,
+  storeId: string
 ): Promise<PublicProduct[]> {
   const { data, error } = await supabase
     .from("products")
@@ -119,7 +113,7 @@ export async function listPublicProducts(
 
 export async function getPublicProductBySlug(
   storeId: string,
-  productSlug: string,
+  productSlug: string
 ): Promise<PublicProduct | null> {
   const { data, error } = await supabase
     .from("products")
@@ -187,17 +181,40 @@ export async function createPublicOrder(input: CheckoutInput) {
   const cpfDigits = input.cliente.cpf.replace(/\D/g, "");
   const telefoneDigits = input.cliente.telefone.replace(/\D/g, "");
 
-  const { data: existing } = await supabase
-    .from("customers")
-    .select("id")
-    .eq("store_id", input.storeId)
-    .eq("cpf", cpfDigits)
-    .eq("telefone", telefoneDigits)
-    .maybeSingle();
+  const emailLimpo = (input.cliente.email || "").trim().toLowerCase() || null;
 
-  if (existing) {
-    customerId = existing.id;
+  // Procura o cliente em ordem de confiabilidade: CPF, depois
+  // telefone, depois e-mail.
+  //
+  // Antes exigia CPF **E** telefone iguais, os dois ao mesmo tempo.
+  // Bastava o cliente ter comprado antes de a loja passar a pedir
+  // CPF — ou ter digitado o CPF de um jeito diferente — para nascer
+  // um cadastro novo. O mesmo comprador aparecia duas vezes na lista
+  // de clientes, com o histórico partido ao meio.
+  async function procurar(coluna: string, valor: string) {
+    const { data } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("store_id", input.storeId)
+      .eq(coluna, valor)
+      .limit(1)
+      .maybeSingle();
+    return data?.id ?? null;
   }
+
+  if (cpfDigits) customerId = await procurar("cpf", cpfDigits);
+  if (!customerId && telefoneDigits) {
+    customerId = await procurar("telefone", telefoneDigits);
+  }
+  if (!customerId && emailLimpo) {
+    customerId = await procurar("email", emailLimpo);
+  }
+
+  // Achado o cliente, os dados dele NÃO são sobrescritos daqui.
+  // Esta função roda no navegador de quem está comprando, sem login:
+  // deixar ela regravar nome e e-mail de um cadastro existente
+  // permitiria trocar os dados de outra pessoa conhecendo só o
+  // telefone. Quem corrige cadastro é o lojista, no painel.
 
   if (!customerId) {
     const { data: created, error: customerError } = await supabase
@@ -207,7 +224,7 @@ export async function createPublicOrder(input: CheckoutInput) {
         nome: input.cliente.nome,
         telefone: telefoneDigits,
         cpf: cpfDigits,
-        email: input.cliente.email || null,
+        email: emailLimpo,
       })
       .select("id")
       .single();
@@ -219,7 +236,7 @@ export async function createPublicOrder(input: CheckoutInput) {
   // 2. Cria o pedido
   const subtotal = input.itens.reduce(
     (sum, item) => sum + item.preco_unitario * item.quantidade,
-    0,
+    0
   );
   const valorFrete = input.frete?.preco ?? 0;
 
@@ -292,7 +309,7 @@ export interface PedidoConsultado {
 export async function consultarPedidosPublico(
   storeId: string,
   cpf: string,
-  telefone: string,
+  telefone: string
 ): Promise<PedidoConsultado[]> {
   const { data, error } = await supabase.rpc("consultar_pedidos_publico", {
     p_store_id: storeId,

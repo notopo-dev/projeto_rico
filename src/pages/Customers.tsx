@@ -6,8 +6,17 @@ import {
   AlertCircle,
   MessageCircle,
   Mail,
+  X,
+  ChevronDown,
 } from "lucide-react";
 import { listarClientes, type Cliente } from "../lib/clientesApi";
+import {
+  listarPedidosDoCliente,
+  ROTULO_CURTO,
+  ROTULO_PAGAMENTO,
+  type Pedido,
+  type StatusPedido,
+} from "../lib/pedidosApi";
 import { ListaCarregando } from "../components/Carregando";
 
 /**
@@ -27,6 +36,15 @@ const ORDENS: { id: Ordem; rotulo: string }[] = [
   { id: "nome", rotulo: "Nome" },
 ];
 
+const CORES_STATUS: Record<StatusPedido, string> = {
+  pendente: "bg-[#fffbeb] text-[#b45309] border-[#fde68a]",
+  pago: "bg-[#f0fdf4] text-[#15803d] border-[#bbf7d0]",
+  enviado: "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]",
+  entregue: "bg-[#f4f4f5] text-[#3f3f46] border-[#e4e4e7]",
+  cancelado: "bg-[#fef2f2] text-[#b91c1c] border-[#fecaca]",
+  devolvido: "bg-[#faf5ff] text-[#7e22ce] border-[#e9d5ff]",
+};
+
 function brl(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -40,6 +58,16 @@ function dataCurta(iso: string | null) {
   });
 }
 
+function dataHora(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function apenasDigitos(v: string | null) {
   return (v ?? "").replace(/\D/g, "");
 }
@@ -48,6 +76,295 @@ function inicial(nome: string) {
   return nome.trim().charAt(0).toUpperCase() || "?";
 }
 
+/* ------------------------- ficha do cliente ------------------------- */
+
+/**
+ * Tudo sobre um cliente numa folha só: contato e histórico de compras.
+ *
+ * Cada pedido da lista abre para mostrar os itens. A lista fechada
+ * serve para varrer o histórico; os itens, para conferir um pedido —
+ * mostrar tudo aberto de uma vez vira parede de texto em quem compra
+ * com frequência.
+ */
+function Ficha({
+  cliente,
+  onFechar,
+}: {
+  cliente: Cliente;
+  onFechar: () => void;
+}) {
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const [aberto, setAberto] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const lista = await listarPedidosDoCliente(cliente.id);
+        if (vivo) setPedidos(lista);
+      } catch (e) {
+        if (vivo) {
+          setErro(
+            e instanceof Error
+              ? e.message
+              : "Não foi possível carregar o histórico.",
+          );
+        }
+      } finally {
+        if (vivo) setCarregando(false);
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [cliente.id]);
+
+  /* Trava a rolagem do fundo e fecha no Esc. */
+  useEffect(() => {
+    const anterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onFechar();
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => {
+      document.body.style.overflow = anterior;
+      window.removeEventListener("keydown", aoTeclar);
+    };
+  }, [onFechar]);
+
+  const zap = apenasDigitos(cliente.telefone);
+
+  return (
+    <div className="folha-fundo">
+      <button
+        aria-label="Fechar"
+        onClick={onFechar}
+        className="absolute inset-0 bg-black/45 backdrop-blur-[2px] sem-toque-minimo"
+      />
+
+      <div className="folha anim-surgir" role="dialog" aria-modal="true">
+        <div className="folha-topo px-4 py-3 border-b border-[#e7e7ea] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 shrink-0 rounded-full bg-[#f4f4f5] flex items-center justify-center text-[14px] font-bold text-[#374151]">
+              {inicial(cliente.nome)}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-[16px] font-bold text-[#0f1117] truncate">
+                {cliente.nome}
+              </h2>
+              <p className="text-[12px] text-[#9ca3af]">
+                Cliente desde {dataCurta(cliente.criado_em)}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onFechar}
+            aria-label="Fechar"
+            className="toque w-10 h-10 rounded-full bg-[#f4f4f5] flex items-center justify-center shrink-0"
+          >
+            <X size={18} className="text-[#374151]" />
+          </button>
+        </div>
+
+        <div className="folha-corpo px-4 py-4 space-y-3">
+          {/* Números */}
+          <div className="grid grid-cols-3 gap-2.5">
+            {[
+              { r: "Pedidos", v: String(cliente.pedidos) },
+              { r: "Total gasto", v: brl(cliente.gasto) },
+              { r: "Última", v: dataCurta(cliente.ultima_compra) },
+            ].map((t) => (
+              <div key={t.r} className="cartao-app p-3 text-center">
+                <p className="text-[10.5px] text-[#9ca3af] uppercase tracking-wide font-semibold">
+                  {t.r}
+                </p>
+                <p className="text-[14px] font-bold text-[#0f1117] mt-0.5 tabular-nums">
+                  {t.v}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Contato */}
+          <div className="cartao-app p-3.5">
+            <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold">
+              Contato
+            </p>
+            <div className="mt-1.5 space-y-0.5">
+              {cliente.email && (
+                <p className="text-[13px] text-[#374151] break-all">
+                  {cliente.email}
+                </p>
+              )}
+              {cliente.telefone && (
+                <p className="text-[13px] text-[#374151]">{cliente.telefone}</p>
+              )}
+              {cliente.cpf && (
+                <p className="text-[12.5px] text-[#6b7280]">CPF {cliente.cpf}</p>
+              )}
+              {!cliente.email && !cliente.telefone && (
+                <p className="text-[13px] text-[#9ca3af]">Sem contato salvo.</p>
+              )}
+            </div>
+
+            <div className="mt-2.5 flex gap-2">
+              {zap && (
+                <a
+                  href={`https://wa.me/55${zap}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-app-claro text-[#15803d] border-[#bbf7d0]"
+                >
+                  <MessageCircle size={15} />
+                  WhatsApp
+                </a>
+              )}
+              {cliente.email && (
+                <a href={`mailto:${cliente.email}`} className="btn-app-claro">
+                  <Mail size={15} />
+                  E-mail
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* Histórico */}
+          <div>
+            <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold mb-2 px-1">
+              Histórico de pedidos
+            </p>
+
+            {erro && (
+              <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5">
+                <p className="text-[12.5px] text-[#b91c1c]">{erro}</p>
+              </div>
+            )}
+
+            {carregando ? (
+              <ListaCarregando linhas={3} />
+            ) : pedidos.length === 0 ? (
+              <p className="text-[13px] text-[#9ca3af] text-center py-8">
+                Este cliente ainda não fez nenhum pedido.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {pedidos.map((p) => {
+                  const abertoAqui = aberto === p.id;
+                  const totalItens = p.itens.reduce(
+                    (s, i) => s + i.quantidade,
+                    0,
+                  );
+
+                  return (
+                    <div key={p.id} className="cartao-app overflow-hidden">
+                      <button
+                        onClick={() => setAberto(abertoAqui ? null : p.id)}
+                        aria-expanded={abertoAqui}
+                        className="w-full p-3.5 text-left flex items-start gap-3"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[13.5px] font-bold text-[#0f1117]">
+                              #{p.numero}
+                            </span>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${CORES_STATUS[p.status]}`}
+                            >
+                              {ROTULO_CURTO[p.status]}
+                            </span>
+                          </div>
+                          <p className="text-[11.5px] text-[#9ca3af] mt-1">
+                            {dataHora(p.created_at)} · {totalItens}{" "}
+                            {totalItens === 1 ? "item" : "itens"}
+                            {p.metodo_pagamento &&
+                              ` · ${
+                                ROTULO_PAGAMENTO[p.metodo_pagamento] ??
+                                p.metodo_pagamento
+                              }`}
+                          </p>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <p className="text-[14px] font-bold text-[#0f1117] tabular-nums">
+                            {brl(p.total)}
+                          </p>
+                          <ChevronDown
+                            size={15}
+                            className={`text-[#d4d4d8] ml-auto mt-1 transition-transform ${
+                              abertoAqui ? "rotate-180" : ""
+                            }`}
+                          />
+                        </div>
+                      </button>
+
+                      {abertoAqui && (
+                        <div className="border-t border-[#f0f0f1] px-3.5 py-3 space-y-2">
+                          {p.itens.map((i) => (
+                            <div key={i.id} className="flex gap-3 items-start">
+                              <span className="text-[12px] font-bold text-[#6b7280] shrink-0 mt-0.5">
+                                {i.quantidade}×
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[13px] text-[#0f1117] leading-snug">
+                                  {i.nome_produto}
+                                </p>
+                                {(i.cor_selecionada ||
+                                  i.tamanho_selecionado) && (
+                                  <p className="text-[11.5px] text-[#9ca3af]">
+                                    {[i.cor_selecionada, i.tamanho_selecionado]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  </p>
+                                )}
+                              </div>
+                              <span className="text-[13px] font-medium text-[#0f1117] shrink-0 tabular-nums">
+                                {brl(i.subtotal)}
+                              </span>
+                            </div>
+                          ))}
+
+                          {p.frete > 0 && (
+                            <div className="flex justify-between text-[12.5px] text-[#6b7280] pt-1.5 border-t border-[#f0f0f1]">
+                              <span>Frete</span>
+                              <span className="tabular-nums">
+                                {brl(p.frete)}
+                              </span>
+                            </div>
+                          )}
+
+                          {p.valor_reembolsado > 0 && (
+                            <div className="flex justify-between text-[12.5px] text-[#7e22ce]">
+                              <span>Devolvido</span>
+                              <span className="tabular-nums">
+                                − {brl(p.valor_reembolsado)}
+                              </span>
+                            </div>
+                          )}
+
+                          {p.codigo_rastreio && (
+                            <p className="text-[12px] text-[#374151] pt-1">
+                              Rastreio: {p.codigo_rastreio}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ lista ------------------------------ */
+
 export default function Customers() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -55,6 +372,7 @@ export default function Customers() {
 
   const [busca, setBusca] = useState("");
   const [ordem, setOrdem] = useState<Ordem>("recentes");
+  const [abertoId, setAbertoId] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -103,6 +421,13 @@ export default function Customers() {
 
     return ordenados;
   }, [clientes, busca, ordem]);
+
+  /* Lê do array vivo: depois de recarregar, a ficha aberta mostra os
+     números novos sem precisar fechar e abrir. */
+  const aberta = useMemo(
+    () => clientes.find((c) => c.id === abertoId) ?? null,
+    [clientes, abertoId],
+  );
 
   const totais = useMemo(() => {
     const compraram = clientes.filter((c) => c.pedidos > 0);
@@ -220,8 +545,11 @@ export default function Customers() {
           {lista.map((c) => {
             const zap = apenasDigitos(c.telefone);
             return (
-              <div key={c.id} className="cartao-app p-3.5">
-                <div className="flex items-start gap-3">
+              <div key={c.id} className="cartao-app overflow-hidden">
+                <button
+                  onClick={() => setAbertoId(c.id)}
+                  className="w-full p-3.5 text-left flex items-start gap-3"
+                >
                   <div className="w-10 h-10 shrink-0 rounded-full bg-[#f4f4f5] flex items-center justify-center text-[14px] font-bold text-[#374151]">
                     {inicial(c.nome)}
                   </div>
@@ -248,9 +576,9 @@ export default function Customers() {
                       {c.pedidos} {c.pedidos === 1 ? "pedido" : "pedidos"}
                     </p>
                   </div>
-                </div>
+                </button>
 
-                <div className="mt-3 pt-3 border-t border-[#f0f0f1] flex items-center justify-between gap-3">
+                <div className="px-3.5 pb-3 pt-3 border-t border-[#f0f0f1] flex items-center justify-between gap-3">
                   <p className="text-[11.5px] text-[#9ca3af]">
                     {c.pedidos > 0
                       ? `Última compra em ${dataCurta(c.ultima_compra)}`
@@ -284,6 +612,14 @@ export default function Customers() {
             );
           })}
         </div>
+      )}
+
+      {aberta && (
+        <Ficha
+          key={aberta.id}
+          cliente={aberta}
+          onFechar={() => setAbertoId(null)}
+        />
       )}
     </div>
   );

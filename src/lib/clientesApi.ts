@@ -18,6 +18,7 @@ export interface Cliente {
   nome: string;
   email: string | null;
   telefone: string | null;
+  cpf: string | null;
   status: "ativo" | "inativo";
   criado_em: string;
 
@@ -41,7 +42,7 @@ export async function listarClientes(): Promise<Cliente[]> {
     .from("customers")
     .select(
       `
-      id, nome, email, telefone, status, created_at,
+      id, nome, email, telefone, cpf, status, created_at,
       orders(total, valor_reembolsado, status, created_at)
     `,
     )
@@ -74,6 +75,7 @@ export async function listarClientes(): Promise<Cliente[]> {
       nome: c.nome,
       email: c.email ?? null,
       telefone: c.telefone ?? null,
+      cpf: c.cpf ?? null,
       status: (c.status ?? "ativo") as "ativo" | "inativo",
       criado_em: c.created_at,
       pedidos: pedidos.length,

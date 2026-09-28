@@ -203,6 +203,29 @@ export async function listarPedidos(): Promise<Pedido[]> {
 }
 
 /**
+ * Pedidos de um cliente, do mais recente para o mais antigo.
+ *
+ * Usa a mesma forma de `Pedido` da lista principal para a tela de
+ * clientes reaproveitar a mesma leitura de itens e status — duas
+ * versões do mesmo dado acabam divergindo.
+ */
+export async function listarPedidosDoCliente(
+  clienteId: string
+): Promise<Pedido[]> {
+  const storeId = await getCurrentStoreId();
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select(CAMPOS)
+    .eq("store_id", storeId)
+    .eq("customer_id", clienteId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map(montar);
+}
+
+/**
  * Relê um pedido só. Usado depois de gerar etiqueta ou reembolsar,
  * para atualizar a tela aberta sem recarregar a lista inteira.
  */
