@@ -70,7 +70,9 @@ Deno.serve(async (req) => {
 
     const { data: store } = await supabase
       .from("stores")
-      .select("id, stripe_account_id, stripe_charges_enabled")
+      .select(
+        "id, stripe_account_id, stripe_charges_enabled, dominio, dominio_status",
+      )
       .eq("owner_id", user.id)
       .single();
 
@@ -96,6 +98,30 @@ Deno.serve(async (req) => {
       );
     }
 
+    /*
+     * Os dois endereços por onde a loja pode ser aberta.
+     *
+     * A Stripe exige o registro de TODO domínio que mostra o
+     * formulário de pagamento — "This includes registering top-level
+     * domains and subdomains". Em cobrança direta, o registro vai na
+     * conta do lojista, não na da plataforma: "The domain where the
+     * charge is being run needs to be registered for the user
+     * running the charge."
+     *
+     * Sem o domínio próprio registrado aqui, Apple Pay e Google Pay
+     * simplesmente não aparecem na loja dele. Sem erro, sem aviso —
+     * o botão só não existe, e ninguém descobre por quê.
+     *
+     * O domínio vem do BANCO, nunca do navegador: quem mandasse o
+     * corpo da requisição poderia registrar o domínio de outra
+     * pessoa na conta do lojista.
+     */
+    const dominios = [dominio];
+    if (store.dominio && store.dominio_status === "ativo") {
+      const proprio = String(store.dominio).trim().toLowerCase();
+      if (proprio && proprio !== dominio) dominios.push(proprio);
+    }
+
     const opcoes = { stripeAccount: store.stripe_account_id };
 
     // Já registrado? A Stripe recusa duplicata, então conferimos antes.
@@ -103,21 +129,45 @@ Deno.serve(async (req) => {
       { limit: 100 },
       opcoes
     );
-    const jaTem = existentes.data.find((d) => d.domain_name === dominio);
 
-    let registro = jaTem;
-    if (!registro) {
-      registro = await stripe.paymentMethodDomains.create(
-        { domain_name: dominio },
-        opcoes
-      );
-    } else if (!registro.enabled) {
-      // Existia desativado — reativa em vez de criar outro.
-      registro = await stripe.paymentMethodDomains.update(
-        registro.id,
-        { enabled: true },
-        opcoes
-      );
+    let registro: any = null;
+    let jaTem: any = null;
+    const resultados: {
+      dominio: string;
+      applePay: string | null;
+      googlePay: string | null;
+    }[] = [];
+
+    for (const alvo of dominios) {
+      const existente = existentes.data.find((d) => d.domain_name === alvo);
+
+      let atual: any = existente;
+      if (!atual) {
+        atual = await stripe.paymentMethodDomains.create(
+          { domain_name: alvo },
+          opcoes
+        );
+      } else if (!atual.enabled) {
+        // Existia desativado — reativa em vez de criar outro.
+        atual = await stripe.paymentMethodDomains.update(
+          atual.id,
+          { enabled: true },
+          opcoes
+        );
+      }
+
+      resultados.push({
+        dominio: alvo,
+        applePay: atual?.apple_pay?.status ?? null,
+        googlePay: atual?.google_pay?.status ?? null,
+      });
+
+      // O domínio da plataforma é o que a tela já mostrava; mantém
+      // a resposta antiga funcionando igual.
+      if (alvo === dominio) {
+        registro = atual;
+        jaTem = existente;
+      }
     }
 
     // A Stripe valida o domínio de forma assíncrona e diz, por
@@ -146,6 +196,9 @@ Deno.serve(async (req) => {
       jaExistia: Boolean(jaTem),
       applePay: apple?.status ?? null,
       googlePay: google?.status ?? null,
+      // Campo novo: o resultado de cada domínio registrado. Os de
+      // cima continuam iguais para a tela atual não quebrar.
+      dominios: resultados,
     });
   } catch (err) {
     console.error("Erro ao registrar domínio:", err);

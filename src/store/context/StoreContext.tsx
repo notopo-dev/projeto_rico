@@ -16,8 +16,21 @@ interface StoreContextValue {
 
 const StoreContext = createContext<StoreContextValue | null>(null);
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const { slug } = useParams<{ slug: string }>();
+export function StoreProvider({
+  slug: slugForcado,
+  children,
+}: {
+  /**
+   * Slug vindo de fora, usado quando a loja é aberta por domínio
+   * próprio — aí não existe /loja/:slug na URL para ler.
+   * Sem isto, a loja em domínio próprio ficaria eternamente
+   * carregando, porque o efeito abaixo sai cedo quando não há slug.
+   */
+  slug?: string;
+  children: ReactNode;
+}) {
+  const params = useParams<{ slug: string }>();
+  const slug = slugForcado ?? params.slug;
   const [store, setStore] = useState<PublicStore | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

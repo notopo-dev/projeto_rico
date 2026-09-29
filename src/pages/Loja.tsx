@@ -17,6 +17,7 @@ import {
 
 import type { Store } from "../types/database";
 import EnderecoOrigemSection from "../components/EnderecoOrigemSection";
+import DominioProprio from "../components/DominioProprio";
 
 export default function Loja() {
   const [loading, setLoading] = useState(true);
@@ -506,6 +507,11 @@ export default function Loja() {
 
         {/* Sidebar */}
         <div className="space-y-4">
+          {/* Endereço da loja e pedido de domínio próprio.
+              Fica no topo da coluna porque é a primeira pergunta de
+              quem acabou de montar a loja: "qual é o link?" */}
+          <DominioProprio />
+
           {/* Configurações */}
           <section className="bg-white border border-[#e4e4e7] rounded-[6px]">
             <div className="px-4 py-3 border-b border-[#e4e4e7]">
