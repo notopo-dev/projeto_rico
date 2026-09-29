@@ -10,18 +10,27 @@ import {
   CreditCard,
   RefreshCw,
   AlertCircle,
+  MapPin,
+  UserPlus,
+  Truck,
 } from "lucide-react";
 import {
+  getClientesNovosRecorrentes,
   getMelhoresClientes,
   getProdutosVendidos,
   getReceitaPorPeriodo,
+  getResumoFrete,
   getResumoVendas,
   getVendasPorPagamento,
+  getVendasPorRegiao,
+  type ClientesNovosRecorrentes,
   type LinhaCliente,
   type LinhaPagamento,
   type LinhaProduto,
+  type LinhaRegiao,
   type Periodo,
   type PontoGrafico,
+  type ResumoFrete,
   type ResumoVendas,
 } from "../lib/relatoriosApi";
 import { CartoesCarregando, ListaCarregando } from "../components/Carregando";
@@ -174,6 +183,10 @@ export default function Vendas() {
   const [produtos, setProdutos] = useState<LinhaProduto[]>([]);
   const [pagamentos, setPagamentos] = useState<LinhaPagamento[]>([]);
   const [clientes, setClientes] = useState<LinhaCliente[]>([]);
+  const [regioes, setRegioes] = useState<LinhaRegiao[]>([]);
+  const [recorrencia, setRecorrencia] =
+    useState<ClientesNovosRecorrentes | null>(null);
+  const [frete, setFrete] = useState<ResumoFrete | null>(null);
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -182,18 +195,24 @@ export default function Vendas() {
     setCarregando(true);
     setErro(null);
     try {
-      const [r, g, prod, pag, cli] = await Promise.all([
+      const [r, g, prod, pag, cli, reg, rec, fre] = await Promise.all([
         getResumoVendas(p),
         getReceitaPorPeriodo(p),
         getProdutosVendidos(p),
         getVendasPorPagamento(p),
         getMelhoresClientes(p),
+        getVendasPorRegiao(p),
+        getClientesNovosRecorrentes(p),
+        getResumoFrete(p),
       ]);
       setResumo(r);
       setGrafico(g);
       setProdutos(prod);
       setPagamentos(pag);
       setClientes(cli);
+      setRegioes(reg);
+      setRecorrencia(rec);
+      setFrete(fre);
     } catch (e) {
       setErro(
         e instanceof Error ? e.message : "Não foi possível carregar os dados."
@@ -392,6 +411,143 @@ export default function Vendas() {
                   </div>
                 ))}
               </div>
+            )}
+          </Secao>
+
+          {/* ----------------------------------------------------
+              VENDAS POR ESTADO
+              A UF vem do endereço de entrega gravado no pedido.
+              Pedido sem UF aparece como "Não informado" em vez de
+              ser descartado, para a soma fechar com o topo.
+          ---------------------------------------------------- */}
+          <Secao titulo="Vendas por estado" icone={MapPin}>
+            {regioes.length === 0 ? (
+              <Vazio texto="Nenhuma venda com endereço neste período." />
+            ) : (
+              <div className="space-y-2.5">
+                {regioes.map((r) => {
+                  const maior = regioes[0]?.receita || 1;
+                  const pct = (r.receita / maior) * 100;
+                  return (
+                    <div key={r.uf}>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="t-corpo text-[#0f1117]">{r.uf}</span>
+                        <span className="t-corpo text-[#6b7280] tabular-nums">
+                          {brl(r.receita)}
+                          <span className="text-[#9ca3af] ml-1.5">
+                            {r.pedidos} {r.pedidos === 1 ? "pedido" : "pedidos"}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="h-2 bg-[#f4f4f5] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#16a34a] rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Secao>
+
+          {/* ----------------------------------------------------
+              NOVOS x RECORRENTES
+              Conta GENTE, não pedido: um cliente com três compras
+              no período entra uma vez só.
+          ---------------------------------------------------- */}
+          <Secao titulo="Clientes novos e recorrentes" icone={UserPlus}>
+            {!recorrencia ||
+            (recorrencia.novos === 0 && recorrencia.recorrentes === 0) ? (
+              <Vazio texto="Nenhum cliente cadastrado comprou neste período." />
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="painel-app px-3.5 py-3">
+                    <p className="t-apoio text-[#6b7280]">Novos</p>
+                    <p className="t-numero text-[#0f1117] mt-0.5">
+                      {recorrencia.novos}
+                    </p>
+                    <p className="t-micro text-[#9ca3af] mt-1">
+                      {brl(recorrencia.receitaNovos)}
+                    </p>
+                  </div>
+                  <div className="painel-app px-3.5 py-3">
+                    <p className="t-apoio text-[#6b7280]">Voltaram a comprar</p>
+                    <p className="t-numero text-[#15803d] mt-0.5">
+                      {recorrencia.recorrentes}
+                    </p>
+                    <p className="t-micro text-[#9ca3af] mt-1">
+                      {brl(recorrencia.receitaRecorrentes)}
+                    </p>
+                  </div>
+                </div>
+
+                {recorrencia.semCadastro > 0 && (
+                  <p className="t-apoio text-[#9ca3af] leading-snug mt-3">
+                    {recorrencia.semCadastro}{" "}
+                    {recorrencia.semCadastro === 1 ? "pedido" : "pedidos"} sem
+                    cliente cadastrado ficaram fora desta conta — sem cadastro
+                    não há como saber se a pessoa já havia comprado.
+                  </p>
+                )}
+              </>
+            )}
+          </Secao>
+
+          {/* ----------------------------------------------------
+              FRETE
+              "Cobrado", não "custo": este é o valor que o cliente
+              pagou. Quanto a transportadora cobra do lojista não
+              está no banco, então não é prometido aqui.
+          ---------------------------------------------------- */}
+          <Secao titulo="Frete cobrado" icone={Truck}>
+            {!frete || frete.porTransportadora.length === 0 ? (
+              <Vazio texto="Nenhum pedido neste período." />
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="painel-app px-3.5 py-3">
+                    <p className="t-apoio text-[#6b7280]">Total cobrado</p>
+                    <p className="t-corpo-forte text-[#0f1117] numeros mt-1">
+                      {brl(frete.totalCobrado)}
+                    </p>
+                  </div>
+                  <div className="painel-app px-3.5 py-3">
+                    <p className="t-apoio text-[#6b7280]">Frete médio</p>
+                    <p className="t-corpo-forte text-[#0f1117] numeros mt-1">
+                      {brl(frete.freteMedio)}
+                    </p>
+                  </div>
+                  <div className="painel-app px-3.5 py-3 col-span-2 sm:col-span-1">
+                    <p className="t-apoio text-[#6b7280]">Enviados de graça</p>
+                    <p className="t-corpo-forte text-[#0f1117] numeros mt-1">
+                      {frete.pedidosFreteGratis}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 lista-linhas border-t border-[#e7e7ea]">
+                  {frete.porTransportadora.map((t) => (
+                    <div
+                      key={t.nome}
+                      className="flex items-center justify-between gap-3 py-2"
+                    >
+                      <span className="t-corpo text-[#0f1117] truncate">
+                        {t.nome}
+                      </span>
+                      <span className="t-corpo text-[#6b7280] tabular-nums shrink-0">
+                        {brl(t.total)}
+                        <span className="text-[#9ca3af] ml-1.5">
+                          {t.pedidos}{" "}
+                          {t.pedidos === 1 ? "pedido" : "pedidos"}
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </Secao>
         </>

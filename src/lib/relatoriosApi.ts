@@ -371,3 +371,238 @@ export async function getMelhoresClientes(
     .sort((a, b) => b.receita - a.receita)
     .slice(0, limite);
 }
+
+// ==================================================================
+// RELATÓRIOS ADICIONADOS
+//
+// Os três que 4 ou 5 das 5 maiores plataformas brasileiras oferecem e
+// que faltavam aqui: região, novos vs. recorrentes e custo de frete.
+//
+// Tudo abaixo é ADIÇÃO. Nenhuma função, tipo ou consulta acima foi
+// alterada — os relatórios que já funcionavam continuam com as mesmas
+// consultas de antes.
+//
+// Todas as consultas reaproveitam intervalo(), liquido() e
+// STATUS_IGNORADOS, para que um pedido cancelado ou devolvido saia
+// destes relatórios pelo mesmo critério dos outros. Relatório que
+// conta diferente do vizinho é pior do que relatório que falta.
+// ==================================================================
+
+export interface LinhaRegiao {
+  uf: string;
+  pedidos: number;
+  receita: number;
+}
+
+/**
+ * Vendas por estado.
+ *
+ * Lê a UF do endereço de ENTREGA gravado no pedido, não o endereço
+ * atual do cliente: o pedido é uma fotografia do que foi combinado
+ * naquele dia, e cliente muda de endereço.
+ */
+export async function getVendasPorRegiao(
+  periodo: Periodo,
+  limite = 10,
+): Promise<LinhaRegiao[]> {
+  const storeId = await getCurrentStoreId();
+  const { inicio } = intervalo(periodo);
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("total, valor_reembolsado, status, endereco_entrega")
+    .eq("store_id", storeId)
+    .gte("created_at", inicio.toISOString());
+
+  if (error) throw error;
+
+  const mapa = new Map<string, LinhaRegiao>();
+
+  (data ?? [])
+    .filter((o: any) => !STATUS_IGNORADOS.includes(o.status))
+    .forEach((o: any) => {
+      const bruta = o.endereco_entrega?.uf;
+      // Pedido sem UF entra como "Não informado" em vez de ser
+      // descartado: a soma das linhas tem de fechar com o
+      // faturamento do topo, senão o lojista acha que falta dinheiro.
+      const uf =
+        typeof bruta === "string" && bruta.trim()
+          ? bruta.trim().toUpperCase().slice(0, 2)
+          : "Não informado";
+
+      const atual = mapa.get(uf) ?? { uf, pedidos: 0, receita: 0 };
+      atual.pedidos += 1;
+      atual.receita += liquido(o);
+      mapa.set(uf, atual);
+    });
+
+  return Array.from(mapa.values())
+    .sort((a, b) => b.receita - a.receita)
+    .slice(0, limite);
+}
+
+export interface ClientesNovosRecorrentes {
+  novos: number;
+  recorrentes: number;
+  receitaNovos: number;
+  receitaRecorrentes: number;
+  /** Compradores sem cadastro: não dá para saber se voltaram. */
+  semCadastro: number;
+}
+
+/**
+ * Clientes novos contra clientes que voltaram.
+ *
+ * "Novo" é quem não tinha pedido nenhum ANTES do início do período.
+ * Isso se resolve em duas consultas, não em uma por cliente: a
+ * segunda pergunta de uma vez quais daqueles clientes já apareciam
+ * antes. Com uma consulta por cliente, uma loja com 300 compradores
+ * no mês faria 301 idas ao banco para desenhar um gráfico.
+ */
+export async function getClientesNovosRecorrentes(
+  periodo: Periodo,
+): Promise<ClientesNovosRecorrentes> {
+  const storeId = await getCurrentStoreId();
+  const { inicio } = intervalo(periodo);
+
+  const { data: doPeriodo, error } = await supabase
+    .from("orders")
+    .select("total, valor_reembolsado, status, customer_id")
+    .eq("store_id", storeId)
+    .gte("created_at", inicio.toISOString());
+
+  if (error) throw error;
+
+  const validos = (doPeriodo ?? []).filter(
+    (o: any) => !STATUS_IGNORADOS.includes(o.status),
+  );
+
+  const ids = Array.from(
+    new Set(
+      validos
+        .map((o: any) => o.customer_id)
+        .filter((id: any): id is string => Boolean(id)),
+    ),
+  );
+
+  // Quem já comprava antes desta janela.
+  const jaCompravam = new Set<string>();
+  if (ids.length > 0) {
+    const { data: anteriores, error: erroAnteriores } = await supabase
+      .from("orders")
+      .select("customer_id")
+      .eq("store_id", storeId)
+      .lt("created_at", inicio.toISOString())
+      .in("customer_id", ids);
+
+    if (erroAnteriores) throw erroAnteriores;
+
+    (anteriores ?? []).forEach((o: any) => {
+      if (o.customer_id) jaCompravam.add(o.customer_id);
+    });
+  }
+
+  const resultado: ClientesNovosRecorrentes = {
+    novos: 0,
+    recorrentes: 0,
+    receitaNovos: 0,
+    receitaRecorrentes: 0,
+    semCadastro: 0,
+  };
+
+  // Um cliente conta UMA vez, mesmo com três pedidos no período —
+  // senão "recorrentes" viraria contagem de pedido, não de gente.
+  const contados = new Set<string>();
+
+  validos.forEach((o: any) => {
+    const valor = liquido(o);
+    const id = o.customer_id;
+
+    if (!id) {
+      resultado.semCadastro += 1;
+      return;
+    }
+
+    const recorrente = jaCompravam.has(id);
+    if (recorrente) {
+      resultado.receitaRecorrentes += valor;
+    } else {
+      resultado.receitaNovos += valor;
+    }
+
+    if (!contados.has(id)) {
+      contados.add(id);
+      if (recorrente) resultado.recorrentes += 1;
+      else resultado.novos += 1;
+    }
+  });
+
+  return resultado;
+}
+
+export interface ResumoFrete {
+  totalCobrado: number;
+  pedidosComFrete: number;
+  pedidosFreteGratis: number;
+  freteMedio: number;
+  porTransportadora: { nome: string; pedidos: number; total: number }[];
+}
+
+/**
+ * Quanto de frete entrou e quantos pedidos saíram de graça.
+ *
+ * Importante para não ler errado: `frete` é o que o CLIENTE pagou,
+ * não o que a transportadora cobrou do lojista. O custo real da
+ * etiqueta não está no banco hoje. Por isso o rótulo na tela diz
+ * "frete cobrado" e não "custo de frete" — prometer margem de frete
+ * com esse número seria inventar.
+ */
+export async function getResumoFrete(periodo: Periodo): Promise<ResumoFrete> {
+  const storeId = await getCurrentStoreId();
+  const { inicio } = intervalo(periodo);
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("frete, status, frete_transportadora, frete_servico")
+    .eq("store_id", storeId)
+    .gte("created_at", inicio.toISOString());
+
+  if (error) throw error;
+
+  const validos = (data ?? []).filter(
+    (o: any) => !STATUS_IGNORADOS.includes(o.status),
+  );
+
+  const mapa = new Map<string, { nome: string; pedidos: number; total: number }>();
+  let totalCobrado = 0;
+  let pedidosComFrete = 0;
+  let pedidosFreteGratis = 0;
+
+  validos.forEach((o: any) => {
+    const frete = Number(o.frete ?? 0);
+    totalCobrado += frete;
+    if (frete > 0) pedidosComFrete += 1;
+    else pedidosFreteGratis += 1;
+
+    const nome =
+      o.frete_transportadora?.trim() ||
+      o.frete_servico?.trim() ||
+      "Não informado";
+    const atual = mapa.get(nome) ?? { nome, pedidos: 0, total: 0 };
+    atual.pedidos += 1;
+    atual.total += frete;
+    mapa.set(nome, atual);
+  });
+
+  return {
+    totalCobrado,
+    pedidosComFrete,
+    pedidosFreteGratis,
+    // Média sobre quem pagou frete. Incluir os gratuitos puxaria a
+    // média para baixo e faria o número não querer dizer nada.
+    freteMedio: pedidosComFrete > 0 ? totalCobrado / pedidosComFrete : 0,
+    porTransportadora: Array.from(mapa.values()).sort(
+      (a, b) => b.pedidos - a.pedidos,
+    ),
+  };
+}
