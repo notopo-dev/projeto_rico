@@ -22,10 +22,8 @@ import {
   iniciarConexao,
   salvarRegrasFrete,
   testarMelhorEnvio,
-  trocarAmbiente,
   type ConfigFrete,
   type FreteModo,
-  type MelhorEnvioAmbiente,
   type TesteMelhorEnvio,
 } from "../lib/freteConfigApi";
 import { TelaCarregando } from "../components/Carregando";
@@ -183,7 +181,6 @@ export default function Frete() {
   const [salvo, setSalvo] = useState(false);
 
   /* melhor envio */
-  const [ambiente, setAmbiente] = useState<MelhorEnvioAmbiente>("sandbox");
   const [ocupadoME, setOcupadoME] = useState(false);
   const [testando, setTestando] = useState(false);
   const [teste, setTeste] = useState<TesteMelhorEnvio | null>(null);
@@ -204,7 +201,6 @@ export default function Frete() {
       setGratisAcima(paraCampo(c.frete_gratis_acima));
       setRetirada(c.retirada_na_loja);
       setInstrucoes(c.retirada_instrucoes ?? "");
-      setAmbiente(c.melhor_envio_ambiente);
     } catch (e) {
       setErro(
         e instanceof Error ? e.message : "Não foi possível carregar o frete.",
@@ -309,36 +305,6 @@ export default function Frete() {
       setErroME(
         e instanceof Error ? e.message : "Não foi possível iniciar a conexão.",
       );
-      setOcupadoME(false);
-    }
-  }
-
-  async function mudarAmbiente(novo: MelhorEnvioAmbiente) {
-    if (novo === ambiente) return;
-
-    // Trocar de ambiente derruba a autorização: ela vale só no
-    // ambiente em que foi dada. Melhor avisar do que a pessoa achar
-    // que continua conectada.
-    if (
-      config?.conectado &&
-      !window.confirm(
-        "Trocar de ambiente desconecta a conta do Melhor Envio. Você vai precisar conectar de novo. Continuar?",
-      )
-    ) {
-      return;
-    }
-
-    setOcupadoME(true);
-    setErroME(null);
-    setTeste(null);
-    setRecemConectado(null);
-    try {
-      await trocarAmbiente(novo);
-      setAmbiente(novo);
-      await carregar();
-    } catch (e) {
-      setErroME(e instanceof Error ? e.message : "Não foi possível trocar.");
-    } finally {
       setOcupadoME(false);
     }
   }
@@ -616,11 +582,7 @@ export default function Frete() {
                   : ""}
               </p>
               <p className="text-[11.5px] text-[#166534] leading-snug mt-0.5">
-                Ambiente{" "}
-                {config.melhor_envio_ambiente === "producao"
-                  ? "Produção"
-                  : "Teste"}
-                . A autorização se renova sozinha — você não precisa fazer
+                A autorização se renova sozinha — você não precisa fazer
                 nada.
               </p>
             </div>
@@ -638,39 +600,6 @@ export default function Frete() {
             </p>
           </div>
         )}
-
-        {/* ambiente */}
-        <div className="mt-3">
-          <p className="text-[11.5px] font-medium text-[#6b7280] mb-1.5">
-            Ambiente
-          </p>
-          <div className="flex gap-2">
-            {(
-              [
-                ["sandbox", "Teste"],
-                ["producao", "Produção"],
-              ] as [MelhorEnvioAmbiente, string][]
-            ).map(([id, rotulo]) => (
-              <button
-                key={id}
-                onClick={() => mudarAmbiente(id)}
-                disabled={ocupadoME}
-                aria-pressed={ambiente === id}
-                className={`btn-app-pequeno flex-1 border disabled:opacity-50 ${
-                  ambiente === id
-                    ? "bg-[#0f1117] text-white border-[#0f1117]"
-                    : "bg-white text-[#374151] border-[#e7e7ea]"
-                }`}
-              >
-                {rotulo}
-              </button>
-            ))}
-          </div>
-          <p className="mt-1 text-[11px] text-[#9ca3af] leading-snug">
-            Teste usa a conta de sandbox, com saldo fictício. Trocar de
-            ambiente desconecta, porque a autorização vale só onde foi dada.
-          </p>
-        </div>
 
         {erroME && (
           <div className="mt-2.5 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2.5">

@@ -31,11 +31,33 @@ interface CartContextValue {
     quantidade?: number,
     options?: AddItemOptions
   ) => void;
-  removeItem: (productId: string) => void;
-  updateQuantidade: (productId: string, quantidade: number) => void;
+  /** Recebe a chave da LINHA (chaveItem), não o id do produto. */
+  removeItem: (chave: string) => void;
+  updateQuantidade: (chave: string, quantidade: number) => void;
   clear: () => void;
   total: number;
   count: number;
+}
+
+/**
+ * Identifica uma LINHA do carrinho.
+ *
+ * Existe por causa de um defeito que apagava compra: remover e alterar
+ * quantidade procuravam o item só pelo `productId`, enquanto adicionar
+ * já tratava cada variação como linha própria. Resultado: quem tinha a
+ * mesma camisa em preto e em branco e clicava na lixeira de uma perdia
+ * as duas — e mexer no + de uma mexia na outra junto.
+ *
+ * A chave é derivada do próprio item, de propósito: carrinho que já
+ * estava salvo no navegador continua funcionando, sem precisar migrar
+ * nada.
+ */
+export function chaveItem(item: CartItem) {
+  return [
+    item.productId,
+    item.corSelecionada ?? "",
+    item.tamanhoSelecionado ?? "",
+  ].join("|");
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -116,17 +138,17 @@ export function CartProvider({
     });
   }
 
-  function removeItem(productId: string) {
-    setItems((prev) => prev.filter((i) => i.productId !== productId));
+  function removeItem(chave: string) {
+    setItems((prev) => prev.filter((i) => chaveItem(i) !== chave));
   }
 
-  function updateQuantidade(productId: string, quantidade: number) {
+  function updateQuantidade(chave: string, quantidade: number) {
     if (quantidade <= 0) {
-      removeItem(productId);
+      removeItem(chave);
       return;
     }
     setItems((prev) =>
-      prev.map((i) => (i.productId === productId ? { ...i, quantidade } : i))
+      prev.map((i) => (chaveItem(i) === chave ? { ...i, quantidade } : i))
     );
   }
 

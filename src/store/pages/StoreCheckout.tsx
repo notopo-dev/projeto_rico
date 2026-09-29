@@ -652,7 +652,13 @@ export default function StoreCheckout() {
   }
 
   return (
-    <div className="min-h-dvh bg-[#fafafa] pb-32">
+    <div
+      className="min-h-dvh pb-32"
+      style={{
+        background:
+          "linear-gradient(to bottom, color-mix(in srgb, var(--store-primary) 8%, #fafafa 92%) 0px, #fafafa 220px)",
+      }}
+    >
       <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md px-4 py-3 flex items-center gap-3 border-b border-black/5">
         <button
           onClick={() =>
@@ -1201,7 +1207,7 @@ export default function StoreCheckout() {
           <button
             onClick={criarPedidoEContinuar}
             disabled={enviando}
-            className="w-full h-13 min-h-[52px] rounded-2xl text-white font-semibold text-[14px] flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
+            className="w-full h-[52px] rounded-2xl text-white font-bold text-[15px] shadow-lg flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
             style={{ backgroundColor: "var(--store-primary)" }}
           >
             {enviando && <Loader2 size={16} className="animate-spin" />}

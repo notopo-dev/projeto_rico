@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useStore } from "../context/StoreContext";
-import { useCart } from "../context/CartContext";
+import { chaveItem, useCart } from "../context/CartContext";
+import { ProgressoFreteGratis } from "../components/FreteGratisAviso";
 
 function formatBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -15,7 +16,13 @@ export default function StoreCart() {
   if (!store) return null;
 
   return (
-    <div className="min-h-dvh bg-[#fafafa] pb-32">
+    <div
+      className="min-h-dvh pb-32"
+      style={{
+        background:
+          "linear-gradient(to bottom, color-mix(in srgb, var(--store-primary) 8%, #fafafa 92%) 0px, #fafafa 220px)",
+      }}
+    >
       <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md px-4 py-3 flex items-center gap-3 border-b border-black/5">
         <button
           onClick={() => navigate(-1)}
@@ -49,9 +56,16 @@ export default function StoreCart() {
       ) : (
         <>
           <div className="px-4 pt-3 space-y-2.5">
-            {items.map((item) => (
+            <ProgressoFreteGratis />
+
+            {items.map((item) => {
+              // Uma LINHA do carrinho. Cor e tamanho fazem parte da
+              // identidade: a mesma camisa em preto e em branco são
+              // duas linhas, e mexer numa não pode mexer na outra.
+              const chave = chaveItem(item);
+              return (
               <div
-                key={`${item.productId}-${item.corSelecionada ?? ""}-${item.tamanhoSelecionado ?? ""}`}
+                key={chave}
                 className="bg-white rounded-2xl border border-black/5 p-3 flex gap-3"
               >
                 <div className="w-16 h-16 rounded-xl bg-[#f4f4f5] overflow-hidden shrink-0">
@@ -83,8 +97,8 @@ export default function StoreCart() {
                       )}
                     </div>
                     <button
-                      onClick={() => removeItem(item.productId)}
-                      className="shrink-0 text-[#b91c1c] p-1 -mr-1 -mt-1"
+                      onClick={() => removeItem(chave)}
+                      className="shrink-0 w-10 h-10 -mr-2 -mt-2 flex items-center justify-center rounded-full text-[#b91c1c] active:bg-[#fef2f2]"
                       aria-label="Remover"
                     >
                       <Trash2 size={15} strokeWidth={1.8} />
@@ -98,30 +112,31 @@ export default function StoreCart() {
                     <div className="flex items-center gap-2.5 bg-[#f4f4f5] rounded-full px-1 py-1">
                       <button
                         onClick={() =>
-                          updateQuantidade(item.productId, item.quantidade - 1)
+                          updateQuantidade(chave, item.quantidade - 1)
                         }
-                        className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm"
+                        className="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-sm active:bg-[#e7e7ea]"
                         aria-label="Diminuir"
                       >
-                        <Minus size={12} />
+                        <Minus size={14} />
                       </button>
-                      <span className="w-4 text-center text-[12px] font-semibold">
+                      <span className="w-6 text-center text-[13px] font-semibold tabular-nums">
                         {item.quantidade}
                       </span>
                       <button
                         onClick={() =>
-                          updateQuantidade(item.productId, item.quantidade + 1)
+                          updateQuantidade(chave, item.quantidade + 1)
                         }
-                        className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm"
+                        className="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-sm active:bg-[#e7e7ea]"
                         aria-label="Aumentar"
                       >
-                        <Plus size={12} />
+                        <Plus size={14} />
                       </button>
                     </div>
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Barra fixa de resumo/checkout */}
@@ -134,7 +149,7 @@ export default function StoreCart() {
             </div>
             <button
               onClick={() => navigate(`/loja/${store.slug}/checkout`)}
-              className="w-full h-13 min-h-[52px] rounded-2xl text-white font-semibold text-[14px] active:scale-[0.98] transition-transform"
+              className="w-full h-[52px] rounded-2xl text-white font-bold text-[15px] shadow-lg active:scale-[0.98] transition-transform"
               style={{ backgroundColor: "var(--store-primary)" }}
             >
               Finalizar pedido

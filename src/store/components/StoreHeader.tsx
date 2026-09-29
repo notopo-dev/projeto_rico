@@ -43,11 +43,11 @@ export default function StoreHeader({ onSearchClick }: StoreHeaderProps) {
           </div>
         </Link>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {onSearchClick && (
             <button
               onClick={onSearchClick}
-              className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center text-[#374151] active:scale-95 transition-transform shadow-sm"
+              className="w-11 h-11 rounded-full bg-white/85 flex items-center justify-center text-[#374151] active:scale-95 transition-transform shadow-sm"
               aria-label="Buscar"
             >
               <Search size={21} strokeWidth={2} />
@@ -56,7 +56,7 @@ export default function StoreHeader({ onSearchClick }: StoreHeaderProps) {
 
           <Link
             to={`/loja/${store.slug}/meus-pedidos`}
-            className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center text-[#374151] active:scale-95 transition-transform shadow-sm"
+            className="w-11 h-11 rounded-full bg-white/85 flex items-center justify-center text-[#374151] active:scale-95 transition-transform shadow-sm"
             aria-label="Meus pedidos"
           >
             <Receipt size={21} strokeWidth={2} />
@@ -64,7 +64,7 @@ export default function StoreHeader({ onSearchClick }: StoreHeaderProps) {
 
           <Link
             to={`/loja/${store.slug}/carrinho`}
-            className="relative w-12 h-12 rounded-full bg-white/80 flex items-center justify-center text-[#374151] active:scale-95 transition-transform shadow-sm"
+            className="relative w-11 h-11 rounded-full bg-white/85 flex items-center justify-center text-[#374151] active:scale-95 transition-transform shadow-sm"
             aria-label="Carrinho"
           >
             <ShoppingBag size={21} strokeWidth={2} />

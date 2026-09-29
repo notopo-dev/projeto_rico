@@ -15,7 +15,7 @@ export default function CategoryPills({
     <div className="px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar">
       <button
         onClick={() => onSelect(null)}
-        className={`shrink-0 h-10 px-5 rounded-full text-[13px] font-semibold transition-all active:scale-95 ${
+        className={`shrink-0 h-11 px-5 rounded-full text-[13.5px] font-semibold transition-all active:scale-95 ${
           selecionada === null
             ? "text-white shadow-md"
             : "bg-white text-[#374151] border border-black/[0.06] shadow-sm"
@@ -32,7 +32,7 @@ export default function CategoryPills({
         <button
           key={c.id}
           onClick={() => onSelect(c.id)}
-          className={`shrink-0 h-10 px-5 rounded-full text-[13px] font-semibold transition-all active:scale-95 ${
+          className={`shrink-0 h-11 px-5 rounded-full text-[13.5px] font-semibold transition-all active:scale-95 ${
             selecionada === c.id
               ? "text-white shadow-md"
               : "bg-white text-[#374151] border border-black/[0.06] shadow-sm"

@@ -251,14 +251,14 @@ export default function StoreProduct() {
                 <button
                   key={cor.id ?? cor.nome}
                   onClick={() => selecionarCor(cor)}
-                  className={`px-3 py-2 rounded-xl border flex items-center gap-2 text-[13px] transition-colors ${
+                  className={`min-h-[44px] px-3.5 rounded-xl border-2 flex items-center gap-2 text-[13.5px] font-medium transition-colors ${
                     corSelecionada?.nome === cor.nome
-                      ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
-                      : "border-[#e4e4e7]"
+                      ? "border-[var(--store-primary)] bg-[var(--store-primary)]/[0.07] text-[#111827]"
+                      : "border-[#e4e4e7] text-[#374151]"
                   }`}
                 >
                   <span
-                    className="w-4 h-4 rounded-full border border-black/10"
+                    className="w-[18px] h-[18px] rounded-full border border-black/10 shrink-0"
                     style={{ backgroundColor: cor.codigo_hex ?? "#e4e4e7" }}
                   />
                   {cor.nome}
@@ -276,9 +276,9 @@ export default function StoreProduct() {
                 <button
                   key={t.id ?? t.tamanho}
                   onClick={() => setTamanhoSelecionado(t.tamanho)}
-                  className={`px-4 py-2 rounded-xl border text-[13px] font-medium transition-colors ${
+                  className={`min-w-[52px] min-h-[44px] px-4 rounded-xl border-2 text-[14px] font-semibold transition-colors ${
                     tamanhoSelecionado === t.tamanho
-                      ? "text-white border-transparent"
+                      ? "text-white border-transparent shadow-sm"
                       : "border-[#e4e4e7] text-[#374151]"
                   }`}
                   style={
@@ -303,7 +303,7 @@ export default function StoreProduct() {
             <div className="flex items-center gap-3 bg-[#f4f4f5] rounded-full px-1 py-1">
               <button
                 onClick={() => setQuantidade((q) => Math.max(1, q - 1))}
-                className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm"
+                className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm active:bg-[#e7e7ea]"
                 aria-label="Diminuir"
               >
                 <Minus size={14} />
@@ -313,7 +313,7 @@ export default function StoreProduct() {
               </span>
               <button
                 onClick={() => setQuantidade((q) => q + 1)}
-                className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm"
+                className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm active:bg-[#e7e7ea]"
                 aria-label="Aumentar"
               >
                 <Plus size={14} />
@@ -326,19 +326,23 @@ export default function StoreProduct() {
       {/* Barra fixa de ação */}
       {!semEstoque && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-black/5 px-4 py-3 flex gap-2.5 safe-bottom">
+          {/* Dois botões do mesmo tamanho fazem a pessoa parar para
+              escolher. "Comprar agora" é o caminho que a loja quer, então
+              ele é o maior e o colorido; "Adicionar" continua ali, mas
+              sem disputar atenção. */}
           <button
             onClick={handleAdicionar}
-            className="flex-1 h-13 min-h-[52px] rounded-2xl border-2 font-semibold text-[14px] active:scale-[0.98] transition-transform"
+            className="h-[52px] px-4 rounded-2xl border-2 font-semibold text-[14px] active:scale-[0.98] transition-transform shrink-0"
             style={{
               borderColor: "var(--store-primary)",
               color: "var(--store-primary)",
             }}
           >
-            {adicionado ? "Adicionado ✓" : "Adicionar"}
+            {adicionado ? "Adicionado" : "Adicionar"}
           </button>
           <button
             onClick={handleComprarAgora}
-            className="flex-1 h-13 min-h-[52px] rounded-2xl text-white font-semibold text-[14px] active:scale-[0.98] transition-transform"
+            className="flex-1 h-[52px] rounded-2xl text-white font-bold text-[15px] shadow-lg active:scale-[0.98] transition-transform"
             style={{ backgroundColor: "var(--store-primary)" }}
           >
             Comprar agora

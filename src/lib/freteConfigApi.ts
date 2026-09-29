@@ -22,7 +22,6 @@ import { getCurrentStoreId } from "./currentStore";
  */
 
 export type FreteModo = "melhor_envio" | "fixo" | "combinar";
-export type MelhorEnvioAmbiente = "sandbox" | "producao";
 
 export interface RegrasFrete {
   frete_modo: FreteModo;
@@ -43,7 +42,6 @@ export interface ConfigFrete extends RegrasFrete {
   conta: string | null;
   /** Validade do acesso. Renovado sozinho antes de vencer. */
   expira_em: string | null;
-  melhor_envio_ambiente: MelhorEnvioAmbiente;
   /**
    * Produtos ativos sem peso ou medidas. O Melhor Envio recusa o
    * carrinho inteiro por causa de um só, e quem descobre é o cliente,
@@ -81,7 +79,7 @@ export async function getConfigFrete(): Promise<ConfigFrete> {
     supabase
       .from("store_settings")
       .select(
-        "melhor_envio_token, melhor_envio_ambiente, melhor_envio_conta, melhor_envio_expira_em",
+        "melhor_envio_token, melhor_envio_conta, melhor_envio_expira_em",
       )
       .eq("store_id", storeId)
       .maybeSingle(),
@@ -110,10 +108,6 @@ export async function getConfigFrete(): Promise<ConfigFrete> {
     conectado: Boolean(settings.data?.melhor_envio_token),
     conta: settings.data?.melhor_envio_conta ?? null,
     expira_em: settings.data?.melhor_envio_expira_em ?? null,
-    melhor_envio_ambiente:
-      settings.data?.melhor_envio_ambiente === "producao"
-        ? "producao"
-        : "sandbox",
     produtos_sem_medidas: (produtos.data ?? [])
       .filter(semMedidas)
       .map((p: any) => ({ id: p.id, nome: p.nome })),
@@ -153,35 +147,6 @@ export async function salvarRegrasFrete(regras: RegrasFrete): Promise<void> {
         : null,
     })
     .eq("id", storeId);
-
-  if (error) throw error;
-}
-
-/**
- * Troca o ambiente e DESCONECTA.
- *
- * Token de Teste não vale em Produção, nem o contrário. Guardar a
- * conexão antiga aqui só faria a tela dizer "conectado" para uma
- * autorização que o Melhor Envio já ia recusar — que é exatamente o
- * erro que essa tela existe para evitar.
- */
-export async function trocarAmbiente(
-  ambiente: MelhorEnvioAmbiente,
-): Promise<void> {
-  const storeId = await getCurrentStoreId();
-
-  const { error } = await supabase
-    .from("store_settings")
-    .update({
-      melhor_envio_ambiente: ambiente,
-      melhor_envio_token: null,
-      melhor_envio_refresh_token: null,
-      melhor_envio_expira_em: null,
-      melhor_envio_conta: null,
-      melhor_envio_state: null,
-      melhor_envio_state_em: null,
-    })
-    .eq("store_id", storeId);
 
   if (error) throw error;
 }
@@ -245,7 +210,6 @@ export async function desconectarMelhorEnvio(): Promise<void> {
 
 export interface TesteMelhorEnvio {
   conectado: boolean;
-  ambiente: MelhorEnvioAmbiente;
   nome?: string;
   email?: string | null;
   saldo?: number | null;

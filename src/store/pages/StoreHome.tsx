@@ -4,6 +4,7 @@ import { useStore } from "../context/StoreContext";
 import StoreHeader from "../components/StoreHeader";
 import CategoryPills from "../components/CategoryPills";
 import ProductCard from "../components/ProductCard";
+import { FaixaFreteGratis } from "../components/FreteGratisAviso";
 import {
   listPublicCategories,
   listPublicProducts,
@@ -91,7 +92,13 @@ export default function StoreHome() {
   return (
     <div
       className="min-h-dvh pb-28"
-      style={{ backgroundColor: "#f6f6f8" }}
+      style={{
+        // Um respiro da cor da loja no topo, esvaindo para cinza. O
+        // fundo chapado fazia qualquer loja parecer a mesma loja —
+        // a identidade ficava só no logo.
+        background:
+          "linear-gradient(to bottom, color-mix(in srgb, var(--store-primary) 10%, #f6f6f8 90%) 0px, #f6f6f8 320px)",
+      }}
     >
       <StoreHeader onSearchClick={() => setBuscaAberta((v) => !v)} />
 
@@ -113,6 +120,10 @@ export default function StoreHome() {
           </div>
         </div>
       )}
+
+      {/* Frete grátis: dito na vitrine, onde ainda dá para o cliente
+          decidir levar mais uma peça. No fim do checkout já é tarde. */}
+      <FaixaFreteGratis />
 
       {/* Banner */}
       <div className="px-4 pt-3">
@@ -167,9 +178,15 @@ export default function StoreHome() {
       {/* Destaques / ofertas */}
       {!categoriaSelecionada && !busca && emDestaque.length > 0 && (
         <div className="pt-1 pb-2">
-          <div className="px-4 flex items-center gap-1.5 mb-2.5">
-            <Sparkles size={15} style={{ color: "var(--store-primary)" }} />
-            <h2 className="text-[14px] font-bold text-[#111827]">Ofertas</h2>
+          <div className="px-4 flex items-center gap-2 mb-2.5">
+            <span
+              className="w-1 h-4 rounded-full shrink-0"
+              style={{ backgroundColor: "var(--store-primary)" }}
+            />
+            <Sparkles size={16} style={{ color: "var(--store-primary)" }} />
+            <h2 className="text-[15.5px] font-extrabold text-[#111827]">
+              Ofertas
+            </h2>
           </div>
           <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1">
             {emDestaque.map((p) => (
@@ -183,14 +200,22 @@ export default function StoreHome() {
 
       <div className="px-4 pt-2">
         {(categoriaSelecionada || busca || emDestaque.length === 0) && (
-          <h2 className="text-[14px] font-bold text-[#111827] mb-2.5">
+          <h2 className="flex items-center gap-2 text-[15.5px] font-extrabold text-[#111827] mb-2.5">
+            <span
+              className="w-1 h-4 rounded-full shrink-0"
+              style={{ backgroundColor: "var(--store-primary)" }}
+            />
             {categoriaSelecionada
               ? categorias.find((c) => c.id === categoriaSelecionada)?.nome
               : "Produtos"}
           </h2>
         )}
         {!categoriaSelecionada && !busca && emDestaque.length > 0 && (
-          <h2 className="text-[14px] font-bold text-[#111827] mb-2.5">
+          <h2 className="flex items-center gap-2 text-[15.5px] font-extrabold text-[#111827] mb-2.5">
+            <span
+              className="w-1 h-4 rounded-full shrink-0"
+              style={{ backgroundColor: "var(--store-primary)" }}
+            />
             Todos os produtos
           </h2>
         )}

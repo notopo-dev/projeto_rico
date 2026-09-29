@@ -1,9 +1,24 @@
-import { Heart, ImageOff, Plus } from "lucide-react";
+import { ImageOff, Plus, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import type { PublicProduct } from "../lib/storeApi";
 import { useStore } from "../context/StoreContext";
 import { useCart } from "../context/CartContext";
+
+/**
+ * O card da vitrine.
+ *
+ * Duas coisas saíram daqui:
+ *
+ * O coração de favoritar. Ele guardava o gosto do cliente numa
+ * variável de tela: bastava trocar de página para o favorito sumir.
+ * Botão que promete e não cumpre é pior do que botão nenhum — quem
+ * favoritou 5 peças e voltou sem nada não confia mais na loja.
+ *
+ * E o botão de adicionar tinha 36px. O dedo médio de um adulto cobre
+ * uns 45px; abaixo disso a pessoa erra, cai no produto sem querer, e
+ * volta. Agora tem 44px, que é o mínimo que a Apple e o Google pedem.
+ */
 
 function formatBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -12,7 +27,6 @@ function formatBRL(v: number) {
 export default function ProductCard({ product }: { product: PublicProduct }) {
   const { store } = useStore();
   const { addItem } = useCart();
-  const [favorito, setFavorito] = useState(false);
   const [adicionado, setAdicionado] = useState(false);
 
   const semEstoque =
@@ -20,6 +34,12 @@ export default function ProductCard({ product }: { product: PublicProduct }) {
   const temPromo =
     product.preco_promocional != null &&
     product.preco_promocional < product.preco;
+
+  /* Desconto em %, que é como a pessoa avalia se a oferta é boa.
+     "De 120 por 89" exige conta; "-26%" não exige nada. */
+  const desconto = temPromo
+    ? Math.round((1 - product.preco_promocional! / product.preco) * 100)
+    : 0;
 
   function handleQuickAdd(e: React.MouseEvent) {
     e.preventDefault();
@@ -39,6 +59,7 @@ export default function ProductCard({ product }: { product: PublicProduct }) {
           <img
             src={product.imagens[0].url}
             alt={product.nome}
+            loading="lazy"
             className="w-full h-full object-cover"
           />
         ) : (
@@ -47,33 +68,18 @@ export default function ProductCard({ product }: { product: PublicProduct }) {
           </div>
         )}
 
-        {temPromo && !semEstoque && (
+        {temPromo && !semEstoque && desconto > 0 && (
           <span
-            className="absolute top-2 left-2 text-[10px] font-bold text-white px-2 py-1 rounded-full shadow-sm"
+            className="absolute top-2.5 left-2.5 text-[11px] font-extrabold text-white px-2.5 py-1 rounded-full shadow-sm tabular-nums"
             style={{ backgroundColor: "var(--store-primary)" }}
           >
-            OFERTA
+            −{desconto}%
           </span>
         )}
 
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            setFavorito((f) => !f);
-          }}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow-sm active:scale-90 transition-transform"
-          aria-label="Favoritar"
-        >
-          <Heart
-            size={14}
-            strokeWidth={2.2}
-            className={favorito ? "fill-red-500 text-red-500" : "text-[#6b7280]"}
-          />
-        </button>
-
         {semEstoque && (
           <div className="absolute inset-0 bg-white/75 backdrop-blur-[1px] flex items-center justify-center">
-            <span className="text-[11px] font-bold text-[#6b7280] bg-white px-3 py-1.5 rounded-full shadow-sm">
+            <span className="text-[11.5px] font-bold text-[#6b7280] bg-white px-3 py-1.5 rounded-full shadow-sm">
               Esgotado
             </span>
           </div>
@@ -82,29 +88,31 @@ export default function ProductCard({ product }: { product: PublicProduct }) {
         {!semEstoque && (
           <button
             onClick={handleQuickAdd}
-            className="absolute bottom-2 right-2 w-9 h-9 rounded-full text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform"
-            style={{ backgroundColor: "var(--store-primary)" }}
-            aria-label="Adicionar rápido"
+            className="absolute bottom-2.5 right-2.5 w-11 h-11 rounded-full text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform"
+            style={{
+              backgroundColor: adicionado ? "#16a34a" : "var(--store-primary)",
+            }}
+            aria-label={`Adicionar ${product.nome} ao carrinho`}
           >
             {adicionado ? (
-              <span className="text-[13px] font-bold">✓</span>
+              <Check size={19} strokeWidth={3} />
             ) : (
-              <Plus size={17} strokeWidth={2.4} />
+              <Plus size={19} strokeWidth={2.6} />
             )}
           </button>
         )}
       </div>
 
-      <div className="p-3">
-        <p className="text-[12.5px] font-medium text-[#374151] leading-snug line-clamp-2 min-h-[32px]">
+      <div className="p-3 pt-2.5">
+        <p className="text-[13px] font-medium text-[#374151] leading-snug line-clamp-2 min-h-[34px]">
           {product.nome}
         </p>
-        <div className="mt-1.5 flex items-baseline gap-1.5">
-          <span className="text-[16px] font-extrabold text-[#111827]">
+        <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
+          <span className="text-[17px] font-extrabold text-[#111827] tabular-nums">
             {formatBRL(product.preco_promocional ?? product.preco)}
           </span>
           {temPromo && (
-            <span className="text-[11px] text-[#9ca3af] line-through">
+            <span className="text-[11.5px] text-[#9ca3af] line-through tabular-nums">
               {formatBRL(product.preco)}
             </span>
           )}
