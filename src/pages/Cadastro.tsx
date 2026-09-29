@@ -9,14 +9,14 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { traduzirErroAuth, forcaSenha } from "../lib/authErrors";
-import PainelMarca from "../components/PainelMarca";
+import PainelMarca, { DestaquesMobile } from "../components/PainelMarca";
 import BotaoGoogle from "../components/BotaoGoogle";
 
 /**
  * Criar conta.
  *
- * Mesmo desenho do login: duas colunas no computador, só o formulário
- * no celular.
+ * Mesmo desenho do login: duas colunas no computador, formulário
+ * primeiro no celular e a faixa de destaques no rodapé.
  *
  * Quem entra pelo Google não passa por aqui. O nome da loja, que este
  * formulário pede, é criado pelo banco a partir do nome da conta do
@@ -120,8 +120,8 @@ export default function Cadastro({ onSuccess, onVoltarLogin }: CadastroProps) {
   }
 
   return (
-    <div className="min-h-dvh bg-white">
-      <div className="mx-auto max-w-[1180px] min-h-dvh grid lg:grid-cols-2 gap-10 px-5 py-8 sm:px-8 lg:py-10">
+    <div className="min-h-dvh bg-white flex items-center justify-center px-5 py-8 sm:px-8 lg:py-10">
+      <div className="w-full max-w-[1180px] grid lg:grid-cols-2 gap-10 items-center">
         <main className="flex items-center justify-center">
           <div className="w-full max-w-[400px]">
             <div className="lg:hidden flex items-center gap-2.5 mb-8">
@@ -292,6 +292,8 @@ export default function Cadastro({ onSuccess, onVoltarLogin }: CadastroProps) {
                 Entrar
               </button>
             </p>
+
+            <DestaquesMobile />
           </div>
         </main>
 

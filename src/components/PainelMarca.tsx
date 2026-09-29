@@ -3,10 +3,17 @@ import { ShoppingBag, TrendingUp, ShieldCheck } from "lucide-react";
 /**
  * Painel de marca ao lado do formulário.
  *
- * Só aparece em tela grande. No celular ele some inteiro — e isso é
- * de propósito: quem abre o login no celular quer entrar, não ler
- * propaganda. Empurrar a ilustração para cima do formulário faria o
- * campo de e-mail nascer abaixo da dobra.
+ * Duas variantes do mesmo conteúdo:
+ *
+ * - PainelMarca: coluna inteira, só em tela grande (lg pra cima).
+ * - DestaquesMobile: as mesmas três frases em faixa curta, só no
+ *   celular, e DEPOIS do formulário.
+ *
+ * A ordem importa. A ilustração e o título nunca vão pra cima do
+ * formulário no celular: empurrariam o campo de e-mail pra baixo da
+ * dobra, e quem abre o login no telefone quer entrar, não ler
+ * propaganda. Mas deixar a tela do celular só com texto solto,
+ * como estava, também é errado — daí a faixa no rodapé.
  *
  * A ilustração é desenhada aqui em SVG, sem imagem externa: carrega
  * junto com a página, não depende de rede, e não abre exceção na
@@ -117,6 +124,36 @@ export default function PainelMarca() {
               <Icone size={17} className="text-[#15803d]" />
             </span>
             <span className="text-[14px] text-[#166534] font-medium">
+              {texto}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * Faixa de destaques do celular.
+ *
+ * Fica abaixo do formulário, depois do link de trocar login/cadastro.
+ * Some em tela grande, onde o PainelMarca já diz o mesmo.
+ */
+export function DestaquesMobile() {
+  return (
+    <div
+      className="lg:hidden mt-8 rounded-[22px] px-5 py-5"
+      style={{
+        background: "linear-gradient(160deg, #f4fcf7 0%, #edfaf2 100%)",
+      }}
+    >
+      <ul className="space-y-3">
+        {DESTAQUES.map(({ icone: Icone, texto }) => (
+          <li key={texto} className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+              <Icone size={15} className="text-[#15803d]" />
+            </span>
+            <span className="text-[13px] leading-snug text-[#166534] font-medium">
               {texto}
             </span>
           </li>

@@ -1,29 +1,31 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 
 /**
  * Entrar ou criar conta com o Google.
  *
  * Um botão só para as duas coisas, de propósito: quem clica não sabe
- * (nem precisa saber) se já tem conta. O Supabase cria a conta se não
- * existir e entra se existir. Ter dois botões diferentes para o mesmo
- * clique só gera a dúvida "será que eu já tinha?".
+ * (nem precisa saber) se já tem conta. O Supabase cria se não existir
+ * e entra se existir. Dois botões diferentes para o mesmo clique só
+ * geram a dúvida "será que eu já tinha?".
  *
- * Sobre a marca: o "G" colorido é marca registrada do Google e tem
- * regras próprias de uso. Desenhar uma imitação em SVG é o que elas
- * não permitem, então o botão é limpo e escrito. Para usar a marca
- * oficial, baixe o arquivo que o Google distribui e troque aqui.
+ * A marca e o CSS são os OFICIAIS do Google, distribuídos por eles na
+ * página de diretrizes. Não são decoração nossa: o logotipo, a cor da
+ * borda, o raio de 4px e o espaçamento ao redor do ícone são
+ * exigências de uso da marca. Por isso este botão não segue o
+ * arredondamento dos outros da tela — e não deve seguir.
+ *
+ * O CSS mora em index.css, sob as classes .gsi-material-button.
  */
 
 interface Props {
-  /** Texto do botão. "Entrar" na tela de login, "Criar conta" no cadastro. */
+  /** Texto do botão. O Google exige uma das variações aprovadas. */
   rotulo?: string;
   onErro: (mensagem: string) => void;
 }
 
 export default function BotaoGoogle({
-  rotulo = "Continuar com Google",
+  rotulo = "Fazer login com o Google",
   onErro,
 }: Props) {
   const [indo, setIndo] = useState(false);
@@ -36,13 +38,13 @@ export default function BotaoGoogle({
         provider: "google",
         options: {
           // Para onde o Google devolve a pessoa depois de autorizar.
-          // Sai do servidor do navegador atual, nunca de parâmetro da
-          // URL — senão daria para montar um link que desvia o retorno.
+          // Montado a partir da origem atual, nunca de parâmetro da
+          // URL — senão daria para forjar um link que desvia o retorno.
           redirectTo: `${window.location.origin}/dashboard`,
           queryParams: {
-            // Garante que a conta apareça para escolher, em vez de
-            // entrar direto na última usada no aparelho. Importante em
-            // computador compartilhado.
+            // Mostra a lista de contas em vez de entrar direto na
+            // última usada no aparelho. Importa em computador
+            // compartilhado.
             prompt: "select_account",
           },
         },
@@ -53,7 +55,7 @@ export default function BotaoGoogle({
       setIndo(false);
       onErro(
         err?.message?.includes("provider is not enabled")
-          ? "O login com Google ainda não está ativado nesta loja."
+          ? "O login com Google ainda não foi ativado. Se você é o dono da plataforma, ative em Authentication → Providers no Supabase."
           : "Não foi possível abrir o login do Google. Tente de novo.",
       );
     }
@@ -64,17 +66,47 @@ export default function BotaoGoogle({
       type="button"
       onClick={entrar}
       disabled={indo}
-      className="w-full h-[52px] rounded-2xl border border-[#e4e4e7] bg-white text-[15px] font-semibold text-[#374151] flex items-center justify-center gap-2.5 transition hover:bg-[#fafafa] active:scale-[0.99] disabled:opacity-60"
+      className="gsi-material-button"
     >
-      {indo ? (
-        <Loader2 size={18} className="animate-spin" />
-      ) : (
-        <span
-          aria-hidden="true"
-          className="w-5 h-5 rounded-full border-[2.5px] border-[#9ca3af] border-r-transparent rotate-45"
-        />
-      )}
-      {indo ? "Abrindo o Google..." : rotulo}
+      <div className="gsi-material-button-state" />
+      <div className="gsi-material-button-content-wrapper">
+        <div className="gsi-material-button-icon">
+          {/* Logotipo oficial do Google, exatamente como eles
+              distribuem. Não editar as cores nem as formas. */}
+          <svg
+            version="1.1"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 48 48"
+            xmlnsXlink="http://www.w3.org/1999/xlink"
+            width="20"
+            height="20"
+            style={{ display: "block" }}
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              fill="#EA4335"
+              d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+            />
+            <path
+              fill="#4285F4"
+              d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+            />
+            <path
+              fill="#34A853"
+              d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+            />
+            <path fill="none" d="M0 0h48v48H0z" />
+          </svg>
+        </div>
+        <span className="gsi-material-button-contents">
+          {indo ? "Abrindo o Google..." : rotulo}
+        </span>
+      </div>
     </button>
   );
 }

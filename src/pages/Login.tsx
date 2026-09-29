@@ -2,16 +2,21 @@ import { FormEvent, useState } from "react";
 import { Eye, EyeOff, Loader2, Store, AlertCircle, Mail } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { traduzirErroAuth } from "../lib/authErrors";
-import PainelMarca from "../components/PainelMarca";
+import PainelMarca, { DestaquesMobile } from "../components/PainelMarca";
 import BotaoGoogle from "../components/BotaoGoogle";
 
 /**
  * Entrar.
  *
  * Duas colunas no computador, uma no celular. No celular o painel de
- * marca some inteiro: quem abre o login no telefone quer entrar, não
- * ler propaganda — e a ilustração em cima empurraria o campo de
- * e-mail para baixo da dobra.
+ * marca sai de cima do formulário: quem abre o login no telefone quer
+ * entrar, não ler propaganda — e a ilustração em cima empurraria o
+ * campo de e-mail para baixo da dobra. As três frases dele voltam em
+ * faixa curta DEPOIS do formulário (DestaquesMobile).
+ *
+ * A moldura tem min-h-dvh e o respiro no MESMO elemento. Separar os
+ * dois, como estava, somava o respiro à altura da tela inteira e
+ * sobrava rolagem numa página que cabe de uma vez.
  *
  * Campos com 16px de fonte de propósito: abaixo disso o Safari do
  * iPhone dá zoom sozinho ao focar, e a tela "pula" na cara de quem
@@ -89,8 +94,8 @@ export default function Login({ onSuccess, onGoToCadastro }: LoginProps) {
   }
 
   return (
-    <div className="min-h-dvh bg-white">
-      <div className="mx-auto max-w-[1180px] min-h-dvh grid lg:grid-cols-2 gap-10 px-5 py-8 sm:px-8 lg:py-10">
+    <div className="min-h-dvh bg-white flex items-center justify-center px-5 py-8 sm:px-8 lg:py-10">
+      <div className="w-full max-w-[1180px] grid lg:grid-cols-2 gap-10 items-center">
         {/* Formulário */}
         <main className="flex items-center justify-center">
           <div className="w-full max-w-[400px]">
@@ -220,6 +225,8 @@ export default function Login({ onSuccess, onGoToCadastro }: LoginProps) {
                 Criar agora
               </button>
             </p>
+
+            <DestaquesMobile />
           </div>
         </main>
 
