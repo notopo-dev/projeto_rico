@@ -121,10 +121,10 @@ export default function Cadastro({ onSuccess, onVoltarLogin }: CadastroProps) {
 
   return (
     <div className="min-h-dvh bg-white flex items-center justify-center px-5 py-8 sm:px-8 lg:py-10">
-      <div className="w-full max-w-[1180px] grid lg:grid-cols-2 gap-10 items-center">
+      <div className="w-full max-w-[1180px] grid lg:grid-cols-2 gap-10 lg:h-[calc(100dvh-5rem)] lg:min-h-[520px] lg:max-h-[880px]">
         <main className="flex items-center justify-center">
           <div className="w-full max-w-[400px]">
-            <div className="lg:hidden flex items-center gap-2.5 mb-8">
+            <div className="lg:hidden flex items-center gap-2.5 mb-6">
               <span className="w-10 h-10 rounded-xl bg-[#16a34a] flex items-center justify-center">
                 <Store size={19} className="text-white" strokeWidth={2.2} />
               </span>
@@ -146,7 +146,7 @@ export default function Cadastro({ onSuccess, onVoltarLogin }: CadastroProps) {
               <BotaoGoogle rotulo="Inscrever-se com o Google" onErro={setErro} />
             </div>
 
-            <div className="my-5 flex items-center gap-3">
+            <div className="my-4 flex items-center gap-3">
               <span className="h-px flex-1 bg-[#e7e7ea]" />
               <span className="text-[12.5px] text-[#9ca3af]">
                 ou com e-mail
@@ -282,7 +282,7 @@ export default function Cadastro({ onSuccess, onVoltarLogin }: CadastroProps) {
               </button>
             </form>
 
-            <p className="mt-7 text-center text-[13.5px] text-[#6b7280]">
+            <p className="mt-6 text-center text-[13.5px] text-[#6b7280]">
               Já tem conta?{" "}
               <button
                 type="button"
