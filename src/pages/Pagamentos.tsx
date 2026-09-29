@@ -7,6 +7,7 @@ import {
   PainelSaldos,
 } from "../components/StripeConnectPaineis";
 import { StripeConnectProvider } from "../components/StripeConnectContexto";
+import AvisoTaxas from "../components/AvisoTaxas";
 
 /**
  * Financeiro da loja: pagamentos recebidos, repasses para o banco,
@@ -102,6 +103,10 @@ export default function Pagamentos() {
         estado atual da sua conta. Se a conta ainda estiver em verificação,
         os painéis aparecem vazios até a liberação.
       </p>
+
+      <div className="mt-4">
+        <AvisoTaxas />
+      </div>
     </div>
   );
 }

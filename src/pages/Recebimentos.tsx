@@ -1,5 +1,6 @@
 import StripeStatusPanel from "../components/StripeStatusPanel";
 import { StripeConnectProvider } from "../components/StripeConnectContexto";
+import AvisoTaxas from "../components/AvisoTaxas";
 
 /**
  * Tela dedicada à conta de recebimento.
@@ -42,7 +43,6 @@ export default function Recebimentos() {
             "O cliente paga no checkout e o valor vai direto para a sua conta, sem passar por nós.",
             "O saldo fica disponível e é transferido para o seu banco conforme o cronograma de repasse.",
             "Você acompanha vendas, saldo e repasses na tela Pagamentos.",
-            "A plataforma cobra mensalidade — nunca percentual sobre as suas vendas.",
           ].map((texto) => (
             <li
               key={texto}
@@ -54,6 +54,8 @@ export default function Recebimentos() {
           ))}
         </ul>
       </div>
+
+      <AvisoTaxas />
     </div>
   );
 }

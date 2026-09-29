@@ -96,6 +96,16 @@ Deno.serve(async (req) => {
       "components[payments][features][dispute_management]": "true",
       "components[payouts][enabled]": "true",
       "components[payouts][features][external_account_collection]": "true",
+      // Estes dois vêm DESLIGADOS por padrão na Stripe (a resposta da
+      // API devolve edit_payout_schedule: false, standard_payouts:
+      // false). Sem eles, a aba Repasses mostra a lista e o
+      // cronograma, mas o lojista não consegue trocar a frequência do
+      // repasse nem pedir um repasse manual — vira uma tela de leitura.
+      "components[payouts][features][edit_payout_schedule]": "true",
+      "components[payouts][features][standard_payouts]": "true",
+      // instant_payouts fica de fora de propósito: exige elegibilidade
+      // que a Stripe controla e configuração à parte no Dashboard.
+      // Ligar aqui sem isso só mostraria um botão que não funciona.
       // A Stripe exige estes componentes quando ela é responsável pelos
       // saldos negativos (nosso caso): banner de notificação e
       // gerenciamento de conta. Os demais completam o painel do lojista.
@@ -107,6 +117,11 @@ Deno.serve(async (req) => {
         "true",
       "components[balances][enabled]": "true",
       "components[balances][features][external_account_collection]": "true",
+      // O painel de saldo mostra o mesmo cronograma de repasse e
+      // carrega as mesmas features. Deixar diferente do bloco de cima
+      // faria a aba Saldo deixar editar e a aba Repasses não.
+      "components[balances][features][edit_payout_schedule]": "true",
+      "components[balances][features][standard_payouts]": "true",
       "components[documents][enabled]": "true",
     });
 

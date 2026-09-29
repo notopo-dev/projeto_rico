@@ -144,7 +144,10 @@ export function StripeConnectProvider({
               colorPrimary: corPrimaria,
               colorBackground: "#ffffff",
               colorText: "#0f1117",
-              borderRadius: "12px",
+              // 8px, igual ao resto do painel. Os componentes
+              // embutidos ficam lado a lado com os nossos painéis;
+              // com cantos diferentes, a emenda aparece.
+              borderRadius: "8px",
               fontFamily:
                 "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif",
               spacingUnit: "9px",
