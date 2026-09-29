@@ -251,11 +251,11 @@ export default function StoreProduct() {
           {store.nome}
         </span>
         <Link
-          to={`/loja/${store.slug}`}
+          to={`/loja/${store.slug}/sobre`}
           className="ml-auto text-[12.5px] font-semibold shrink-0"
           style={{ color: "var(--store-primary)" }}
         >
-          Ver loja
+          Sobre a loja
         </Link>
       </div>
 

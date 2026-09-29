@@ -380,8 +380,12 @@ export default function Loja() {
           <section className="bg-white border border-[#e4e4e7] rounded-[6px]">
             <div className="px-4 py-3 border-b border-[#e4e4e7]">
               <h2 className="text-[13px] font-semibold text-[#0f1117]">
-                Informações da loja
+                Informações públicas
               </h2>
+              <p className="mt-0.5 text-[11.5px] text-[#6b7280] leading-snug">
+                Tudo desta seção aparece na sua loja, em "Sobre a loja", para
+                quem está comprando.
+              </p>
             </div>
 
             <div className="px-4 py-4 space-y-4">
@@ -455,8 +459,12 @@ export default function Loja() {
           <section className="bg-white border border-[#e4e4e7] rounded-[6px]">
             <div className="px-4 py-3 border-b border-[#e4e4e7]">
               <h2 className="text-[13px] font-semibold text-[#0f1117]">
-                Políticas
+                Políticas · públicas
               </h2>
+              <p className="mt-0.5 text-[11.5px] text-[#6b7280] leading-snug">
+                O cliente lê isto antes de comprar. Loja sem política de troca
+                escrita gera mais dúvida no WhatsApp do que venda.
+              </p>
             </div>
 
             <div className="px-4 py-4 space-y-4">

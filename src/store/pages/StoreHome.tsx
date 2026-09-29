@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Loader2, Search, PackageX, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Loader2, Search, PackageX, Sparkles, Info } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import StoreHeader from "../components/StoreHeader";
 import CategoryPills from "../components/CategoryPills";
@@ -246,6 +247,20 @@ export default function StoreHome() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Rodapé. Antes as políticas de troca e frete que o lojista
+          escrevia no painel não tinham onde aparecer — o cliente
+          comprava sem saber se podia trocar. */}
+      <div className="px-4 pt-8 pb-4 text-center">
+        <Link
+          to={`/loja/${store.slug}/sobre`}
+          className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold"
+          style={{ color: "var(--store-primary)" }}
+        >
+          <Info size={14} />
+          Sobre a loja, trocas e frete
+        </Link>
       </div>
     </div>
   );
