@@ -11,6 +11,9 @@ import {
   UserCheck,
   Store as StoreIcon,
   Home,
+  User,
+  Check,
+  Lock,
 } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import { useCart } from "../context/CartContext";
@@ -144,6 +147,86 @@ function textoPrazo(dias: number | null) {
   return `Até ${dias} dia${dias !== 1 ? "s" : ""} úte${dias !== 1 ? "is" : "il"}`;
 }
 
+/**
+ * Barra de passos.
+ *
+ * O checkout era uma página só, com dados, endereço, frete, forma de
+ * pagamento e resumo empilhados. No celular isso vira uma rolagem
+ * longa sem fim à vista, e é onde a maioria desiste: a pessoa não sabe
+ * quanto falta, então assume que falta muito.
+ *
+ * Em três passos ela vê onde está e o que vem depois. E cada passo
+ * valida só o que é dele — o erro aparece ao lado do campo errado, e
+ * não no fim de tudo.
+ */
+const PASSOS = [
+  { n: 1, rotulo: "Dados", icone: User },
+  { n: 2, rotulo: "Entrega", icone: Truck },
+  { n: 3, rotulo: "Pagamento", icone: CreditCard },
+];
+
+function BarraPassos({ atual }: { atual: number }) {
+  return (
+    <div className="px-4 pt-4 pb-1">
+      <div className="flex items-start">
+        {PASSOS.map((p, i) => {
+          const concluido = atual > p.n;
+          const ativo = atual === p.n;
+          const Icone = p.icone;
+
+          return (
+            <div key={p.n} className="flex-1 flex flex-col items-center">
+              <div className="flex items-center w-full">
+                {/* linha à esquerda */}
+                <div
+                  className={`h-[2px] flex-1 rounded-full ${i === 0 ? "opacity-0" : ""}`}
+                  style={{
+                    backgroundColor:
+                      atual > p.n - 1 && i > 0
+                        ? "var(--store-primary)"
+                        : "#e4e4e7",
+                  }}
+                />
+                <div
+                  className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center transition-colors"
+                  style={{
+                    backgroundColor:
+                      concluido || ativo ? "var(--store-primary)" : "#e9e9ec",
+                    color: concluido || ativo ? "#fff" : "#9ca3af",
+                  }}
+                  aria-current={ativo ? "step" : undefined}
+                >
+                  {concluido ? (
+                    <Check size={17} strokeWidth={3} />
+                  ) : (
+                    <Icone size={16} strokeWidth={2.2} />
+                  )}
+                </div>
+                {/* linha à direita */}
+                <div
+                  className={`h-[2px] flex-1 rounded-full ${i === PASSOS.length - 1 ? "opacity-0" : ""}`}
+                  style={{
+                    backgroundColor:
+                      atual > p.n ? "var(--store-primary)" : "#e4e4e7",
+                  }}
+                />
+              </div>
+              <span
+                className={`mt-1.5 text-[11.5px] leading-none ${
+                  ativo ? "font-bold" : "font-medium text-[#9ca3af]"
+                }`}
+                style={ativo ? { color: "var(--store-primary)" } : undefined}
+              >
+                {p.rotulo}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const inputCls =
   "w-full h-12 px-3.5 rounded-xl border border-[#e4e4e7] bg-white text-[15px] outline-none focus:border-[var(--store-primary)]";
 const labelCls = "block text-[12px] font-medium text-[#6b7280] mb-1";
@@ -154,7 +237,17 @@ export default function StoreCheckout() {
   const navigate = useNavigate();
 
   const [etapa, setEtapa] = useState<Etapa>("dados");
+  /** 1 dados · 2 entrega · 3 pagamento. Só vale enquanto etapa = "dados". */
+  const [passo, setPasso] = useState(1);
   const [orderId, setOrderId] = useState<string | null>(null);
+  /**
+   * De que dados o pedido atual nasceu.
+   *
+   * Agora que dá para voltar do pagamento e confirmar de novo, sem isto
+   * cada volta criaria um pedido novo: a loja encheria de pedidos
+   * pendentes fantasmas e o lojista não saberia quais são reais.
+   */
+  const [pedidoCriadoCom, setPedidoCriadoCom] = useState<string | null>(null);
   const [orderNumero, setOrderNumero] = useState<string | null>(null);
 
   const [nome, setNome] = useState("");
@@ -460,6 +553,87 @@ export default function StoreCheckout() {
     }
   }
 
+  /** Retrato do que compõe o pedido. Mudou aqui, é outro pedido. */
+  function assinaturaPedido() {
+    return JSON.stringify({
+      itens: items.map((i) => [
+        i.productId,
+        i.corSelecionada ?? "",
+        i.tamanhoSelecionado ?? "",
+        i.quantidade,
+        i.preco,
+      ]),
+      metodo,
+      entrega,
+      frete: freteSelecionado?.chave ?? null,
+      endereco: entrega === "retirada" ? null : endereco,
+      cliente: [nome, telefone, cpf, email],
+    });
+  }
+
+  /** O que falta no passo de dados, ou null se está tudo certo. */
+  function erroDados(): string | null {
+    if (!nome.trim() || !telefone.trim()) {
+      return "Preencha seu nome e telefone.";
+    }
+    if (cpf.replace(/\D/g, "").length !== 11) {
+      return "Informe um CPF válido (11 dígitos).";
+    }
+    return null;
+  }
+
+  /** O que falta no passo de entrega, ou null. */
+  function erroEntrega(): string | null {
+    // Quem vai buscar no balcão não tem endereço para dar nem frete
+    // para escolher.
+    if (entrega === "retirada") return null;
+
+    const cepDigits = endereco.cep.replace(/\D/g, "");
+    if (
+      cepDigits.length !== 8 ||
+      !endereco.logradouro.trim() ||
+      !endereco.numero.trim() ||
+      !endereco.bairro.trim() ||
+      !endereco.cidade.trim() ||
+      !endereco.uf
+    ) {
+      return "Preencha o endereço de entrega completo.";
+    }
+    if (!freteSelecionado && !freteACombinar) {
+      return buscandoFrete
+        ? "Aguarde o cálculo do frete."
+        : "Escolha uma opção de entrega.";
+    }
+    return null;
+  }
+
+  /** Avança um passo, ou mostra o que falta. */
+  function avancar() {
+    const falta = passo === 1 ? erroDados() : erroEntrega();
+    if (falta) {
+      setErro(falta);
+      return;
+    }
+    setErro(null);
+    setPasso((p) => p + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function voltar() {
+    setErro(null);
+    if (etapa === "pagamento") {
+      setEtapa("dados");
+      setPasso(3);
+      return;
+    }
+    if (passo > 1) {
+      setPasso((p) => p - 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    navigate(-1);
+  }
+
   /**
    * Passo 1: cria o pedido no banco (sempre, para os 3 métodos).
    * Se for WhatsApp, já finaliza e redireciona. Se for Pix/Cartão,
@@ -469,44 +643,27 @@ export default function StoreCheckout() {
   async function criarPedidoEContinuar() {
     setErro(null);
 
-    if (!nome.trim() || !telefone.trim()) {
-      setErro("Preencha seu nome e telefone.");
-      return;
-    }
-    const cpfDigits = cpf.replace(/\D/g, "");
-    if (cpfDigits.length !== 11) {
-      setErro("Informe um CPF válido (11 dígitos).");
+    // Confere TUDO de novo, e não só o passo atual: o cliente pode ter
+    // voltado e mexido num campo de um passo anterior.
+    const falta = erroDados() ?? erroEntrega();
+    if (falta) {
+      setErro(falta);
       return;
     }
     if (items.length === 0) {
       setErro("Seu carrinho está vazio.");
       return;
     }
+    const cpfDigits = cpf.replace(/\D/g, "");
 
-    // Quem vai buscar no balcão não tem endereço de entrega para dar,
-    // nem frete para escolher.
     const cepDigits = endereco.cep.replace(/\D/g, "");
 
-    if (entrega === "entrega") {
-      if (
-        cepDigits.length !== 8 ||
-        !endereco.logradouro.trim() ||
-        !endereco.numero.trim() ||
-        !endereco.bairro.trim() ||
-        !endereco.cidade.trim() ||
-        !endereco.uf
-      ) {
-        setErro("Preencha o endereço de entrega completo.");
-        return;
-      }
-      if (!freteSelecionado && !freteACombinar) {
-        setErro(
-          buscandoFrete
-            ? "Aguarde o cálculo do frete."
-            : "Escolha uma opção de entrega.",
-        );
-        return;
-      }
+    // Voltou do pagamento sem mudar nada: é o MESMO pedido. Segue para
+    // a cobrança em vez de criar outro.
+    const assinatura = assinaturaPedido();
+    if (orderId && pedidoCriadoCom === assinatura) {
+      setEtapa("pagamento");
+      return;
     }
 
     setEnviando(true);
@@ -612,6 +769,7 @@ export default function StoreCheckout() {
       // limpo depois que o pagamento realmente for confirmado.
       setOrderId(order.id);
       setOrderNumero(order.numero);
+      setPedidoCriadoCom(assinatura);
       setEtapa("pagamento");
     } catch (err: any) {
       console.error("Erro completo do checkout:", err);
@@ -662,7 +820,7 @@ export default function StoreCheckout() {
       <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md px-4 py-3 flex items-center gap-3 border-b border-black/5">
         <button
           onClick={() =>
-            etapa === "pagamento" ? setEtapa("dados") : navigate(-1)
+            voltar()
           }
           className="w-9 h-9 rounded-full bg-[#f4f4f5] flex items-center justify-center shrink-0"
           aria-label="Voltar"
@@ -670,12 +828,22 @@ export default function StoreCheckout() {
           <ChevronLeft size={19} className="text-[#374151]" />
         </button>
         <h1 className="text-[15px] font-bold text-[#111827]">
-          {etapa === "dados" ? "Finalizar pedido" : "Pagamento"}
+          {etapa === "pagamento"
+            ? "Pagamento"
+            : passo === 1
+              ? "Seus dados"
+              : passo === 2
+                ? "Entrega"
+                : "Pagamento"}
         </h1>
       </div>
 
+      <BarraPassos atual={etapa === "pagamento" ? 4 : passo} />
+
       {etapa === "dados" && (
-        <div className="px-4 pt-4 space-y-4">
+        <div className="px-4 pt-3 space-y-4">
+          {passo === 1 && (
+          <>
           {/* Dados do cliente */}
           <div className="bg-white rounded-2xl border border-black/5 p-4">
             <h2 className="text-[13px] font-bold text-[#111827] mb-3">
@@ -771,6 +939,11 @@ export default function StoreCheckout() {
             </div>
           </div>
 
+          </>
+          )}
+
+          {passo === 2 && (
+          <>
           {/* Entrega */}
           <div className="bg-white rounded-2xl border border-black/5 p-4">
             <div className="flex items-center gap-1.5 mb-3">
@@ -1011,6 +1184,11 @@ export default function StoreCheckout() {
             </div>
           </div>
 
+          </>
+          )}
+
+          {passo === 3 && (
+          <>
           {/* Forma de recebimento do pedido */}
           {(permiteWhatsapp || ofereceAlgumPagamento) && (
             <div className="bg-white rounded-2xl border border-black/5 p-4">
@@ -1095,10 +1273,13 @@ export default function StoreCheckout() {
 
           {/* Resumo */}
           <div className="bg-white rounded-2xl border border-black/5 p-4">
-            <h2 className="text-[13px] font-bold text-[#111827] mb-3">
-              Resumo
+            <h2 className="text-[13.5px] font-bold text-[#111827] mb-3">
+              Resumo do pedido
             </h2>
-            <div className="space-y-2">
+            {/* Com a foto ao lado, a conferência é de relance. Só o
+                nome escrito obriga a pessoa a reler item por item para
+                ter certeza de que pediu a peça certa. */}
+            <div className="space-y-3">
               {items.map((i) => {
                 const variacao = descricaoVariacao(
                   i.corSelecionada,
@@ -1107,19 +1288,31 @@ export default function StoreCheckout() {
                 return (
                   <div
                     key={`${i.productId}-${i.corSelecionada ?? ""}-${i.tamanhoSelecionado ?? ""}`}
-                    className="flex items-start justify-between text-[13px] gap-2"
+                    className="flex items-start gap-3"
                   >
-                    <div>
-                      <p className="text-[#4b5563]">
-                        {i.quantidade}x {i.nome}
-                      </p>
-                      {variacao && (
-                        <p className="text-[11px] text-[#9ca3af] mt-0.5">
-                          {variacao}
-                        </p>
+                    <div className="w-12 h-12 rounded-xl bg-[#f4f4f5] overflow-hidden shrink-0">
+                      {i.imagemUrl && (
+                        <img
+                          src={i.imagemUrl}
+                          alt=""
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                        />
                       )}
                     </div>
-                    <span className="font-medium text-[#111827] shrink-0">
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-[#111827] leading-snug line-clamp-2">
+                        {i.nome}
+                      </p>
+                      <p className="text-[11.5px] text-[#9ca3af] mt-0.5">
+                        {[variacao, `Qtd: ${i.quantidade}`]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    </div>
+
+                    <span className="text-[13.5px] font-semibold text-[#111827] shrink-0 tabular-nums">
                       {formatBRL(i.preco * i.quantidade)}
                     </span>
                   </div>
@@ -1154,16 +1347,28 @@ export default function StoreCheckout() {
                         : "—"}
                 </span>
               </div>
-              <div className="flex items-center justify-between pt-1.5">
-                <span className="text-[13px] font-semibold text-[#111827]">
+              <div
+                className="mt-2 -mx-1 px-3 py-2.5 rounded-xl flex items-center justify-between"
+                style={{
+                  backgroundColor:
+                    "color-mix(in srgb, var(--store-primary) 8%, white 92%)",
+                }}
+              >
+                <span className="text-[14px] font-bold text-[#111827]">
                   Total
                 </span>
-                <span className="text-[16px] font-extrabold text-[#111827]">
+                <span
+                  className="text-[18px] font-extrabold tabular-nums"
+                  style={{ color: "var(--store-primary)" }}
+                >
                   {formatBRL(totalComFrete)}
                 </span>
               </div>
             </div>
           </div>
+
+          </>
+          )}
 
           {erro && (
             <p className="text-[12px] text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-xl px-3.5 py-2.5">
@@ -1204,19 +1409,42 @@ export default function StoreCheckout() {
 
       {etapa === "dados" && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-black/5 px-4 py-3 safe-bottom">
+          {/* O total acompanha a pessoa desde o primeiro passo: ela não
+              deveria precisar chegar ao fim para saber quanto vai pagar. */}
+          {passo < 3 && (
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[12.5px] text-[#6b7280]">
+                {passo === 1 ? "Subtotal" : "Total"}
+              </span>
+              <span className="text-[16px] font-extrabold text-[#111827] tabular-nums">
+                {formatBRL(passo === 1 ? total : totalComFrete)}
+              </span>
+            </div>
+          )}
+
           <button
-            onClick={criarPedidoEContinuar}
+            onClick={passo < 3 ? avancar : criarPedidoEContinuar}
             disabled={enviando}
             className="w-full h-[52px] rounded-2xl text-white font-bold text-[15px] shadow-lg flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
             style={{ backgroundColor: "var(--store-primary)" }}
           >
             {enviando && <Loader2 size={16} className="animate-spin" />}
+            {passo === 3 && !enviando && <Lock size={15} strokeWidth={2.4} />}
             {enviando
               ? "Enviando..."
-              : metodo === "whatsapp"
-                ? "Enviar pedido no WhatsApp"
-                : "Continuar para pagamento"}
+              : passo < 3
+                ? "Continuar"
+                : metodo === "whatsapp"
+                  ? "Enviar pedido no WhatsApp"
+                  : "Finalizar compra"}
           </button>
+
+          {passo === 3 && metodo !== "whatsapp" && (
+            <p className="mt-2 flex items-center justify-center gap-1.5 text-[11.5px] text-[#6b7280]">
+              <Lock size={12} strokeWidth={2.4} className="text-[#15803d]" />
+              Pagamento protegido
+            </p>
+          )}
         </div>
       )}
     </div>
