@@ -1,5 +1,30 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700;800&display=swap');
 @import 'tailwindcss';
+
+/* ---------------------------------------------------------------
+   Inter, servida pelo próprio site.
+
+   Antes ela vinha do Google Fonts por @import. Nunca carregou em
+   produção: a CSP do vercel.json libera fontes só de 'self', e
+   fonts.gstatic.com não está lá. O site caía na fonte do sistema,
+   e no localhost (onde a CSP não vale) carregava — daí a impressão
+   de que o login tinha uma fonte e o painel outra.
+
+   O arquivo é o recorte latino da Inter variável: 48 KB cobrindo
+   todo o português, um peso contínuo de 100 a 900. O Vite versiona
+   a URL, então trocar a fonte não exige limpar cache de ninguém.
+
+   Licença SIL Open Font License 1.1 — auto-hospedar é permitido.
+   --------------------------------------------------------------- */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./fonts/inter-latin-variable.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 @theme inline {
   --font-sans: 'Inter', system-ui, sans-serif;
@@ -49,10 +74,20 @@ body,
 #root {
   min-height: 100%;
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: 14px;
+  /* 15px no celular, 14px no computador: na mão, a uma distância
+     menor e sem apoio, o mesmo corpo cansa mais. */
+  font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@media (min-width: 640px) {
+  html,
+  body,
+  #root {
+    font-size: 14px;
+  }
 }
 
 body {
@@ -102,6 +137,151 @@ textarea {
 }
 
 /* ---------------------------------------------------------------
+   ESCALA DE TEXTO
+
+   Sete papéis, não vinte e cinco tamanhos. Cada classe diz para que
+   serve, não quantos pixels tem — assim uma mudança de escala é uma
+   linha aqui, e não uma varredura em dezoito telas.
+
+   Os valores são do celular. A partir de 640px eles descem um
+   degrau: com o monitor mais longe e mais área, cabe mais densidade.
+   Esse é o único lugar do projeto onde tamanho de texto é decidido.
+
+   Piso de 12px. Abaixo disso não é "discreto", é ilegível — e o que
+   existia no painel (8, 9 e 10px) não passa nem de perto.
+   --------------------------------------------------------------- */
+.t-micro       { font-size: 12px; line-height: 1.35; }
+.t-apoio       { font-size: 13px; line-height: 1.45; }
+.t-corpo       { font-size: 15px; line-height: 1.5; }
+.t-corpo-forte { font-size: 15px; line-height: 1.5; font-weight: 600; }
+.t-secao       { font-size: 16px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
+.t-titulo      { font-size: 20px; line-height: 1.25; font-weight: 700; letter-spacing: -0.02em; }
+.t-numero      { font-size: 26px; line-height: 1.1;  font-weight: 700; letter-spacing: -0.02em;
+                 font-variant-numeric: tabular-nums; }
+
+@media (min-width: 640px) {
+  .t-micro       { font-size: 11.5px; }
+  .t-apoio       { font-size: 12.5px; }
+  .t-corpo       { font-size: 14px; }
+  .t-corpo-forte { font-size: 14px; }
+  .t-secao       { font-size: 15px; }
+  .t-titulo      { font-size: 19px; }
+  .t-numero      { font-size: 24px; }
+}
+
+/* Números em coluna só alinham se cada dígito ocupar a mesma
+   largura. Sem isso, R$ 1.111,00 e R$ 9.999,00 desencontram. */
+.numeros { font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------
+   DENSIDADE DE SISTEMA
+
+   Estas classes seguem o visual-guidelines.md do projeto: cantos
+   discretos (8px), divisórias em vez de cartão para tudo, tabela
+   como componente de primeira classe. A loja e o login continuam
+   mais macios — lá o público é o comprador, aqui é quem trabalha
+   no sistema o dia inteiro.
+   --------------------------------------------------------------- */
+
+/* Cabeçalho de tela: título à esquerda, ações à direita. */
+.cabecalho-tela {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+/* Painel de conteúdo. Borda fina, canto de 8px, sem sombra: é uma
+   superfície de trabalho, não um cartão flutuante. */
+.painel-app {
+  background: var(--app-cartao);
+  border: 1px solid var(--app-borda);
+  border-radius: 8px;
+}
+
+/* Cabeçalho e rodapé de painel, separados por divisória. */
+.painel-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--app-borda);
+}
+
+/* Lista de linhas com divisória entre elas — o padrão do painel
+   no celular, onde tabela não cabe. */
+.lista-linhas > * + * {
+  border-top: 1px solid var(--app-borda);
+}
+.linha-app {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  min-height: 56px;
+}
+
+/* Tabela. No celular ela rola dentro do próprio painel, nunca
+   empurra a página para os lados. */
+.rolagem-tabela {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.tabela-app {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.tabela-app thead th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--app-texto-fraco);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--app-borda);
+  white-space: nowrap;
+}
+.tabela-app tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--app-borda);
+  vertical-align: middle;
+}
+.tabela-app tbody tr:last-child td {
+  border-bottom: none;
+}
+.tabela-app tbody tr:hover {
+  background: #fafafa;
+}
+@media (min-width: 640px) {
+  .tabela-app { font-size: 14px; }
+}
+
+/* Selo de estado. Discreto por regra: fundo claro, texto escuro,
+   canto de 4px. Nada de pílula colorida saltando da linha. */
+.selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.selo-neutro  { background: #f4f4f5; color: #3f3f46; border-color: #e4e4e7; }
+.selo-ok      { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+.selo-atencao { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.selo-erro    { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.selo-info    { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+
+/* ---------------------------------------------------------------
    Componentes de interface
    Classes reaproveitáveis, para as telas não repetirem a mesma
    sopa de utilitários do Tailwind.
@@ -114,9 +294,12 @@ textarea {
   justify-content: center;
   gap: 8px;
   width: 100%;
-  min-height: 52px;
+  /* 48px no celular ainda passa com folga do mínimo de 44px para o
+     dedo, e no computador 40px devolve a barra de ferramentas ao
+     tamanho de software, não de página de captura. */
+  min-height: 48px;
   padding: 0 20px;
-  border-radius: 16px;
+  border-radius: 8px;
   background: var(--app-tinta);
   color: #fff;
   font-size: 15px;
@@ -125,6 +308,11 @@ textarea {
   cursor: pointer;
   transition: transform 0.12s ease, opacity 0.12s ease;
 }
+@media (min-width: 640px) {
+  .btn-app,
+  .btn-app-claro { min-height: 40px; }
+}
+
 .btn-app:active {
   transform: scale(0.975);
 }
@@ -143,7 +331,7 @@ textarea {
   width: 100%;
   min-height: 52px;
   padding: 0 20px;
-  border-radius: 16px;
+  border-radius: 8px;
   background: #fff;
   color: var(--app-texto);
   font-size: 15px;
@@ -165,7 +353,7 @@ textarea {
   gap: 6px;
   min-height: 44px;
   padding: 0 14px;
-  border-radius: 12px;
+  border-radius: 6px;
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
@@ -184,7 +372,7 @@ textarea {
 .cartao-app {
   background: var(--app-cartao);
   border: 1px solid var(--app-borda);
-  border-radius: 18px;
+  border-radius: 8px;
   box-shadow: 0 1px 2px rgb(15 17 23 / 0.04);
 }
 
@@ -294,55 +482,17 @@ textarea {
 }
 
 /* ---------------------------------------------------------------
-   Escala de texto no celular
+   PONTE TEMPORÁRIA — remapeamento de tamanhos soltos
 
-   O painel foi desenhado no desktop, onde 12–13px funciona. No celular
-   isso fica pequeno demais: o iOS usa 17px de corpo, o Material usa 16px,
-   e abaixo de 15px a leitura com o aparelho na mão já cansa.
+   As telas do painel ainda carregam tamanhos escritos à mão
+   (text-[11px], text-[13px]…): 25 valores diferentes, a maioria
+   pequena demais para a mão. Enquanto cada tela não for migrada
+   para a escala de baixo (.t-corpo, .t-titulo…), este bloco sobe
+   os tamanhos antigos no celular para que nada fique ilegível.
 
-   Em vez de reescrever as 61 telas, subimos aqui cada tamanho usado no
-   projeto. No desktop nada muda — a regra só vale até 1023px.
-   --------------------------------------------------------------- */
-@media (max-width: 1023px) {
-  .text-\[10px\]    { font-size: 12px !important; }
-  .text-\[10\.5px\] { font-size: 12.5px !important; }
-  .text-\[11px\]    { font-size: 13px !important; }
-  .text-\[11\.5px\] { font-size: 13.5px !important; }
-  .text-\[12px\]    { font-size: 14px !important; }
-  .text-\[12\.5px\] { font-size: 14.5px !important; }
-  .text-\[13px\]    { font-size: 15.5px !important; }
-  .text-\[13\.5px\] { font-size: 15.5px !important; }
-  .text-\[14px\]    { font-size: 16.5px !important; }
-  .text-\[15px\]    { font-size: 17.5px !important; }
-  .text-\[16px\]    { font-size: 18.5px !important; }
-  .text-\[17px\]    { font-size: 19.5px !important; }
-  .text-\[18px\]    { font-size: 21px !important; }
-  .text-\[19px\]    { font-size: 22px !important; }
-  .text-\[20px\]    { font-size: 23px !important; }
-  .text-\[22px\]    { font-size: 26px !important; }
-  .text-\[24px\]    { font-size: 28px !important; }
-
-  /* Números grandes da visão geral ganham mais presença ainda. */
-  .numero-destaque { font-size: 30px !important; line-height: 1.1; }
-
-  /* Cartões com mais respiro para o dedo. */
-  .cartao-app { border-radius: 20px; }
-}
-
-/* ---------------------------------------------------------------
-   Escala de leitura no celular
-   ---------------------------------------------------------------
-   As telas foram desenhadas para desktop, com textos de 11 a 14px.
-   No celular isso fica pequeno demais: as referências de mercado
-   (iOS Human Interface Guidelines e Material 3) usam 16-17px para
-   corpo de texto, 20-24px para títulos e 28-34px para números em
-   destaque.
-
-   Em vez de reescrever cada tela, remapeamos aqui os tamanhos usados
-   no projeto. Vale só até 640px — no desktop nada muda.
-
-   Se um dia as telas forem refeitas com tamanhos responsivos nativos,
-   este bloco pode sair inteiro.
+   Este bloco é para SUMIR. A cada tela migrada ele fica menor, e
+   quando nenhuma tela usar mais text-[Npx] ele sai inteiro. Não
+   escreva tamanhos novos contando com ele.
    --------------------------------------------------------------- */
 @media (max-width: 640px) {
   .text-\[10px\]    { font-size: 12px !important; }
@@ -379,9 +529,6 @@ textarea {
   svg[width="20"] { width: 22px !important; height: 22px !important; }
   svg[width="21"] { width: 23px !important; height: 23px !important; }
   svg[width="22"] { width: 24px !important; height: 24px !important; }
-
-  /* Cartões e listas ganham respiro proporcional ao texto maior. */
-  .cartao-app { border-radius: 20px; }
 
   /* Alvo de toque mínimo. Botões desenhados para mouse costumavam ter
      28-32px de altura; no dedo isso erra muito. 44px é a recomendação
@@ -466,7 +613,7 @@ textarea {
   width: 100%;
   min-height: 48px;
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: 8px;
   border: 1px solid var(--app-borda);
   background: #fff;
   font-size: 14px;
