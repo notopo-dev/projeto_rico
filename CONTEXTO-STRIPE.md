@@ -116,3 +116,63 @@ e pede exatamente essas.
   nunca no `.env` do frontend, nunca colada em chat.
 - Uma `sk_live_` foi exposta em conversa e **precisa de Roll** no Dashboard
   (Desenvolvedores → Chaves de API → modo live → Roll key).
+
+---
+
+## Pix: por que não funciona (29/09/2026)
+
+**Pix não é suportado em contas Accounts v2. A capability não existe nesse
+modelo — não é questão de liberar.**
+
+Confirmado na tabela oficial de capabilities da Stripe, coluna
+"Accounts v2 support", nas duas tabelas (contas com Dashboard completo e contas
+Express/Custom/sem Dashboard):
+
+| Método | Capability | Accounts v2 |
+|---|---|---|
+| Pix | `pix_payments` | **No** |
+| Boleto | `boleto_payments` | Yes |
+| Cartão | `card_payments` | Yes |
+
+https://docs.stripe.com/connect/account-capabilities#payment-methods
+
+O painel da Stripe diz o mesmo na linha do PIX: *"Aceito apenas na Accounts v1"*.
+
+**Como isso nos afeta:** `stripe-custom-create-account` cria as contas
+conectadas em `POST /v2/core/accounts` com `configuration.merchant`. São contas
+v2. Portanto o Pix nunca apareceria, independentemente do que o suporte
+liberasse — e foi por isso que o chamado ficou dias em círculos.
+
+**São duas barreiras, não uma:**
+
+1. Contas precisam ser **Accounts v1**.
+2. Pix no Brasil é **invite only**
+   (https://docs.stripe.com/payments/pix — seção Business locations, "BR ...
+   (Invite only)").
+
+**Limitações da v2, para referência.** A própria doc lista quando a v1 é
+obrigatória: OAuth, recipient service agreement, capabilities `treasury` e
+`card_issuing_*`, capabilities depreciadas, e "certain payment methods in
+public or private preview".
+https://docs.stripe.com/connect/accounts-v2 — seção "Accounts API v2
+limitations".
+
+**Estado em 29/09:** perguntado ao suporte se há caminho para Pix em contas v2,
+se contas já criadas em v2 podem migrar, e se o convite cobre as contas
+conectadas. **Decisão: esperar a resposta antes de reescrever qualquer coisa.**
+
+**Se a resposta for "só v1":** o trabalho é refazer `stripe-custom-create-account`
+e `stripe-custom-status` em v1 (`POST /v1/accounts` com controller properties),
+mais o fluxo de onboarding. Cartão e cobrança direta funcionam igual na v1.
+Nota: já existe um `stripe-connect-onboarding` criando conta **Express v1** no
+projeto, sem uso — a auditoria de 28/09 marcou isso como superfície
+desnecessária (item B5). Se a migração acontecer, é a hora de unificar.
+
+**Outras pendências do Pix, quando ele existir:**
+
+- O Pix da Stripe passa pelo **Ebanx**. O descritor na fatura do cliente é o
+  Ebanx, não a loja — `statement_descriptor` é ignorado.
+- **IOF de 3,5%** em transação internacional. O parâmetro
+  `payment_method_options[pix][amount_includes_iof]` decide quem paga, e existe
+  texto de divulgação obrigatório para integração via API.
+- Limites: mínimo R$ 0,50, máximo 3.000 USD por transação.
