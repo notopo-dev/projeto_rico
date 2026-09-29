@@ -9,6 +9,11 @@
 // ============================================================
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import {
+  cabecalhosME,
+  ErroMelhorEnvio,
+  obterAcesso,
+} from "../_shared/melhorEnvio.ts";
 
 function apenasDigitos(v: string) {
   return (v ?? "").replace(/\D/g, "");
@@ -106,32 +111,26 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { data: settings } = await supabaseAdmin
-      .from("store_settings")
-      .select("melhor_envio_token, melhor_envio_ambiente")
-      .eq("store_id", order.store_id)
-      .maybeSingle();
-
-    if (!settings?.melhor_envio_token) {
-      return new Response(
-        JSON.stringify({ error: "Loja sem Melhor Envio configurado." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Token válido da loja. O helper renova sozinho se estiver perto
+    // de vencer — o access_token do Melhor Envio dura 30 dias.
+    let acesso;
+    try {
+      acesso = await obterAcesso(supabaseAdmin, order.store_id);
+    } catch (err) {
+      if (err instanceof ErroMelhorEnvio) {
+        return new Response(
+          JSON.stringify({ error: err.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw err;
     }
 
-    const baseUrl =
-      settings.melhor_envio_ambiente === "producao"
-        ? "https://melhorenvio.com.br"
-        : "https://sandbox.melhorenvio.com.br";
+    const baseUrl = acesso.base;
 
     const res = await fetch(`${baseUrl}/api/v2/me/shipment/tracking`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${settings.melhor_envio_token}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "User-Agent": "LojaPro (contato@lojapro.com.br)",
-      },
+      headers: cabecalhosME(acesso.token),
       body: JSON.stringify({ orders: [order.melhor_envio_order_id] }),
     });
 

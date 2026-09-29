@@ -10,10 +10,15 @@ import { getCurrentStoreId } from "./currentStore";
  *    `stores`, porque a loja pública precisa lê-las sem login para
  *    montar as opções no checkout. Não são segredo: é preço de frete.
  *
- *  - O TOKEN do Melhor Envio fica em `store_settings`, que o RLS abre
- *    só para o dono da loja. Esse token gasta dinheiro — compra
- *    etiqueta com o saldo da conta — e nunca pode chegar ao navegador
- *    de quem está comprando.
+ *  - A CONEXÃO com o Melhor Envio fica em `store_settings`, que o RLS
+ *    abre só para o dono da loja. Esses tokens gastam dinheiro —
+ *    compram etiqueta com o saldo da conta — e nunca podem chegar ao
+ *    navegador de quem está comprando.
+ *
+ * Sobre a conexão: o Melhor Envio tirou os tokens pessoais do painel.
+ * Hoje não existe nada para o lojista copiar e colar — ele autoriza a
+ * plataforma numa tela deles e o token vem pelo servidor. Por isso
+ * nada aqui recebe ou devolve token: a tela só sabe se está conectada.
  */
 
 export type FreteModo = "melhor_envio" | "fixo" | "combinar";
@@ -32,8 +37,12 @@ export interface RegrasFrete {
 export interface ConfigFrete extends RegrasFrete {
   /** Sem CEP de origem o Melhor Envio não cota nada. */
   cep_origem: string | null;
-  /** O token em si nunca sai do banco para a tela — só se existe. */
-  tem_token: boolean;
+  /** Os tokens nunca saem do banco para a tela — só se existem. */
+  conectado: boolean;
+  /** Nome da conta autorizada, só para a tela mostrar quem está ligado. */
+  conta: string | null;
+  /** Validade do acesso. Renovado sozinho antes de vencer. */
+  expira_em: string | null;
   melhor_envio_ambiente: MelhorEnvioAmbiente;
   /**
    * Produtos ativos sem peso ou medidas. O Melhor Envio recusa o
@@ -71,7 +80,9 @@ export async function getConfigFrete(): Promise<ConfigFrete> {
       .single(),
     supabase
       .from("store_settings")
-      .select("melhor_envio_token, melhor_envio_ambiente")
+      .select(
+        "melhor_envio_token, melhor_envio_ambiente, melhor_envio_conta, melhor_envio_expira_em",
+      )
       .eq("store_id", storeId)
       .maybeSingle(),
     supabase
@@ -96,7 +107,9 @@ export async function getConfigFrete(): Promise<ConfigFrete> {
     retirada_na_loja: Boolean(s.retirada_na_loja),
     retirada_instrucoes: s.retirada_instrucoes ?? null,
     cep_origem: s.cep_origem ?? null,
-    tem_token: Boolean(settings.data?.melhor_envio_token),
+    conectado: Boolean(settings.data?.melhor_envio_token),
+    conta: settings.data?.melhor_envio_conta ?? null,
+    expira_em: settings.data?.melhor_envio_expira_em ?? null,
     melhor_envio_ambiente:
       settings.data?.melhor_envio_ambiente === "producao"
         ? "producao"
@@ -145,42 +158,89 @@ export async function salvarRegrasFrete(regras: RegrasFrete): Promise<void> {
 }
 
 /**
- * Salva o token do Melhor Envio.
+ * Troca o ambiente e DESCONECTA.
  *
- * `token` em branco mantém o que já está gravado — a tela nunca recebe
- * o token de volta, então campo vazio significa "não mexi nisso", e
- * não "apague". Para apagar existe `desconectarMelhorEnvio`.
+ * Token de Teste não vale em Produção, nem o contrário. Guardar a
+ * conexão antiga aqui só faria a tela dizer "conectado" para uma
+ * autorização que o Melhor Envio já ia recusar — que é exatamente o
+ * erro que essa tela existe para evitar.
  */
-export async function salvarMelhorEnvio(
-  token: string,
+export async function trocarAmbiente(
   ambiente: MelhorEnvioAmbiente,
 ): Promise<void> {
   const storeId = await getCurrentStoreId();
 
-  const mudancas: Record<string, unknown> = {
-    melhor_envio_ambiente: ambiente,
-  };
-
-  const limpo = token.trim();
-  if (limpo) mudancas.melhor_envio_token = limpo;
-
   const { error } = await supabase
     .from("store_settings")
-    .update(mudancas)
+    .update({
+      melhor_envio_ambiente: ambiente,
+      melhor_envio_token: null,
+      melhor_envio_refresh_token: null,
+      melhor_envio_expira_em: null,
+      melhor_envio_conta: null,
+      melhor_envio_state: null,
+      melhor_envio_state_em: null,
+    })
     .eq("store_id", storeId);
 
   if (error) throw error;
 }
 
+/**
+ * Fala com a função frete-conectar.
+ *
+ * `fetch` e não `invoke`: em resposta que não é 2xx o invoke joga o
+ * corpo fora, e o corpo é justamente a explicação do erro.
+ */
+async function chamarConectar(corpo: Record<string, unknown>) {
+  const { data: sessao } = await supabase.auth.getSession();
+  const token = sessao.session?.access_token;
+  if (!token) throw new Error("Sessão expirada. Entre de novo.");
+
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/frete-conectar`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(corpo),
+    },
+  );
+
+  let dados: any = null;
+  try {
+    dados = await res.json();
+  } catch {
+    dados = null;
+  }
+
+  if (!res.ok || dados?.error) {
+    throw new Error(dados?.error ?? `Erro na conexão (status ${res.status}).`);
+  }
+
+  return dados;
+}
+
+/** Devolve a URL para onde mandar o lojista autorizar. */
+export async function iniciarConexao(): Promise<string> {
+  const dados = await chamarConectar({ acao: "iniciar" });
+  if (!dados?.url) throw new Error("Não foi possível iniciar a conexão.");
+  return dados.url as string;
+}
+
+/** Recebe o código da volta e o troca por um acesso válido. */
+export async function concluirConexao(
+  code: string,
+  state: string,
+): Promise<{ conta: string | null }> {
+  const dados = await chamarConectar({ acao: "concluir", code, state });
+  return { conta: dados?.conta ?? null };
+}
+
 export async function desconectarMelhorEnvio(): Promise<void> {
-  const storeId = await getCurrentStoreId();
-
-  const { error } = await supabase
-    .from("store_settings")
-    .update({ melhor_envio_token: null })
-    .eq("store_id", storeId);
-
-  if (error) throw error;
+  await chamarConectar({ acao: "desconectar" });
 }
 
 export interface TesteMelhorEnvio {
@@ -190,14 +250,15 @@ export interface TesteMelhorEnvio {
   email?: string | null;
   saldo?: number | null;
   temCepOrigem?: boolean;
-  motivo?: "sem_token" | "token_recusado" | "indisponivel";
+  expiraEm?: string | null;
+  precisaConectar?: boolean;
   mensagem?: string;
 }
 
 /**
- * Bate na API do Melhor Envio com o token gravado e conta o que
- * aconteceu. `invoke` não serve aqui: em resposta que não é 2xx ele
- * joga o corpo fora, e o corpo é justamente a explicação do erro.
+ * Bate na API do Melhor Envio com o acesso gravado e conta o que
+ * aconteceu — passando pelo mesmo caminho que o checkout usa, para o
+ * teste provar alguma coisa.
  */
 export async function testarMelhorEnvio(): Promise<TesteMelhorEnvio> {
   const { data: sessao } = await supabase.auth.getSession();

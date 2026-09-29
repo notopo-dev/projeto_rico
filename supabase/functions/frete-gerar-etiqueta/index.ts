@@ -12,6 +12,11 @@
 // ============================================================
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import {
+  cabecalhosME,
+  ErroMelhorEnvio,
+  obterAcesso,
+} from "../_shared/melhorEnvio.ts";
 
 function apenasDigitos(v: string) {
   return (v ?? "").replace(/\D/g, "");
@@ -77,30 +82,24 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data: settings } = await supabaseAdmin
-      .from("store_settings")
-      .select("melhor_envio_token, melhor_envio_ambiente")
-      .eq("store_id", store.id)
-      .maybeSingle();
-
-    if (!settings?.melhor_envio_token) {
-      return new Response(
-        JSON.stringify({ error: "Configure o Melhor Envio antes de gerar etiquetas." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Token válido da loja. O helper renova sozinho se estiver perto
+    // de vencer — o access_token do Melhor Envio dura 30 dias.
+    let acesso;
+    try {
+      acesso = await obterAcesso(supabaseAdmin, store.id);
+    } catch (err) {
+      if (err instanceof ErroMelhorEnvio) {
+        return new Response(
+          JSON.stringify({ error: err.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw err;
     }
 
-    const baseUrl =
-      settings.melhor_envio_ambiente === "producao"
-        ? "https://melhorenvio.com.br"
-        : "https://sandbox.melhorenvio.com.br";
+    const baseUrl = acesso.base;
 
-    const meHeaders = {
-      Authorization: `Bearer ${settings.melhor_envio_token}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "User-Agent": "LojaPro (contato@lojapro.com.br)",
-    };
+    const meHeaders = cabecalhosME(acesso.token);
 
     // Pedido + cliente + itens
     const { data: order } = await supabaseAdmin

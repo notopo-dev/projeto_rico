@@ -11,6 +11,11 @@
 // ============================================================
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import {
+  cabecalhosME,
+  ErroMelhorEnvio,
+  obterAcesso,
+} from "../_shared/melhorEnvio.ts";
 
 interface ItemCarrinho {
   product_id: string;
@@ -60,7 +65,7 @@ Deno.serve(async (req) => {
     // 1. Busca a loja (precisa estar ativa e ter CEP de origem)
     const { data: store, error: storeError } = await supabaseAdmin
       .from("stores")
-      .select("id, ativo, cep_origem")
+      .select("id, ativo, cep_origem, email")
       .eq("id", storeId)
       .single();
 
@@ -80,24 +85,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Busca o token do Melhor Envio da loja
-    const { data: settings } = await supabaseAdmin
-      .from("store_settings")
-      .select("melhor_envio_token, melhor_envio_ambiente")
-      .eq("store_id", storeId)
-      .maybeSingle();
-
-    if (!settings?.melhor_envio_token) {
-      return new Response(
-        JSON.stringify({ error: "A loja ainda não configurou o Melhor Envio." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // 2. Token válido da loja.
+    //
+    // Renovado aqui dentro se estiver perto de vencer — o access_token
+    // do Melhor Envio dura 30 dias, e sem isso a loja pararia de cotar
+    // frete um mês depois de conectar, sem ninguém perceber.
+    let acesso;
+    try {
+      acesso = await obterAcesso(supabaseAdmin, storeId);
+    } catch (err) {
+      if (err instanceof ErroMelhorEnvio) {
+        // "não configurou" é o texto que o checkout procura para cair
+        // em "frete a combinar" em silêncio, em vez de mostrar erro
+        // técnico para quem está comprando.
+        return new Response(
+          JSON.stringify({ error: "A loja ainda não configurou o Melhor Envio." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw err;
     }
 
-    const baseUrl =
-      settings.melhor_envio_ambiente === "producao"
-        ? "https://melhorenvio.com.br"
-        : "https://sandbox.melhorenvio.com.br";
+    const baseUrl = acesso.base;
 
     // 3. Busca dimensões e peso dos produtos do carrinho
     const productIds = itens.map((i) => i.product_id);
@@ -146,12 +155,7 @@ Deno.serve(async (req) => {
     // 5. Chama a API de cálculo do Melhor Envio
     const res = await fetch(`${baseUrl}/api/v2/me/shipment/calculate`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${settings.melhor_envio_token}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "User-Agent": "LojaPro (contato@lojapro.com.br)",
-      },
+      headers: cabecalhosME(acesso.token, store.email),
       body: JSON.stringify({
         from: { postal_code: apenasDigitos(store.cep_origem) },
         to: { postal_code: cepLimpo },

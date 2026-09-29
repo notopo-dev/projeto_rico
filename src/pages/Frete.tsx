@@ -11,16 +11,18 @@ import {
   Loader2,
   Check,
   Plug,
-  ExternalLink,
+  Link2,
   RefreshCw,
   AlertCircle,
 } from "lucide-react";
 import {
+  concluirConexao,
   desconectarMelhorEnvio,
   getConfigFrete,
-  salvarMelhorEnvio,
+  iniciarConexao,
   salvarRegrasFrete,
   testarMelhorEnvio,
+  trocarAmbiente,
   type ConfigFrete,
   type FreteModo,
   type MelhorEnvioAmbiente,
@@ -182,11 +184,11 @@ export default function Frete() {
 
   /* melhor envio */
   const [ambiente, setAmbiente] = useState<MelhorEnvioAmbiente>("sandbox");
-  const [token, setToken] = useState("");
-  const [salvandoME, setSalvandoME] = useState(false);
+  const [ocupadoME, setOcupadoME] = useState(false);
   const [testando, setTestando] = useState(false);
   const [teste, setTeste] = useState<TesteMelhorEnvio | null>(null);
   const [erroME, setErroME] = useState<string | null>(null);
+  const [recemConectado, setRecemConectado] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -203,7 +205,6 @@ export default function Frete() {
       setRetirada(c.retirada_na_loja);
       setInstrucoes(c.retirada_instrucoes ?? "");
       setAmbiente(c.melhor_envio_ambiente);
-      setToken("");
     } catch (e) {
       setErro(
         e instanceof Error ? e.message : "Não foi possível carregar o frete.",
@@ -216,6 +217,62 @@ export default function Frete() {
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  /**
+   * Volta da tela de autorização do Melhor Envio.
+   *
+   * Eles devolvem o lojista para cá com ?code= e ?state= na URL. O
+   * código vale uma vez só e por pouco tempo, então é trocado por
+   * token imediatamente — e a URL é limpa logo depois, para um F5 não
+   * tentar usar de novo um código já gasto e mostrar erro à toa.
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const state = params.get("state");
+    const recusado = params.get("error");
+
+    if (!code && !recusado) return;
+
+    window.history.replaceState({}, "", "/frete");
+
+    if (recusado || !code || !state) {
+      setErroME(
+        "A autorização no Melhor Envio não foi concluída. Clique em Conectar para tentar de novo.",
+      );
+      return;
+    }
+
+    let vivo = true;
+    setOcupadoME(true);
+    (async () => {
+      try {
+        const { conta } = await concluirConexao(code, state);
+        if (!vivo) return;
+        setRecemConectado(conta ?? "Conta conectada");
+        await carregar();
+        setTestando(true);
+        setTeste(await testarMelhorEnvio());
+      } catch (e) {
+        if (vivo) {
+          setErroME(
+            e instanceof Error ? e.message : "Não foi possível concluir a conexão.",
+          );
+        }
+      } finally {
+        if (vivo) {
+          setOcupadoME(false);
+          setTestando(false);
+        }
+      }
+    })();
+
+    return () => {
+      vivo = false;
+    };
+    // Só na entrada da tela.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function salvar() {
     setSalvando(true);
@@ -241,23 +298,48 @@ export default function Frete() {
     }
   }
 
-  async function salvarConexao() {
-    setSalvandoME(true);
+  /** Manda o lojista autorizar no Melhor Envio. */
+  async function conectar() {
+    setOcupadoME(true);
     setErroME(null);
     setTeste(null);
     try {
-      await salvarMelhorEnvio(token, ambiente);
-      setToken("");
-      await carregar();
-      // Salvou: testa na hora. De nada adianta gravar um token e
-      // descobrir na primeira venda que ele não vale.
-      setTestando(true);
-      setTeste(await testarMelhorEnvio());
+      window.location.href = await iniciarConexao();
     } catch (e) {
-      setErroME(e instanceof Error ? e.message : "Não foi possível salvar.");
+      setErroME(
+        e instanceof Error ? e.message : "Não foi possível iniciar a conexão.",
+      );
+      setOcupadoME(false);
+    }
+  }
+
+  async function mudarAmbiente(novo: MelhorEnvioAmbiente) {
+    if (novo === ambiente) return;
+
+    // Trocar de ambiente derruba a autorização: ela vale só no
+    // ambiente em que foi dada. Melhor avisar do que a pessoa achar
+    // que continua conectada.
+    if (
+      config?.conectado &&
+      !window.confirm(
+        "Trocar de ambiente desconecta a conta do Melhor Envio. Você vai precisar conectar de novo. Continuar?",
+      )
+    ) {
+      return;
+    }
+
+    setOcupadoME(true);
+    setErroME(null);
+    setTeste(null);
+    setRecemConectado(null);
+    try {
+      await trocarAmbiente(novo);
+      setAmbiente(novo);
+      await carregar();
+    } catch (e) {
+      setErroME(e instanceof Error ? e.message : "Não foi possível trocar.");
     } finally {
-      setSalvandoME(false);
-      setTestando(false);
+      setOcupadoME(false);
     }
   }
 
@@ -274,9 +356,10 @@ export default function Frete() {
   }
 
   async function desconectar() {
-    setSalvandoME(true);
+    setOcupadoME(true);
     setErroME(null);
     setTeste(null);
+    setRecemConectado(null);
     try {
       await desconectarMelhorEnvio();
       await carregar();
@@ -285,7 +368,7 @@ export default function Frete() {
         e instanceof Error ? e.message : "Não foi possível desconectar.",
       );
     } finally {
-      setSalvandoME(false);
+      setOcupadoME(false);
     }
   }
 
@@ -294,7 +377,7 @@ export default function Frete() {
   const semMedidas = config?.produtos_sem_medidas ?? [];
   const precisaMelhorEnvio = modo === "melhor_envio";
   const bloqueiaME =
-    precisaMelhorEnvio && (!config?.tem_token || !config?.cep_origem);
+    precisaMelhorEnvio && (!config?.conectado || !config?.cep_origem);
 
   return (
     <div className="p-4 sm:p-6 max-w-[760px] mx-auto space-y-3.5 pb-28">
@@ -486,11 +569,11 @@ export default function Frete() {
             </div>
           )}
 
-          {!config?.tem_token && (
+          {!config?.conectado && (
             <div className="flex items-start gap-2">
               <Plug size={14} className="text-[#b45309] shrink-0 mt-0.5" />
               <p className="text-[11.5px] text-[#92400e] leading-snug">
-                <strong>Conta no Melhor Envio.</strong> Logo abaixo.
+                <strong>Conta do Melhor Envio conectada.</strong> Logo abaixo.
               </p>
             </div>
           )}
@@ -522,41 +605,37 @@ export default function Frete() {
         titulo="Melhor Envio"
         descricao="Usado para cotar a tabela das transportadoras e para imprimir a etiqueta de envio."
       >
-        {config?.tem_token ? (
+        {config?.conectado ? (
           <div className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-2.5 flex items-start gap-2.5">
-            <CheckCircle2
-              size={15}
-              className="text-[#15803d] shrink-0 mt-0.5"
-            />
+            <CheckCircle2 size={15} className="text-[#15803d] shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1">
               <p className="text-[12px] font-semibold text-[#15803d]">
-                Token salvo · ambiente{" "}
+                Conectado
+                {recemConectado || config.conta
+                  ? ` como ${recemConectado ?? config.conta}`
+                  : ""}
+              </p>
+              <p className="text-[11.5px] text-[#166534] leading-snug mt-0.5">
+                Ambiente{" "}
                 {config.melhor_envio_ambiente === "producao"
                   ? "Produção"
                   : "Teste"}
-              </p>
-              <p className="text-[11.5px] text-[#166534] leading-snug mt-0.5">
-                Salvo não quer dizer válido. Use o botão abaixo para
-                confirmar.
+                . A autorização se renova sozinha — você não precisa fazer
+                nada.
               </p>
             </div>
           </div>
         ) : (
           <div className="rounded-xl border border-[#e7e7ea] bg-[#fafafa] px-3 py-2.5">
             <p className="text-[12px] text-[#374151] leading-snug">
-              Ainda sem conexão. Crie a conta, gere um token em{" "}
-              <strong>Gerenciar → Tokens</strong> no painel do Melhor Envio e
-              cole aqui.
+              Conecte sua conta para cotar a tabela das transportadoras e
+              imprimir etiqueta. Você vai para uma tela do Melhor Envio,
+              autoriza, e volta para cá.
             </p>
-            <a
-              href="https://melhorenvio.com.br/cadastre-se"
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 sem-toque-minimo inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#0f1117] underline"
-            >
-              Criar conta no Melhor Envio
-              <ExternalLink size={12} />
-            </a>
+            <p className="text-[11.5px] text-[#9ca3af] leading-snug mt-1.5">
+              Não existe mais token para copiar e colar: o Melhor Envio
+              passou a usar só este tipo de autorização.
+            </p>
           </div>
         )}
 
@@ -574,9 +653,10 @@ export default function Frete() {
             ).map(([id, rotulo]) => (
               <button
                 key={id}
-                onClick={() => setAmbiente(id)}
+                onClick={() => mudarAmbiente(id)}
+                disabled={ocupadoME}
                 aria-pressed={ambiente === id}
-                className={`btn-app-pequeno flex-1 border ${
+                className={`btn-app-pequeno flex-1 border disabled:opacity-50 ${
                   ambiente === id
                     ? "bg-[#0f1117] text-white border-[#0f1117]"
                     : "bg-white text-[#374151] border-[#e7e7ea]"
@@ -587,23 +667,9 @@ export default function Frete() {
             ))}
           </div>
           <p className="mt-1 text-[11px] text-[#9ca3af] leading-snug">
-            O token de Teste não funciona em Produção, e vice-versa — é a
-            causa mais comum de "não foi possível calcular o frete".
+            Teste usa a conta de sandbox, com saldo fictício. Trocar de
+            ambiente desconecta, porque a autorização vale só onde foi dada.
           </p>
-        </div>
-
-        <div className="mt-3">
-          <Campo
-            rotulo={config?.tem_token ? "Trocar o token" : "Token de acesso"}
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            type="password"
-            autoComplete="off"
-            placeholder={
-              config?.tem_token ? "Deixe em branco para manter" : "Cole o token aqui"
-            }
-            dica="Fica guardado onde só você enxerga. A loja pública nunca recebe este token."
-          />
         </div>
 
         {erroME && (
@@ -635,14 +701,14 @@ export default function Frete() {
               {teste.conectado ? (
                 <>
                   <p className="text-[12px] font-semibold text-[#15803d]">
-                    Conectado como {teste.nome}
+                    Tudo certo com {teste.nome}
                   </p>
                   <p className="text-[11.5px] text-[#166534] leading-snug mt-0.5">
                     {teste.saldo !== null && teste.saldo !== undefined
-                      ? `Saldo de ${brl(teste.saldo)} na conta. `
+                      ? `Saldo de ${brl(teste.saldo)}. `
                       : ""}
                     {teste.saldo === 0
-                      ? "Sem saldo não dá para imprimir etiqueta — o cálculo do frete na loja funciona do mesmo jeito."
+                      ? "Sem saldo não dá para imprimir etiqueta — cotar frete na loja funciona do mesmo jeito."
                       : "Já dá para cotar frete e imprimir etiqueta."}
                   </p>
                 </>
@@ -656,25 +722,12 @@ export default function Frete() {
         )}
 
         <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            onClick={salvarConexao}
-            disabled={salvandoME || (!token.trim() && ambiente === config?.melhor_envio_ambiente)}
-            className="btn-app disabled:opacity-50"
-          >
-            {salvandoME ? (
-              <Loader2 size={15} className="animate-spin" />
-            ) : (
-              <Check size={15} />
-            )}
-            Salvar e testar
-          </button>
-
-          {config?.tem_token && (
+          {config?.conectado ? (
             <>
               <button
                 onClick={testar}
-                disabled={testando || salvandoME}
-                className="btn-app-claro disabled:opacity-50"
+                disabled={testando || ocupadoME}
+                className="btn-app disabled:opacity-50"
               >
                 {testando ? (
                   <Loader2 size={15} className="animate-spin" />
@@ -685,12 +738,25 @@ export default function Frete() {
               </button>
               <button
                 onClick={desconectar}
-                disabled={salvandoME}
+                disabled={ocupadoME}
                 className="btn-app-claro text-[#b91c1c] border-[#fecaca] disabled:opacity-50"
               >
                 Desconectar
               </button>
             </>
+          ) : (
+            <button
+              onClick={conectar}
+              disabled={ocupadoME}
+              className="btn-app disabled:opacity-50"
+            >
+              {ocupadoME ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <Link2 size={15} />
+              )}
+              Conectar com o Melhor Envio
+            </button>
           )}
         </div>
       </Cartao>
