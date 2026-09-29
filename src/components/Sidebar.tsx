@@ -256,65 +256,24 @@ export default function Sidebar({
       {/* OVERLAY MOBILE */}
       {mobileOpen && (
         <div
-          className="
-            fixed inset-0
-            bg-black/30
-            backdrop-blur-[1px]
-            z-30
-            lg:hidden
-          "
+          className="fixed inset-0 bg-black/30 backdrop-blur-[1px] z-30 lg:hidden"
           onClick={onClose}
         />
       )}
 
       {/* SIDEBAR */}
       <aside
-        className={`
-          fixed top-0 left-0
-          h-[100dvh] max-h-[100dvh]
-          w-[min(86vw,280px)]
-          z-40
-          flex flex-col
-          bg-white
-          border-r border-[#e5e7eb]
-          shadow-[8px_0_30px_rgba(0,0,0,0.08)]
-          rounded-r-2xl
-          overflow-y-auto
-
-          transition-transform duration-200 ease-out
-
-          ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
-
-          lg:translate-x-0
-          lg:sticky
-          lg:self-start
-          lg:w-56
-          lg:rounded-none
-          lg:shadow-none
-          lg:z-auto
-        `}
+        className={`fixed top-0 left-0 h-[100dvh] max-h-[100dvh] w-[min(86vw,280px)] z-40 flex flex-col bg-white border-r border-[#e5e7eb] shadow-[8px_0_30px_rgba(0,0,0,0.08)] rounded-r-2xl overflow-y-auto transition-transform duration-200 ease-out ${mobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:sticky lg:self-start lg:w-56 lg:rounded-none lg:shadow-none lg:z-auto`}
       >
 
         {/* LOGO DA PLATAFORMA */}
         <div
-          className="
-            flex items-center justify-between
-            h-12
-            shrink-0
-            px-4
-            border-b border-[#e5e7eb]
-          "
+          className="flex items-center justify-between h-12 shrink-0 px-4 border-b border-[#e5e7eb]"
         >
           <div className="flex items-center gap-2.5">
 
             <div
-              className="
-                w-7 h-7
-                rounded-lg
-                bg-[#16a34a]
-                flex items-center justify-center
-                shrink-0
-              "
+              className="w-7 h-7 rounded-lg bg-[#16a34a] flex items-center justify-center shrink-0"
             >
               <Store
                 size={15}
@@ -324,12 +283,7 @@ export default function Sidebar({
             </div>
 
             <span
-              className="
-                font-semibold
-                text-[14px]
-                text-[#111827]
-                tracking-tight
-              "
+              className="t-corpo font-semibold text-[#111827] tracking-tight"
             >
               LojaPro
             </span>
@@ -341,17 +295,7 @@ export default function Sidebar({
             type="button"
             onClick={onClose}
             aria-label="Fechar menu"
-            className="
-              lg:hidden
-              w-8 h-8
-              rounded-xl
-              flex items-center justify-center
-              text-[#6b7280]
-              hover:bg-[#f4f4f5]
-              hover:text-[#111827]
-              active:scale-95
-              transition-all
-            "
+            className="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center text-[#6b7280] hover:bg-[#f4f4f5] hover:text-[#111827] active:scale-95 transition-all"
           >
             <X
               size={18}
@@ -362,37 +306,17 @@ export default function Sidebar({
 
         {/* DADOS DA LOJA */}
         <div
-          className="
-            px-4
-            py-3
-            shrink-0
-            border-b border-[#e5e7eb]
-          "
+          className="px-4 py-3 shrink-0 border-b border-[#e5e7eb]"
         >
           <button
             type="button"
-            className="
-              w-full
-              flex items-center gap-2.5
-              text-left
-              rounded-xl
-              transition-colors
-              hover:bg-[#f8fafc]
-            "
+            className="w-full flex items-center gap-2.5 text-left rounded-lg transition-colors hover:bg-[#f8fafc]"
           >
 
             {/* LOGO DA LOJA */}
             {logo ? (
               <div
-                className="
-                  w-8 h-8
-                  rounded-lg
-                  border border-[#e5e7eb]
-                  bg-white
-                  overflow-hidden
-                  flex items-center justify-center
-                  shrink-0
-                "
+                className="w-8 h-8 rounded-lg border border-[#e5e7eb] bg-white overflow-hidden flex items-center justify-center shrink-0"
               >
                 <img
                   src={logo}
@@ -402,16 +326,7 @@ export default function Sidebar({
               </div>
             ) : (
               <div
-                className="
-                  w-8 h-8
-                  rounded-lg
-                  bg-[#f1f5f9]
-                  flex items-center justify-center
-                  text-[11px]
-                  font-semibold
-                  text-[#374151]
-                  shrink-0
-                "
+                className="t-apoio w-8 h-8 rounded-lg bg-[#f1f5f9] flex items-center justify-center font-semibold text-[#374151] shrink-0"
               >
                 {initial}
               </div>
@@ -421,23 +336,13 @@ export default function Sidebar({
             <div className="flex-1 min-w-0">
 
               <p
-                className="
-                  text-[12px]
-                  font-medium
-                  text-[#111827]
-                  truncate
-                "
+                className="t-corpo font-medium text-[#111827] truncate"
               >
                 {displaySlug}
               </p>
 
               <p
-                className="
-                  text-[10px]
-                  text-[#6b7280]
-                  truncate
-                  mt-0.5
-                "
+                className="t-micro text-[#6b7280] truncate mt-0.5"
               >
                 {displaySlug}
               </p>
@@ -455,39 +360,22 @@ export default function Sidebar({
 
         {/* NAVEGAÇÃO */}
         <nav
-          className="
-            flex-1
-            overflow-y-auto
-            overscroll-contain
-            py-2
-            px-2
-          "
+          className="flex-1 overflow-y-auto overscroll-contain py-2 px-2"
         >
           {groups.map((group, gi) => (
             <div
               key={gi}
-              className={`
-                ${
+              className={`${
                   gi > 0
                     ? "mt-2 pt-2 border-t border-[#f0f0f1]"
                     : ""
-                }
-              `}
+                }`}
             >
 
               {/* TÍTULO DO GRUPO */}
               {group.label && (
                 <p
-                  className="
-                    px-3
-                    pt-1
-                    pb-2
-                    text-[10px]
-                    font-semibold
-                    uppercase
-                    tracking-wider
-                    text-[#9ca3af]
-                  "
+                  className="t-micro px-3 pt-1 pb-2 font-semibold uppercase tracking-wider text-[#9ca3af]"
                 >
                   {group.label}
                 </p>
@@ -510,55 +398,24 @@ export default function Sidebar({
                         onNavigate(item.id);
                         onClose();
                       }}
-                      className={`
-                        w-full
-                        flex items-center
-                        gap-3
-                        min-h-[42px]
-                        px-3
-                        rounded-xl
-                        text-left
-                        text-[13px]
-                        transition-all duration-150
-
-                        ${
-                          active
-                            ? `
+                      className={`t-corpo w-full flex items-center gap-3 min-h-[42px] px-3 rounded-lg text-left transition-all duration-150 ${ active ?`
                               bg-[#f0fdf4]
                               text-[#15803d]
                               font-medium
                               shadow-sm
-                            `
-                            : `
+                            `:`
                               text-[#374151]
                               hover:bg-[#f8fafc]
                               hover:text-[#111827]
-                            `
-                        }
-
-                        active:scale-[0.98]
-
-                        lg:min-h-[32px]
-                        lg:rounded-lg
-                        lg:px-3
-                        lg:gap-2.5
-                      `}
+                            `} active:scale-[0.98] lg:min-h-[32px] lg:rounded-lg lg:px-3 lg:gap-2.5`}
                     >
 
                       <span
-                        className={`
-                          w-7 h-7
-                          rounded-lg
-                          flex items-center
-                          justify-center
-                          shrink-0
-
-                          ${
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                             active
                               ? "bg-[#dcfce7]"
                               : "bg-transparent"
-                          }
-                        `}
+                          }`}
                       >
                         <Icon
                           size={17}
@@ -588,40 +445,10 @@ export default function Sidebar({
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Falar com o suporte pelo WhatsApp"
-            className="
-              w-full
-              flex items-center
-              gap-3
-              min-h-[42px]
-              px-3
-              rounded-xl
-              text-left
-              text-[13px]
-              font-medium
-              text-[#15803d]
-              bg-[#f0fdf4]
-              border border-[#dcfce7]
-              shadow-sm
-              hover:bg-[#dcfce7]
-              hover:text-[#166534]
-              active:scale-[0.98]
-              transition-all duration-150
-
-              lg:min-h-[32px]
-              lg:rounded-lg
-              lg:px-3
-              lg:gap-2.5
-            "
+            className="t-corpo w-full flex items-center gap-3 min-h-[42px] px-3 rounded-lg text-left font-medium text-[#15803d] bg-[#f0fdf4] border border-[#dcfce7] shadow-sm hover:bg-[#dcfce7] hover:text-[#166534] active:scale-[0.98] transition-all duration-150 lg:min-h-[32px] lg:rounded-lg lg:px-3 lg:gap-2.5"
           >
             <span
-              className="
-                w-7 h-7
-                rounded-lg
-                flex items-center
-                justify-center
-                shrink-0
-                bg-[#dcfce7]
-              "
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-[#dcfce7]"
             >
               <MessageCircle
                 size={17}

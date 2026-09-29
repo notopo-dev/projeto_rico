@@ -145,12 +145,12 @@ export default function Estoque() {
         >
           <AlertTriangle size={16} className="text-[#b45309] shrink-0 mt-0.5" />
           <div>
-            <p className="text-[13px] font-semibold text-[#b45309]">
+            <p className="t-corpo font-semibold text-[#b45309]">
               {precisaAtencao}{" "}
               {precisaAtencao === 1 ? "produto precisa" : "produtos precisam"}{" "}
               de reposição
             </p>
-            <p className="text-[11.5px] text-[#92400e] leading-snug">
+            <p className="t-apoio text-[#92400e] leading-snug">
               {contagem.sem
                 ? `${contagem.sem} sem estoque nenhum. Produto sem estoque não vende.`
                 : "Estão abaixo do mínimo que você definiu."}
@@ -170,13 +170,13 @@ export default function Estoque() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Produto, SKU ou categoria"
-            className="w-full h-12 pl-10 pr-3 rounded-xl bg-white border border-[#e7e7ea] text-[14px] outline-none focus:border-[#0f1117] transition-colors"
+            className="t-corpo w-full h-12 pl-10 pr-3 rounded-lg bg-white border border-[#e7e7ea] outline-none focus:border-[#0f1117] transition-colors"
           />
         </div>
         <button
           onClick={carregar}
           disabled={carregando}
-          className="toque w-12 rounded-xl bg-white border border-[#e7e7ea] flex items-center justify-center disabled:opacity-50"
+          className="toque w-12 rounded-lg bg-white border border-[#e7e7ea] flex items-center justify-center disabled:opacity-50"
           aria-label="Atualizar"
         >
           <RefreshCw
@@ -201,7 +201,7 @@ export default function Estoque() {
             {rotulo}
             {contagem[id] > 0 && (
               <span
-                className={`ml-1 text-[11px] ${
+                className={`t-apoio ml-1 ${
                   filtro === id ? "text-white/70" : "text-[#9ca3af]"
                 }`}
               >
@@ -213,13 +213,13 @@ export default function Estoque() {
       </div>
 
       {erro && (
-        <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
+        <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
           <AlertCircle size={16} className="text-[#b91c1c] shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <p className="text-[12.5px] text-[#b91c1c] break-words">{erro}</p>
+            <p className="t-corpo text-[#b91c1c] break-words">{erro}</p>
             <button
               onClick={carregar}
-              className="sem-toque-minimo text-[12px] font-semibold text-[#991b1b] underline mt-1"
+              className="t-corpo sem-toque-minimo font-semibold text-[#991b1b] underline mt-1"
             >
               Tentar novamente
             </button>
@@ -236,10 +236,10 @@ export default function Estoque() {
             className="mx-auto text-[#d4d4d8] mb-2.5"
             strokeWidth={1.5}
           />
-          <p className="text-[14px] font-semibold text-[#0f1117]">
+          <p className="t-corpo font-semibold text-[#0f1117]">
             {itens.length === 0 ? "Nenhum produto ainda" : "Nada encontrado"}
           </p>
-          <p className="text-[12.5px] text-[#9ca3af] mt-1">
+          <p className="t-corpo text-[#9ca3af] mt-1">
             {itens.length === 0
               ? "Cadastre produtos em Produtos para controlar o estoque aqui."
               : "Tente outro termo ou troque de filtro."}
@@ -255,14 +255,14 @@ export default function Estoque() {
               <div key={i.id} className="cartao-app p-3.5">
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-semibold text-[#0f1117] leading-snug">
+                    <p className="t-corpo font-semibold text-[#0f1117] leading-snug">
                       {i.nome}
                     </p>
-                    <p className="text-[11.5px] text-[#9ca3af] mt-0.5">
+                    <p className="t-apoio text-[#9ca3af] mt-0.5">
                       {[i.sku, i.categoria].filter(Boolean).join(" · ") || "—"}
                     </p>
                     <span
-                      className={`mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${v.cor}`}
+                      className={`t-apoio mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold border ${v.cor}`}
                     >
                       {v.icone}
                       {v.rotulo}
@@ -277,13 +277,13 @@ export default function Estoque() {
                           onChange={(e) => setValor(e.target.value)}
                           inputMode="numeric"
                           autoFocus
-                          className="w-20 h-10 px-2 text-center rounded-xl border border-[#0f1117] text-[15px] font-bold outline-none tabular-nums"
+                          className="t-secao w-20 h-10 px-2 text-center rounded-lg border border-[#0f1117] font-bold outline-none tabular-nums"
                         />
                         <button
                           onClick={() => salvar(i)}
                           disabled={salvando !== null}
                           aria-label="Salvar"
-                          className="toque w-10 h-10 rounded-xl bg-[#0f1117] text-white flex items-center justify-center disabled:opacity-50"
+                          className="toque w-10 h-10 rounded-lg bg-[#0f1117] text-white flex items-center justify-center disabled:opacity-50"
                         >
                           {salvando === i.id ? (
                             <RefreshCw size={15} className="animate-spin" />
@@ -294,7 +294,7 @@ export default function Estoque() {
                         <button
                           onClick={() => setEditando(null)}
                           aria-label="Cancelar"
-                          className="toque w-10 h-10 rounded-xl bg-[#f4f4f5] flex items-center justify-center"
+                          className="toque w-10 h-10 rounded-lg bg-[#f4f4f5] flex items-center justify-center"
                         >
                           <X size={15} className="text-[#374151]" />
                         </button>
@@ -307,7 +307,7 @@ export default function Estoque() {
                         }}
                         className="sem-toque-minimo inline-flex items-center gap-1.5"
                       >
-                        <span className="text-[19px] font-bold text-[#0f1117] tabular-nums">
+                        <span className="t-titulo font-bold text-[#0f1117] tabular-nums">
                           {i.estoque}
                         </span>
                         <Pencil size={13} className="text-[#9ca3af]" />
@@ -315,7 +315,7 @@ export default function Estoque() {
                     )}
 
                     {!emEdicao && (
-                      <p className="text-[11px] text-[#9ca3af] mt-0.5">
+                      <p className="t-apoio text-[#9ca3af] mt-0.5">
                         mínimo {i.minimo} · {brl(i.preco)}
                       </p>
                     )}

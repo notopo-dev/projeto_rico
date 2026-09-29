@@ -68,7 +68,7 @@ export default function StripeEmbeddedOnboarding({ onConcluido }: Props) {
     return (
       <div className="flex flex-col items-center justify-center py-14 gap-2.5">
         <Loader2 size={20} className="animate-spin text-[#9ca3af]" />
-        <p className="text-[13px] text-[#6b7280]">Abrindo a verificação…</p>
+        <p className="t-corpo text-[#6b7280]">Abrindo a verificação…</p>
       </div>
     );
   }
@@ -77,14 +77,14 @@ export default function StripeEmbeddedOnboarding({ onConcluido }: Props) {
 
   if (mensagemErro) {
     return (
-      <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] p-4">
+      <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] p-4">
         <div className="flex gap-2.5">
           <AlertCircle size={17} className="text-[#b91c1c] shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-[#991b1b]">
+            <p className="t-corpo font-semibold text-[#991b1b]">
               Não foi possível abrir o formulário aqui
             </p>
-            <p className="text-[12px] text-[#b91c1c] mt-1 break-words">
+            <p className="t-corpo text-[#b91c1c] mt-1 break-words">
               {mensagemErro}
             </p>
 
@@ -150,7 +150,7 @@ export default function StripeEmbeddedOnboarding({ onConcluido }: Props) {
       />
 
       {!montou && (
-        <div className="flex items-center justify-center gap-2 py-10 text-[13px] text-[#6b7280]">
+        <div className="t-corpo flex items-center justify-center gap-2 py-10 text-[#6b7280]">
           <Loader2 size={16} className="animate-spin" />
           Abrindo a verificação…
         </div>

@@ -16,10 +16,10 @@ export default function Recebimentos() {
   return (
     <div className="p-4 sm:p-6 max-w-[860px] mx-auto space-y-4">
       <div className="px-1">
-        <h1 className="text-[18px] font-bold text-[#0f1117]">
+        <h1 className="t-titulo font-bold text-[#0f1117]">
           Conta de recebimento
         </h1>
-        <p className="text-[13px] text-[#6b7280] mt-1 leading-snug">
+        <p className="t-corpo text-[#6b7280] mt-1 leading-snug">
           É por aqui que o dinheiro das suas vendas chega até você. Para
           liberar, confirmamos sua identidade e a conta bancária de
           destino — uma vez só.
@@ -34,7 +34,7 @@ export default function Recebimentos() {
       </StripeConnectProvider>
 
       <div className="cartao-app p-4">
-        <h2 className="text-[13px] font-semibold text-[#0f1117]">
+        <h2 className="t-corpo font-semibold text-[#0f1117]">
           Como funciona o dinheiro da sua loja
         </h2>
         <ul className="mt-2.5 space-y-2">
@@ -46,7 +46,7 @@ export default function Recebimentos() {
           ].map((texto) => (
             <li
               key={texto}
-              className="text-[12.5px] text-[#6b7280] leading-snug flex gap-2"
+              className="t-corpo text-[#6b7280] leading-snug flex gap-2"
             >
               <span className="text-[#16a34a] mt-0.5 shrink-0">•</span>
               <span>{texto}</span>

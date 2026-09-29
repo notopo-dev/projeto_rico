@@ -46,7 +46,7 @@ function SaveButton({
     <button
       onClick={onSave}
       disabled={saving}
-      className="flex min-h-11 w-full items-center justify-center gap-1.5 px-3 py-2 text-[13px] text-white bg-[#16a34a] rounded-xl hover:bg-[#15803d] transition-colors font-medium sm:w-auto lg:min-h-0 lg:py-1.5 lg:rounded-[6px] disabled:opacity-60"
+      className="t-corpo flex min-h-11 w-full items-center justify-center gap-1.5 px-3 py-2 text-white bg-[#16a34a] rounded-lg hover:bg-[#15803d] transition-colors font-medium sm:w-auto lg:min-h-0 lg:py-1.5 lg:rounded-[6px] disabled:opacity-60"
     >
       {saving ? (
         <Loader2 size={14} className="animate-spin" />
@@ -63,8 +63,8 @@ function SaveButton({
 function SectionHeader({ title, description }: { title: string; description?: string }) {
   return (
     <div className="px-4 py-3 border-b border-[#e4e4e7]">
-      <h2 className="text-[13px] font-semibold text-[#0f1117]">{title}</h2>
-      {description && <p className="text-[12px] text-[#6b7280] mt-0.5">{description}</p>}
+      <h2 className="t-corpo font-semibold text-[#0f1117]">{title}</h2>
+      {description && <p className="t-corpo text-[#6b7280] mt-0.5">{description}</p>}
     </div>
   );
 }
@@ -75,7 +75,7 @@ function Mensagem({ tipo, texto }: { tipo: "erro" | "sucesso"; texto: string }) 
       ? "border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]"
       : "border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]";
   return (
-    <div className={`rounded-[6px] border px-4 py-2.5 text-[13px] ${cls}`}>{texto}</div>
+    <div className={`t-corpo rounded-[6px] border px-4 py-2.5 ${cls}`}>{texto}</div>
   );
 }
 
@@ -86,14 +86,14 @@ function Field({ label, value, onChange, type = "text", placeholder = "", hint }
   const inputType = type === "password" ? (show ? "text" : "password") : type;
   return (
     <div>
-      <label className="block text-[12px] font-medium text-[#374151] mb-1">{label}</label>
+      <label className="t-corpo block font-medium text-[#374151] mb-1">{label}</label>
       <div className="relative">
         <input
           type={inputType}
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full min-h-11 px-3 py-2 text-base border border-[#e4e4e7] rounded-xl bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a] lg:min-h-0 lg:py-1.5 lg:text-[13px] lg:rounded-[6px]"
+          className="t-corpo w-full min-h-11 px-3 py-2 text-base border border-[#e4e4e7] rounded-lg bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a] lg:min-h-0 lg:py-1.5 lg:rounded-[6px]"
         />
         {type === "password" && (
           <button
@@ -105,7 +105,7 @@ function Field({ label, value, onChange, type = "text", placeholder = "", hint }
           </button>
         )}
       </div>
-      {hint && <p className="mt-1 text-[11px] text-[#9ca3af]">{hint}</p>}
+      {hint && <p className="t-apoio mt-1 text-[#9ca3af]">{hint}</p>}
     </div>
   );
 }
@@ -114,8 +114,8 @@ function Toggle({ label, description, value, onChange }: { label: string; descri
   return (
     <div className="flex items-center justify-between gap-4 py-3 border-b border-[#f4f4f5] last:border-0">
       <div className="min-w-0">
-        <p className="text-[13px] font-medium text-[#0f1117]">{label}</p>
-        <p className="text-[12px] text-[#6b7280]">{description}</p>
+        <p className="t-corpo font-medium text-[#0f1117]">{label}</p>
+        <p className="t-corpo text-[#6b7280]">{description}</p>
       </div>
       <button
         onClick={() => onChange(!value)}
@@ -367,7 +367,7 @@ export default function Configuracoes() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`min-h-10 shrink-0 px-4 py-2 text-[13px] font-medium border-b-2 -mb-px transition-colors lg:min-h-0 ${tab === t.id ? "border-[#16a34a] text-[#15803d]" : "border-transparent text-[#6b7280] hover:text-[#0f1117]"}`}
+            className={`t-corpo min-h-10 shrink-0 px-4 py-2 font-medium border-b-2 -mb-px transition-colors lg:min-h-0 ${tab === t.id ? "border-[#16a34a] text-[#15803d]" : "border-transparent text-[#6b7280] hover:text-[#0f1117]"}`}
           >
             {t.label}
           </button>
@@ -378,7 +378,7 @@ export default function Configuracoes() {
       {tab === "conta" && (
         <div className="space-y-4">
           {loadingConta ? (
-            <div className="flex items-center gap-2 text-[13px] text-[#6b7280] py-8 justify-center">
+            <div className="t-corpo flex items-center gap-2 text-[#6b7280] py-8 justify-center">
               <Loader2 size={16} className="animate-spin" />
               Carregando...
             </div>
@@ -443,7 +443,7 @@ export default function Configuracoes() {
       {tab === "loja" && (
         <div className="space-y-4">
           {loadingAparencia ? (
-            <div className="flex items-center gap-2 text-[13px] text-[#6b7280] py-8 justify-center">
+            <div className="t-corpo flex items-center gap-2 text-[#6b7280] py-8 justify-center">
               <Loader2 size={16} className="animate-spin" />
               Carregando...
             </div>
@@ -451,7 +451,7 @@ export default function Configuracoes() {
             <Mensagem tipo="erro" texto={loadErrorAparencia} />
           ) : (
             <>
-              <div className="flex items-start gap-2.5 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] px-3.5 py-3 text-[12px] text-[#1e40af]">
+              <div className="t-corpo flex items-start gap-2.5 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-3.5 py-3 text-[#1e40af]">
                 <Info size={15} className="shrink-0 mt-0.5" />
                 <span>
                   Nome, descrição, WhatsApp e políticas da loja ficam na aba{" "}
@@ -464,7 +464,7 @@ export default function Configuracoes() {
                 <SectionHeader title="Cores da loja" description="Refletem imediatamente na loja pública." />
                 <div className="px-4 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[12px] font-medium text-[#374151] mb-1">
+                    <label className="t-corpo block font-medium text-[#374151] mb-1">
                       Cor principal
                     </label>
                     <div className="flex items-center gap-2">
@@ -478,12 +478,12 @@ export default function Configuracoes() {
                         type="text"
                         value={aparencia.corPrimaria}
                         onChange={(e) => setAparencia((a) => ({ ...a, corPrimaria: e.target.value }))}
-                        className="min-h-11 flex-1 px-3 py-2 text-base font-mono border border-[#e4e4e7] rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#16a34a] lg:min-h-0 lg:py-1.5 lg:text-[13px] lg:rounded-[6px]"
+                        className="t-corpo min-h-11 flex-1 px-3 py-2 text-base font-mono border border-[#e4e4e7] rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#16a34a] lg:min-h-0 lg:py-1.5 lg:rounded-[6px]"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[12px] font-medium text-[#374151] mb-1">
+                    <label className="t-corpo block font-medium text-[#374151] mb-1">
                       Cor secundária
                     </label>
                     <div className="flex items-center gap-2">
@@ -497,7 +497,7 @@ export default function Configuracoes() {
                         type="text"
                         value={aparencia.corSecundaria}
                         onChange={(e) => setAparencia((a) => ({ ...a, corSecundaria: e.target.value }))}
-                        className="min-h-11 flex-1 px-3 py-2 text-base font-mono border border-[#e4e4e7] rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#16a34a] lg:min-h-0 lg:py-1.5 lg:text-[13px] lg:rounded-[6px]"
+                        className="t-corpo min-h-11 flex-1 px-3 py-2 text-base font-mono border border-[#e4e4e7] rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#16a34a] lg:min-h-0 lg:py-1.5 lg:rounded-[6px]"
                       />
                     </div>
                   </div>
@@ -508,11 +508,11 @@ export default function Configuracoes() {
                 <SectionHeader title="Logo e banner" />
                 <div className="px-4 py-4 space-y-5">
                   <div>
-                    <label className="block text-[12px] font-medium text-[#374151] mb-1.5">
+                    <label className="t-corpo block font-medium text-[#374151] mb-1.5">
                       Logo da loja
                     </label>
                     <div className="flex items-center gap-3">
-                      <div className="w-16 h-16 rounded-xl border border-[#e4e4e7] bg-[#fafafa] overflow-hidden flex items-center justify-center shrink-0">
+                      <div className="w-16 h-16 rounded-lg border border-[#e4e4e7] bg-[#fafafa] overflow-hidden flex items-center justify-center shrink-0">
                         {aparencia.logoUrl ? (
                           <img src={aparencia.logoUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
@@ -523,7 +523,7 @@ export default function Configuracoes() {
                         type="button"
                         onClick={() => logoInputRef.current?.click()}
                         disabled={uploadingLogo}
-                        className="min-h-11 px-3.5 text-[13px] font-medium text-[#374151] border border-[#e4e4e7] rounded-xl bg-white hover:bg-[#f4f4f5] disabled:opacity-60 flex items-center gap-1.5 lg:min-h-0 lg:h-9 lg:rounded-[6px]"
+                        className="t-corpo min-h-11 px-3.5 font-medium text-[#374151] border border-[#e4e4e7] rounded-lg bg-white hover:bg-[#f4f4f5] disabled:opacity-60 flex items-center gap-1.5 lg:min-h-0 lg:h-9 lg:rounded-[6px]"
                       >
                         {uploadingLogo && <Loader2 size={13} className="animate-spin" />}
                         {uploadingLogo ? "Enviando..." : aparencia.logoUrl ? "Trocar logo" : "Anexar logo"}
@@ -543,12 +543,12 @@ export default function Configuracoes() {
                   </div>
 
                   <div>
-                    <label className="block text-[12px] font-medium text-[#374151] mb-1.5">
+                    <label className="t-corpo block font-medium text-[#374151] mb-1.5">
                       Banner da loja
                     </label>
                     <div className="space-y-2">
                       {aparencia.bannerUrl && (
-                        <div className="w-full aspect-[16/6] rounded-xl overflow-hidden border border-[#e4e4e7] bg-[#fafafa]">
+                        <div className="w-full aspect-[16/6] rounded-lg overflow-hidden border border-[#e4e4e7] bg-[#fafafa]">
                           <img src={aparencia.bannerUrl} alt="" className="w-full h-full object-cover" />
                         </div>
                       )}
@@ -556,7 +556,7 @@ export default function Configuracoes() {
                         type="button"
                         onClick={() => bannerInputRef.current?.click()}
                         disabled={uploadingBanner}
-                        className="min-h-11 px-3.5 text-[13px] font-medium text-[#374151] border border-[#e4e4e7] rounded-xl bg-white hover:bg-[#f4f4f5] disabled:opacity-60 flex items-center gap-1.5 lg:min-h-0 lg:h-9 lg:rounded-[6px]"
+                        className="t-corpo min-h-11 px-3.5 font-medium text-[#374151] border border-[#e4e4e7] rounded-lg bg-white hover:bg-[#f4f4f5] disabled:opacity-60 flex items-center gap-1.5 lg:min-h-0 lg:h-9 lg:rounded-[6px]"
                       >
                         {uploadingBanner && <Loader2 size={13} className="animate-spin" />}
                         {uploadingBanner ? "Enviando..." : aparencia.bannerUrl ? "Trocar banner" : "Anexar banner"}
@@ -586,7 +586,7 @@ export default function Configuracoes() {
                   <button
                     type="button"
                     onClick={() => setAparencia((a) => ({ ...a, modoCompra: "whatsapp" }))}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border-2 text-left transition-colors ${
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg border-2 text-left transition-colors ${
                       aparencia.modoCompra === "whatsapp"
                         ? "border-[#16a34a] bg-[#f0fdf4]"
                         : "border-[#e4e4e7] bg-white"
@@ -594,8 +594,8 @@ export default function Configuracoes() {
                   >
                     <MessageCircle size={19} className="text-[#16a34a] shrink-0" />
                     <div>
-                      <p className="text-[13px] font-medium text-[#111827]">Somente WhatsApp</p>
-                      <p className="text-[11px] text-[#6b7280]">
+                      <p className="t-corpo font-medium text-[#111827]">Somente WhatsApp</p>
+                      <p className="t-apoio text-[#6b7280]">
                         O pedido é enviado direto pro WhatsApp cadastrado em "Loja"
                       </p>
                     </div>
@@ -604,7 +604,7 @@ export default function Configuracoes() {
                   <button
                     type="button"
                     onClick={() => setAparencia((a) => ({ ...a, modoCompra: "pagamento" }))}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border-2 text-left transition-colors ${
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg border-2 text-left transition-colors ${
                       aparencia.modoCompra === "pagamento"
                         ? "border-[#16a34a] bg-[#f0fdf4]"
                         : "border-[#e4e4e7] bg-white"
@@ -612,10 +612,10 @@ export default function Configuracoes() {
                   >
                     <CreditCard size={19} className="text-[#374151] shrink-0" />
                     <div>
-                      <p className="text-[13px] font-medium text-[#111827]">
+                      <p className="t-corpo font-medium text-[#111827]">
                         Somente pagamento na loja
                       </p>
-                      <p className="text-[11px] text-[#6b7280]">
+                      <p className="t-apoio text-[#6b7280]">
                         Cliente paga com Pix ou cartão direto no site
                       </p>
                     </div>
@@ -624,7 +624,7 @@ export default function Configuracoes() {
                   <button
                     type="button"
                     onClick={() => setAparencia((a) => ({ ...a, modoCompra: "ambos" }))}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl border-2 text-left transition-colors ${
+                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg border-2 text-left transition-colors ${
                       aparencia.modoCompra === "ambos"
                         ? "border-[#16a34a] bg-[#f0fdf4]"
                         : "border-[#e4e4e7] bg-white"
@@ -632,8 +632,8 @@ export default function Configuracoes() {
                   >
                     <Shuffle size={19} className="text-[#374151] shrink-0" />
                     <div>
-                      <p className="text-[13px] font-medium text-[#111827]">Cliente escolhe</p>
-                      <p className="text-[11px] text-[#6b7280]">
+                      <p className="t-corpo font-medium text-[#111827]">Cliente escolhe</p>
+                      <p className="t-apoio text-[#6b7280]">
                         Mostra WhatsApp e pagamento no checkout
                       </p>
                     </div>
@@ -659,7 +659,7 @@ export default function Configuracoes() {
       {tab === "notificacoes" && (
         <div className="space-y-4">
           {loadingSettings ? (
-            <div className="flex items-center gap-2 text-[13px] text-[#6b7280] py-8 justify-center">
+            <div className="t-corpo flex items-center gap-2 text-[#6b7280] py-8 justify-center">
               <Loader2 size={16} className="animate-spin" />
               Carregando...
             </div>

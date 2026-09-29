@@ -57,10 +57,10 @@ export default function StripeConnectTab() {
   return (
     <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
       <div className="px-4 py-3 border-b border-[#e4e4e7]">
-        <h2 className="text-[13px] font-semibold text-[#0f1117]">
+        <h2 className="t-corpo font-semibold text-[#0f1117]">
           Receber pagamentos com cartão (Stripe)
         </h2>
-        <p className="text-[12px] text-[#6b7280] mt-0.5">
+        <p className="t-corpo text-[#6b7280] mt-0.5">
           Conecte sua conta para receber pagamentos com cartão direto na sua
           conta bancária. Não cobramos comissão sobre as vendas.
         </p>
@@ -68,31 +68,31 @@ export default function StripeConnectTab() {
 
       <div className="px-4 py-4">
         {loading ? (
-          <div className="flex items-center gap-2 text-[13px] text-[#6b7280]">
+          <div className="t-corpo flex items-center gap-2 text-[#6b7280]">
             <Loader2 size={15} className="animate-spin" />
             Verificando status...
           </div>
         ) : pronta ? (
-          <div className="flex items-center gap-2.5 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3.5 py-3">
+          <div className="flex items-center gap-2.5 rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-3.5 py-3">
             <CheckCircle2 size={18} className="text-[#16a34a] shrink-0" />
             <div>
-              <p className="text-[13px] font-medium text-[#15803d]">
+              <p className="t-corpo font-medium text-[#15803d]">
                 Conta conectada e pronta para receber
               </p>
-              <p className="text-[11px] text-[#166534]">
+              <p className="t-apoio text-[#166534]">
                 Pagamentos com cartão já estão disponíveis na sua loja.
               </p>
             </div>
           </div>
         ) : status?.conectado ? (
           <div className="space-y-3">
-            <div className="flex items-center gap-2.5 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3.5 py-3">
+            <div className="flex items-center gap-2.5 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3.5 py-3">
               <AlertTriangle size={18} className="text-[#b45309] shrink-0" />
               <div>
-                <p className="text-[13px] font-medium text-[#b45309]">
+                <p className="t-corpo font-medium text-[#b45309]">
                   Cadastro iniciado, mas incompleto
                 </p>
-                <p className="text-[11px] text-[#92400e]">
+                <p className="t-apoio text-[#92400e]">
                   Termine de preencher os dados na Stripe para começar a
                   receber pagamentos.
                 </p>
@@ -101,7 +101,7 @@ export default function StripeConnectTab() {
             <button
               onClick={handleConectar}
               disabled={conectando}
-              className="flex items-center gap-1.5 h-10 px-3.5 rounded-xl bg-[#16a34a] text-white text-[13px] font-medium disabled:opacity-60"
+              className="t-corpo flex items-center gap-1.5 h-10 px-3.5 rounded-lg bg-[#16a34a] text-white font-medium disabled:opacity-60"
             >
               {conectando ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -115,7 +115,7 @@ export default function StripeConnectTab() {
           <button
             onClick={handleConectar}
             disabled={conectando}
-            className="flex items-center gap-1.5 h-10 px-3.5 rounded-xl bg-[#16a34a] text-white text-[13px] font-medium disabled:opacity-60"
+            className="t-corpo flex items-center gap-1.5 h-10 px-3.5 rounded-lg bg-[#16a34a] text-white font-medium disabled:opacity-60"
           >
             {conectando ? (
               <Loader2 size={14} className="animate-spin" />
@@ -127,7 +127,7 @@ export default function StripeConnectTab() {
         )}
 
         {erro && (
-          <p className="mt-3 text-[12px] text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-lg px-3 py-2">
+          <p className="t-corpo mt-3 text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-lg px-3 py-2">
             {erro}
           </p>
         )}

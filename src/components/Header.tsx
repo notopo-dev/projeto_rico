@@ -149,7 +149,7 @@ export default function Header({
         <button
           type="button"
           onClick={onMenuToggle}
-          className="hidden sm:flex lg:hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#6b7280] transition hover:bg-[#f4f4f5] hover:text-[#0f1117] active:scale-95"
+          className="hidden sm:flex lg:hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#6b7280] transition hover:bg-[#f4f4f5] hover:text-[#0f1117] active:scale-95"
           aria-label="Abrir menu"
         >
           <Menu
@@ -158,7 +158,7 @@ export default function Header({
           />
         </button>
 
-        <h1 className="min-w-0 truncate text-[17px] font-bold text-[#0f1117] sm:text-[14px] sm:font-semibold">
+        <h1 className="t-secao min-w-0 truncate font-bold text-[#0f1117] sm:font-semibold">
           {title}
         </h1>
       </div>
@@ -169,7 +169,7 @@ export default function Header({
         {/* NOTIFICAÇÕES */}
         <button
           type="button"
-          className="relative flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-xl text-[#6b7280] transition hover:bg-[#f4f4f5] hover:text-[#0f1117] active:scale-95"
+          className="relative flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-[#6b7280] transition hover:bg-[#f4f4f5] hover:text-[#0f1117] active:scale-95"
           aria-label="Notificações"
         >
           <Bell
@@ -188,13 +188,13 @@ export default function Header({
             onClick={() =>
               setProfileOpen((open) => !open)
             }
-            className="ml-0.5 flex h-10 sm:h-8 items-center gap-1.5 rounded-xl pl-1.5 pr-1 transition hover:bg-[#f4f4f5] active:scale-[0.98]"
+            className="ml-0.5 flex h-10 sm:h-8 items-center gap-1.5 rounded-lg pl-1.5 pr-1 transition hover:bg-[#f4f4f5] active:scale-[0.98]"
             aria-expanded={profileOpen}
           >
 
             {/* LOGO */}
             {logo ? (
-              <span className="flex h-8 w-8 sm:h-6 sm:w-6 shrink-0 items-center justify-center overflow-hidden rounded-xl sm:rounded-lg border border-[#e5e7eb] bg-white">
+              <span className="flex h-8 w-8 sm:h-6 sm:w-6 shrink-0 items-center justify-center overflow-hidden rounded-lg sm:rounded-lg border border-[#e5e7eb] bg-white">
                 <img
                   src={logo}
                   alt={displaySlug}
@@ -202,13 +202,13 @@ export default function Header({
                 />
               </span>
             ) : (
-              <span className="flex h-8 w-8 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-xl sm:rounded-lg bg-[#e5e7eb] text-[11px] font-semibold text-[#374151]">
+              <span className="t-apoio flex h-8 w-8 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-lg sm:rounded-lg bg-[#e5e7eb] font-semibold text-[#374151]">
                 {initial}
               </span>
             )}
 
             {/* SLUG */}
-            <span className="hidden max-w-[140px] truncate text-[12px] text-[#374151] sm:block">
+            <span className="t-corpo hidden max-w-[140px] truncate text-[#374151] sm:block">
               {displaySlug}
             </span>
 
@@ -221,14 +221,14 @@ export default function Header({
 
           {/* MENU */}
           {profileOpen && (
-            <div className="absolute right-0 top-12 sm:top-10 z-50 w-52 sm:w-48 rounded-xl border border-[#e5e7eb] bg-white p-1.5 shadow-lg">
+            <div className="absolute right-0 top-12 sm:top-10 z-50 w-52 sm:w-48 rounded-lg border border-[#e5e7eb] bg-white p-1.5 shadow-lg">
 
               <div className="border-b border-[#f0f0f1] px-3 py-2.5">
-                <p className="truncate text-[12px] font-medium text-[#111827]">
+                <p className="t-corpo truncate font-medium text-[#111827]">
                   {displaySlug}
                 </p>
 
-                <p className="mt-0.5 truncate text-[10px] text-[#9ca3af]">
+                <p className="t-micro mt-0.5 truncate text-[#9ca3af]">
                   /loja/{displaySlug}
                 </p>
               </div>
@@ -239,7 +239,7 @@ export default function Header({
                   setProfileOpen(false);
                   onLogout();
                 }}
-                className="toque mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-3 text-left text-[13px] font-medium text-[#b91c1c] hover:bg-[#fef2f2]"
+                className="t-corpo toque mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-3 text-left font-medium text-[#b91c1c] hover:bg-[#fef2f2]"
               >
                 <LogOut
                   size={14}

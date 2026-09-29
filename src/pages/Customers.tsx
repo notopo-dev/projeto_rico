@@ -198,14 +198,14 @@ function Ficha({
       <div className="folha anim-surgir" role="dialog" aria-modal="true">
         <div className="folha-topo px-4 py-3 border-b border-[#e7e7ea] flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 shrink-0 rounded-full bg-[#f4f4f5] flex items-center justify-center text-[14px] font-bold text-[#374151]">
+            <div className="t-corpo w-10 h-10 shrink-0 rounded-full bg-[#f4f4f5] flex items-center justify-center font-bold text-[#374151]">
               {inicial(cliente.nome)}
             </div>
             <div className="min-w-0">
-              <h2 className="text-[16px] font-bold text-[#0f1117] truncate">
+              <h2 className="t-secao font-bold text-[#0f1117] truncate">
                 {cliente.nome}
               </h2>
-              <p className="text-[12px] text-[#9ca3af]">
+              <p className="t-corpo text-[#9ca3af]">
                 Cliente desde {dataCurta(cliente.criado_em)}
               </p>
             </div>
@@ -228,10 +228,10 @@ function Ficha({
               { r: "Última", v: dataCurta(cliente.ultima_compra) },
             ].map((t) => (
               <div key={t.r} className="cartao-app p-3 text-center">
-                <p className="text-[10.5px] text-[#9ca3af] uppercase tracking-wide font-semibold">
+                <p className="t-micro text-[#9ca3af] uppercase tracking-wide font-semibold">
                   {t.r}
                 </p>
-                <p className="text-[14px] font-bold text-[#0f1117] mt-0.5 tabular-nums">
+                <p className="t-corpo font-bold text-[#0f1117] mt-0.5 tabular-nums">
                   {t.v}
                 </p>
               </div>
@@ -241,13 +241,13 @@ function Ficha({
           {/* Cadastro */}
           <div className="cartao-app p-3.5">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold">
+              <p className="t-apoio text-[#9ca3af] uppercase tracking-wide font-semibold">
                 Cadastro
               </p>
               {!editando && (
                 <button
                   onClick={abrirEdicao}
-                  className="sem-toque-minimo inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#374151]"
+                  className="t-corpo sem-toque-minimo inline-flex items-center gap-1.5 font-semibold text-[#374151]"
                 >
                   <Pencil size={13} />
                   Editar
@@ -258,7 +258,7 @@ function Ficha({
             {editando ? (
               <div className="mt-3 space-y-3">
                 <div>
-                  <label className="block text-[11.5px] font-medium text-[#6b7280] mb-1">
+                  <label className="t-apoio block font-medium text-[#6b7280] mb-1">
                     Nome completo
                   </label>
                   <input
@@ -273,7 +273,7 @@ function Ficha({
                 </div>
 
                 <div>
-                  <label className="block text-[11.5px] font-medium text-[#6b7280] mb-1">
+                  <label className="t-apoio block font-medium text-[#6b7280] mb-1">
                     Telefone / WhatsApp
                   </label>
                   <input
@@ -288,7 +288,7 @@ function Ficha({
                 </div>
 
                 <div>
-                  <label className="block text-[11.5px] font-medium text-[#6b7280] mb-1">
+                  <label className="t-apoio block font-medium text-[#6b7280] mb-1">
                     CPF
                   </label>
                   <input
@@ -300,14 +300,14 @@ function Ficha({
                     placeholder="000.000.000-00"
                     className="campo-app"
                   />
-                  <p className="mt-1 text-[11px] text-[#9ca3af] leading-snug">
+                  <p className="t-apoio mt-1 text-[#9ca3af] leading-snug">
                     CPF e telefone são o que o cliente digita na loja para
                     acompanhar os pedidos dele.
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-[11.5px] font-medium text-[#6b7280] mb-1">
+                  <label className="t-apoio block font-medium text-[#6b7280] mb-1">
                     E-mail
                   </label>
                   <input
@@ -322,8 +322,8 @@ function Ficha({
                 </div>
 
                 {erroForm && (
-                  <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2.5">
-                    <p className="text-[12px] text-[#b91c1c] leading-snug">
+                  <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2.5">
+                    <p className="t-corpo text-[#b91c1c] leading-snug">
                       {erroForm}
                     </p>
                   </div>
@@ -357,17 +357,17 @@ function Ficha({
             ) : (
               <>
                 <div className="mt-1.5 space-y-0.5">
-                  <p className="text-[13px] text-[#374151]">
+                  <p className="t-corpo text-[#374151]">
                     {cliente.telefone || (
                       <span className="text-[#9ca3af]">Sem telefone</span>
                     )}
                   </p>
-                  <p className="text-[13px] text-[#374151] break-all">
+                  <p className="t-corpo text-[#374151] break-all">
                     {cliente.email || (
                       <span className="text-[#9ca3af]">Sem e-mail</span>
                     )}
                   </p>
-                  <p className="text-[12.5px] text-[#6b7280]">
+                  <p className="t-corpo text-[#6b7280]">
                     {cliente.cpf ? (
                       `CPF ${cliente.cpf}`
                     ) : (
@@ -384,13 +384,13 @@ function Ficha({
                     telefone carimbar o próprio CPF num cadastro alheio
                     e passar a enxergar o histórico da vítima. */}
                 {(!cliente.cpf || !cliente.telefone) && (
-                  <div className="mt-2.5 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2.5 flex items-start gap-2.5">
+                  <div className="mt-2.5 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2.5 flex items-start gap-2.5">
                     <AlertTriangle
                       size={14}
                       className="text-[#b45309] shrink-0 mt-0.5"
                     />
                     <div className="min-w-0">
-                      <p className="text-[11.5px] text-[#92400e] leading-snug">
+                      <p className="t-apoio text-[#92400e] leading-snug">
                         Falta{" "}
                         {!cliente.cpf && !cliente.telefone
                           ? "o CPF e o telefone"
@@ -402,7 +402,7 @@ function Ficha({
                       </p>
                       <button
                         onClick={abrirEdicao}
-                        className="mt-1.5 sem-toque-minimo inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#92400e] underline"
+                        className="t-corpo mt-1.5 sem-toque-minimo inline-flex items-center gap-1.5 font-semibold text-[#92400e] underline"
                       >
                         <Pencil size={13} />
                         Completar cadastro
@@ -439,20 +439,20 @@ function Ficha({
 
           {/* Histórico */}
           <div>
-            <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold mb-2 px-1">
+            <p className="t-apoio text-[#9ca3af] uppercase tracking-wide font-semibold mb-2 px-1">
               Histórico de pedidos
             </p>
 
             {erro && (
-              <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5">
-                <p className="text-[12.5px] text-[#b91c1c]">{erro}</p>
+              <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5">
+                <p className="t-corpo text-[#b91c1c]">{erro}</p>
               </div>
             )}
 
             {carregando ? (
               <ListaCarregando linhas={3} />
             ) : pedidos.length === 0 ? (
-              <p className="text-[13px] text-[#9ca3af] text-center py-8">
+              <p className="t-corpo text-[#9ca3af] text-center py-8">
                 Este cliente ainda não fez nenhum pedido.
               </p>
             ) : (
@@ -473,16 +473,16 @@ function Ficha({
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[13.5px] font-bold text-[#0f1117]">
+                            <span className="t-corpo font-bold text-[#0f1117]">
                               #{p.numero}
                             </span>
                             <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${CORES_STATUS[p.status]}`}
+                              className={`t-apoio inline-flex items-center px-2 py-0.5 rounded-full font-semibold border ${CORES_STATUS[p.status]}`}
                             >
                               {ROTULO_CURTO[p.status]}
                             </span>
                           </div>
-                          <p className="text-[11.5px] text-[#9ca3af] mt-1">
+                          <p className="t-apoio text-[#9ca3af] mt-1">
                             {dataHora(p.created_at)} · {totalItens}{" "}
                             {totalItens === 1 ? "item" : "itens"}
                             {` · ${descreverPagamento(p)}`}
@@ -490,7 +490,7 @@ function Ficha({
                         </div>
 
                         <div className="text-right shrink-0">
-                          <p className="text-[14px] font-bold text-[#0f1117] tabular-nums">
+                          <p className="t-corpo font-bold text-[#0f1117] tabular-nums">
                             {brl(p.total)}
                           </p>
                           <ChevronDown
@@ -506,30 +506,30 @@ function Ficha({
                         <div className="border-t border-[#f0f0f1] px-3.5 py-3 space-y-2">
                           {p.itens.map((i) => (
                             <div key={i.id} className="flex gap-3 items-start">
-                              <span className="text-[12px] font-bold text-[#6b7280] shrink-0 mt-0.5">
+                              <span className="t-corpo font-bold text-[#6b7280] shrink-0 mt-0.5">
                                 {i.quantidade}×
                               </span>
                               <div className="flex-1 min-w-0">
-                                <p className="text-[13px] text-[#0f1117] leading-snug">
+                                <p className="t-corpo text-[#0f1117] leading-snug">
                                   {i.nome_produto}
                                 </p>
                                 {(i.cor_selecionada ||
                                   i.tamanho_selecionado) && (
-                                  <p className="text-[11.5px] text-[#9ca3af]">
+                                  <p className="t-apoio text-[#9ca3af]">
                                     {[i.cor_selecionada, i.tamanho_selecionado]
                                       .filter(Boolean)
                                       .join(" · ")}
                                   </p>
                                 )}
                               </div>
-                              <span className="text-[13px] font-medium text-[#0f1117] shrink-0 tabular-nums">
+                              <span className="t-corpo font-medium text-[#0f1117] shrink-0 tabular-nums">
                                 {brl(i.subtotal)}
                               </span>
                             </div>
                           ))}
 
                           {p.frete > 0 && (
-                            <div className="flex justify-between text-[12.5px] text-[#6b7280] pt-1.5 border-t border-[#f0f0f1]">
+                            <div className="t-corpo flex justify-between text-[#6b7280] pt-1.5 border-t border-[#f0f0f1]">
                               <span>Frete</span>
                               <span className="tabular-nums">
                                 {brl(p.frete)}
@@ -538,7 +538,7 @@ function Ficha({
                           )}
 
                           {p.valor_reembolsado > 0 && (
-                            <div className="flex justify-between text-[12.5px] text-[#7e22ce]">
+                            <div className="t-corpo flex justify-between text-[#7e22ce]">
                               <span>Devolvido</span>
                               <span className="tabular-nums">
                                 − {brl(p.valor_reembolsado)}
@@ -547,7 +547,7 @@ function Ficha({
                           )}
 
                           {p.codigo_rastreio && (
-                            <p className="text-[12px] text-[#374151] pt-1">
+                            <p className="t-corpo text-[#374151] pt-1">
                               Rastreio: {p.codigo_rastreio}
                             </p>
                           )}
@@ -654,10 +654,10 @@ export default function Customers() {
             { rotulo: "Média por cliente", valor: brl(totais.ticket) },
           ].map((t) => (
             <div key={t.rotulo} className="cartao-app p-3.5">
-              <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold">
+              <p className="t-apoio text-[#9ca3af] uppercase tracking-wide font-semibold">
                 {t.rotulo}
               </p>
-              <p className="text-[17px] font-bold text-[#0f1117] mt-1 tabular-nums">
+              <p className="t-secao font-bold text-[#0f1117] mt-1 tabular-nums">
                 {t.valor}
               </p>
             </div>
@@ -676,13 +676,13 @@ export default function Customers() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Nome, e-mail ou telefone"
-            className="w-full h-12 pl-10 pr-3 rounded-xl bg-white border border-[#e7e7ea] text-[14px] outline-none focus:border-[#0f1117] transition-colors"
+            className="t-corpo w-full h-12 pl-10 pr-3 rounded-lg bg-white border border-[#e7e7ea] outline-none focus:border-[#0f1117] transition-colors"
           />
         </div>
         <button
           onClick={carregar}
           disabled={carregando}
-          className="toque w-12 rounded-xl bg-white border border-[#e7e7ea] flex items-center justify-center disabled:opacity-50"
+          className="toque w-12 rounded-lg bg-white border border-[#e7e7ea] flex items-center justify-center disabled:opacity-50"
           aria-label="Atualizar"
         >
           <RefreshCw
@@ -710,13 +710,13 @@ export default function Customers() {
       </div>
 
       {erro && (
-        <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
+        <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
           <AlertCircle size={16} className="text-[#b91c1c] shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <p className="text-[12.5px] text-[#b91c1c] break-words">{erro}</p>
+            <p className="t-corpo text-[#b91c1c] break-words">{erro}</p>
             <button
               onClick={carregar}
-              className="sem-toque-minimo text-[12px] font-semibold text-[#991b1b] underline mt-1"
+              className="t-corpo sem-toque-minimo font-semibold text-[#991b1b] underline mt-1"
             >
               Tentar novamente
             </button>
@@ -733,10 +733,10 @@ export default function Customers() {
             className="mx-auto text-[#d4d4d8] mb-2.5"
             strokeWidth={1.5}
           />
-          <p className="text-[14px] font-semibold text-[#0f1117]">
+          <p className="t-corpo font-semibold text-[#0f1117]">
             {clientes.length === 0 ? "Nenhum cliente ainda" : "Nada encontrado"}
           </p>
-          <p className="text-[12.5px] text-[#9ca3af] mt-1">
+          <p className="t-corpo text-[#9ca3af] mt-1">
             {clientes.length === 0
               ? "Quem comprar na sua loja aparece aqui automaticamente."
               : "Tente outro nome, e-mail ou telefone."}
@@ -752,36 +752,36 @@ export default function Customers() {
                   onClick={() => setAbertoId(c.id)}
                   className="w-full p-3.5 text-left flex items-start gap-3"
                 >
-                  <div className="w-10 h-10 shrink-0 rounded-full bg-[#f4f4f5] flex items-center justify-center text-[14px] font-bold text-[#374151]">
+                  <div className="t-corpo w-10 h-10 shrink-0 rounded-full bg-[#f4f4f5] flex items-center justify-center font-bold text-[#374151]">
                     {inicial(c.nome)}
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-semibold text-[#0f1117] truncate">
+                    <p className="t-corpo font-semibold text-[#0f1117] truncate">
                       {c.nome}
                     </p>
                     {c.email && (
-                      <p className="text-[12px] text-[#6b7280] truncate">
+                      <p className="t-corpo text-[#6b7280] truncate">
                         {c.email}
                       </p>
                     )}
                     {c.telefone && (
-                      <p className="text-[12px] text-[#6b7280]">{c.telefone}</p>
+                      <p className="t-corpo text-[#6b7280]">{c.telefone}</p>
                     )}
                   </div>
 
                   <div className="text-right shrink-0">
-                    <p className="text-[15px] font-bold text-[#0f1117] tabular-nums">
+                    <p className="t-secao font-bold text-[#0f1117] tabular-nums">
                       {brl(c.gasto)}
                     </p>
-                    <p className="text-[11.5px] text-[#9ca3af]">
+                    <p className="t-apoio text-[#9ca3af]">
                       {c.pedidos} {c.pedidos === 1 ? "pedido" : "pedidos"}
                     </p>
                   </div>
                 </button>
 
                 <div className="px-3.5 pb-3 pt-3 border-t border-[#f0f0f1] flex items-center justify-between gap-3">
-                  <p className="text-[11.5px] text-[#9ca3af]">
+                  <p className="t-apoio text-[#9ca3af]">
                     {c.pedidos > 0
                       ? `Última compra em ${dataCurta(c.ultima_compra)}`
                       : `Cadastrado em ${dataCurta(c.criado_em)} · ainda não comprou`}
@@ -793,7 +793,7 @@ export default function Customers() {
                         href={`https://wa.me/55${zap}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="sem-toque-minimo inline-flex items-center gap-1 text-[12px] font-semibold text-[#15803d]"
+                        className="t-corpo sem-toque-minimo inline-flex items-center gap-1 font-semibold text-[#15803d]"
                       >
                         <MessageCircle size={13} />
                         WhatsApp
@@ -802,7 +802,7 @@ export default function Customers() {
                     {c.email && (
                       <a
                         href={`mailto:${c.email}`}
-                        className="sem-toque-minimo inline-flex items-center gap-1 text-[12px] font-semibold text-[#374151]"
+                        className="t-corpo sem-toque-minimo inline-flex items-center gap-1 font-semibold text-[#374151]"
                       >
                         <Mail size={13} />
                         E-mail

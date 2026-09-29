@@ -48,11 +48,11 @@ const bancosBR = [
 ];
 
 function inputCls() {
-  return "w-full h-11 px-3 rounded-xl border border-[#e4e4e7] bg-white text-[14px] outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10";
+  return "w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10";
 }
 
 function labelCls() {
-  return "block text-[12px] font-medium text-[#374151] mb-1";
+  return "block t-apoio font-medium text-[#374151] mb-1";
 }
 
 function apenasDigitos(v: string) {
@@ -341,10 +341,10 @@ export default function StripeCustomOnboarding({
   return (
     <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
       <div className="px-4 py-3 border-b border-[#e4e4e7]">
-        <h2 className="text-[13px] font-semibold text-[#0f1117]">
+        <h2 className="t-corpo font-semibold text-[#0f1117]">
           Receber pagamentos com cartão
         </h2>
-        <p className="text-[12px] text-[#6b7280] mt-0.5">
+        <p className="t-corpo text-[#6b7280] mt-0.5">
           Preencha seus dados para começar a receber pagamentos direto na sua conta.
         </p>
       </div>
@@ -365,7 +365,7 @@ export default function StripeCustomOnboarding({
       <div className="px-4 py-4">
         {etapa === "tipo" && (
           <div className="space-y-3">
-            <p className="text-[13px] font-medium text-[#374151] mb-2">
+            <p className="t-corpo font-medium text-[#374151] mb-2">
               Como você quer se cadastrar?
             </p>
             <button
@@ -373,14 +373,14 @@ export default function StripeCustomOnboarding({
                 setTipoPessoa("individual");
                 setEtapa("dados");
               }}
-              className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-[#e4e4e7] hover:border-[#16a34a] transition-colors text-left"
+              className="w-full flex items-center gap-3 p-4 rounded-lg border-2 border-[#e4e4e7] hover:border-[#16a34a] transition-colors text-left"
             >
               <User size={22} className="text-[#374151] shrink-0" />
               <div>
-                <p className="text-[13px] font-semibold text-[#111827]">
+                <p className="t-corpo font-semibold text-[#111827]">
                   Pessoa física
                 </p>
-                <p className="text-[11px] text-[#6b7280]">
+                <p className="t-apoio text-[#6b7280]">
                   Vou me cadastrar com meu CPF
                 </p>
               </div>
@@ -390,14 +390,14 @@ export default function StripeCustomOnboarding({
                 setTipoPessoa("company");
                 setEtapa("dados");
               }}
-              className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-[#e4e4e7] hover:border-[#16a34a] transition-colors text-left"
+              className="w-full flex items-center gap-3 p-4 rounded-lg border-2 border-[#e4e4e7] hover:border-[#16a34a] transition-colors text-left"
             >
               <Building2 size={22} className="text-[#374151] shrink-0" />
               <div>
-                <p className="text-[13px] font-semibold text-[#111827]">
+                <p className="t-corpo font-semibold text-[#111827]">
                   Pessoa jurídica
                 </p>
-                <p className="text-[11px] text-[#6b7280]">
+                <p className="t-apoio text-[#6b7280]">
                   Vou me cadastrar com o CNPJ da empresa
                 </p>
               </div>
@@ -408,7 +408,7 @@ export default function StripeCustomOnboarding({
         {etapa === "dados" && tipoPessoa === "individual" && (
           <div className="space-y-3">
             {dadosIniciais?.tipoPessoa && (
-              <p className="text-[11px] text-[#6b7280] bg-[#fafafa] border border-[#f0f0f1] rounded-lg px-3 py-2">
+              <p className="t-apoio text-[#6b7280] bg-[#fafafa] border border-[#f0f0f1] rounded-lg px-3 py-2">
                 Por segurança, CPF e data de nascimento não são devolvidos.
                 Preencha esses dois campos novamente para confirmar os dados.
               </p>
@@ -475,7 +475,7 @@ export default function StripeCustomOnboarding({
         {etapa === "dados" && tipoPessoa === "company" && (
           <div className="space-y-4">
             <div>
-              <p className="text-[12px] font-semibold text-[#374151] mb-2">Dados da empresa</p>
+              <p className="t-corpo font-semibold text-[#374151] mb-2">Dados da empresa</p>
               <div className="space-y-3">
                 <div>
                   <label className={labelCls()}>Razão social</label>
@@ -509,7 +509,7 @@ export default function StripeCustomOnboarding({
             </div>
 
             <div className="pt-2 border-t border-[#f0f0f1]">
-              <p className="text-[12px] font-semibold text-[#374151] mb-2 mt-3">
+              <p className="t-corpo font-semibold text-[#374151] mb-2 mt-3">
                 Responsável legal
               </p>
               <div className="space-y-3">
@@ -682,7 +682,7 @@ export default function StripeCustomOnboarding({
             </div>
 
             {banco.agencia && (
-              <p className="text-[11px] text-[#6b7280] bg-[#fafafa] border border-[#f0f0f1] rounded-lg px-3 py-2">
+              <p className="t-apoio text-[#6b7280] bg-[#fafafa] border border-[#f0f0f1] rounded-lg px-3 py-2">
                 Será enviado como:{" "}
                 <span className="font-mono text-[#374151]">
                   {apenasDigitos(banco.digitoAgencia)
@@ -696,17 +696,17 @@ export default function StripeCustomOnboarding({
 
         {etapa === "documento" && (
           <div className="space-y-4">
-            <p className="text-[12px] text-[#6b7280]">
+            <p className="t-corpo text-[#6b7280]">
               Envie uma foto do seu RG ou CNH para concluirmos a verificação.
             </p>
             <div>
               <label className={labelCls()}>Frente do documento</label>
               <button
                 onClick={() => frenteInputRef.current?.click()}
-                className="w-full h-24 rounded-xl border-2 border-dashed border-[#d4d4d8] flex flex-col items-center justify-center gap-1 text-[#9ca3af] hover:border-[#16a34a] hover:text-[#16a34a]"
+                className="w-full h-24 rounded-lg border-2 border-dashed border-[#d4d4d8] flex flex-col items-center justify-center gap-1 text-[#9ca3af] hover:border-[#16a34a] hover:text-[#16a34a]"
               >
                 <Upload size={20} />
-                <span className="text-[12px]">
+                <span className="t-corpo">
                   {documentoFrente ? documentoFrente.name : "Selecionar arquivo"}
                 </span>
               </button>
@@ -722,10 +722,10 @@ export default function StripeCustomOnboarding({
               <label className={labelCls()}>Verso do documento (se houver)</label>
               <button
                 onClick={() => versoInputRef.current?.click()}
-                className="w-full h-24 rounded-xl border-2 border-dashed border-[#d4d4d8] flex flex-col items-center justify-center gap-1 text-[#9ca3af] hover:border-[#16a34a] hover:text-[#16a34a]"
+                className="w-full h-24 rounded-lg border-2 border-dashed border-[#d4d4d8] flex flex-col items-center justify-center gap-1 text-[#9ca3af] hover:border-[#16a34a] hover:text-[#16a34a]"
               >
                 <Upload size={20} />
-                <span className="text-[12px]">
+                <span className="t-corpo">
                   {documentoVerso ? documentoVerso.name : "Selecionar arquivo"}
                 </span>
               </button>
@@ -742,7 +742,7 @@ export default function StripeCustomOnboarding({
               type="button"
               onClick={enviarDocumentoDeTeste}
               disabled={enviandoDoc}
-              className="w-full text-[11px] text-[#6b7280] underline disabled:opacity-50"
+              className="t-apoio w-full text-[#6b7280] underline disabled:opacity-50"
             >
               Usar documento de teste (apenas sandbox)
             </button>
@@ -750,13 +750,13 @@ export default function StripeCustomOnboarding({
         )}
 
         {etapa === "concluido" && (
-          <div className="flex items-center gap-2.5 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3.5 py-3">
+          <div className="flex items-center gap-2.5 rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-3.5 py-3">
             <CheckCircle2 size={18} className="text-[#16a34a] shrink-0" />
             <div>
-              <p className="text-[13px] font-medium text-[#15803d]">
+              <p className="t-corpo font-medium text-[#15803d]">
                 Cadastro enviado para análise
               </p>
-              <p className="text-[11px] text-[#166534]">
+              <p className="t-apoio text-[#166534]">
                 Assim que a verificação for concluída, você poderá receber pagamentos.
               </p>
             </div>
@@ -764,7 +764,7 @@ export default function StripeCustomOnboarding({
         )}
 
         {erro && (
-          <p className="mt-3 text-[12px] text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-lg px-3 py-2">
+          <p className="t-corpo mt-3 text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-lg px-3 py-2">
             {erro}
           </p>
         )}
@@ -776,7 +776,7 @@ export default function StripeCustomOnboarding({
                 const idx = etapas.indexOf(etapa);
                 if (idx > 0) setEtapa(etapas[idx - 1]);
               }}
-              className="h-10 px-4 rounded-xl border border-[#e4e4e7] text-[13px] font-medium text-[#374151] flex items-center gap-1"
+              className="t-corpo h-10 px-4 rounded-lg border border-[#e4e4e7] font-medium text-[#374151] flex items-center gap-1"
             >
               <ChevronLeft size={15} /> Voltar
             </button>
@@ -784,7 +784,7 @@ export default function StripeCustomOnboarding({
             {etapa === "dados" && (
               <button
                 onClick={avancarDadosBasicos}
-                className="flex-1 h-10 rounded-xl bg-[#16a34a] text-white text-[13px] font-medium flex items-center justify-center gap-1"
+                className="t-corpo flex-1 h-10 rounded-lg bg-[#16a34a] text-white font-medium flex items-center justify-center gap-1"
               >
                 Continuar <ChevronRight size={15} />
               </button>
@@ -793,7 +793,7 @@ export default function StripeCustomOnboarding({
               <button
                 onClick={avancarEndereco}
                 disabled={salvando}
-                className="flex-1 h-10 rounded-xl bg-[#16a34a] text-white text-[13px] font-medium flex items-center justify-center gap-1 disabled:opacity-60"
+                className="t-corpo flex-1 h-10 rounded-lg bg-[#16a34a] text-white font-medium flex items-center justify-center gap-1 disabled:opacity-60"
               >
                 {salvando && <Loader2 size={14} className="animate-spin" />}
                 Continuar <ChevronRight size={15} />
@@ -803,7 +803,7 @@ export default function StripeCustomOnboarding({
               <button
                 onClick={avancarBanco}
                 disabled={salvando}
-                className="flex-1 h-10 rounded-xl bg-[#16a34a] text-white text-[13px] font-medium flex items-center justify-center gap-1 disabled:opacity-60"
+                className="t-corpo flex-1 h-10 rounded-lg bg-[#16a34a] text-white font-medium flex items-center justify-center gap-1 disabled:opacity-60"
               >
                 {salvando && <Loader2 size={14} className="animate-spin" />}
                 Continuar <ChevronRight size={15} />
@@ -813,7 +813,7 @@ export default function StripeCustomOnboarding({
               <button
                 onClick={enviarDocumentos}
                 disabled={enviandoDoc}
-                className="flex-1 h-10 rounded-xl bg-[#16a34a] text-white text-[13px] font-medium flex items-center justify-center gap-1 disabled:opacity-60"
+                className="t-corpo flex-1 h-10 rounded-lg bg-[#16a34a] text-white font-medium flex items-center justify-center gap-1 disabled:opacity-60"
               >
                 {enviandoDoc && <Loader2 size={14} className="animate-spin" />}
                 Enviar e concluir

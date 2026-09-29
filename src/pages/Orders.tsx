@@ -159,7 +159,7 @@ async function copiar(texto: string): Promise<boolean> {
 function Etiqueta({ status }: { status: StatusPedido }) {
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${CORES_STATUS[status]}`}
+      className={`t-apoio inline-flex items-center px-2 py-0.5 rounded-full font-semibold border ${CORES_STATUS[status]}`}
     >
       {ROTULO_CURTO[status]}
     </span>
@@ -178,7 +178,7 @@ function Secao({
   return (
     <div className="cartao-app p-3.5">
       <div className="flex items-center justify-between gap-2 mb-1.5">
-        <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold">
+        <p className="t-apoio text-[#9ca3af] uppercase tracking-wide font-semibold">
           {titulo}
         </p>
         {acao}
@@ -499,12 +499,12 @@ function Detalhe({
           <div className="folha-topo px-4 py-3 border-b border-[#e7e7ea] flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-[17px] font-bold text-[#0f1117]">
+                <h2 className="t-secao font-bold text-[#0f1117]">
                   Pedido #{pedido.numero}
                 </h2>
                 <Etiqueta status={pedido.status} />
               </div>
-              <p className="text-[12px] text-[#9ca3af] mt-0.5">
+              <p className="t-corpo text-[#9ca3af] mt-0.5">
                 {dataHora(pedido.created_at)}
               </p>
             </div>
@@ -520,20 +520,20 @@ function Detalhe({
           {/* ---------------- corpo ---------------- */}
           <div ref={corpoRef} className="folha-corpo px-4 py-4 space-y-3">
             {erro && (
-              <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5 flex items-start gap-2">
+              <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5 flex items-start gap-2">
                 <AlertCircle
                   size={15}
                   className="text-[#b91c1c] shrink-0 mt-0.5"
                 />
-                <p className="text-[12.5px] text-[#b91c1c] break-words">
+                <p className="t-corpo text-[#b91c1c] break-words">
                   {erro}
                 </p>
               </div>
             )}
             {aviso && (
-              <div className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3.5 py-2.5 flex items-start gap-2">
+              <div className="rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-3.5 py-2.5 flex items-start gap-2">
                 <Check size={15} className="text-[#15803d] shrink-0 mt-0.5" />
-                <p className="text-[12.5px] text-[#15803d] break-words">
+                <p className="t-corpo text-[#15803d] break-words">
                   {aviso}
                 </p>
               </div>
@@ -541,16 +541,16 @@ function Detalhe({
 
             {/* Cliente */}
             <Secao titulo="Cliente">
-              <p className="text-[14px] text-[#0f1117]">
+              <p className="t-corpo text-[#0f1117]">
                 {pedido.cliente_nome ?? "Sem cadastro"}
               </p>
               {pedido.cliente_email && (
-                <p className="text-[12.5px] text-[#6b7280] mt-0.5 break-all">
+                <p className="t-corpo text-[#6b7280] mt-0.5 break-all">
                   {pedido.cliente_email}
                 </p>
               )}
               {pedido.cliente_telefone && (
-                <p className="text-[12.5px] text-[#6b7280] mt-0.5">
+                <p className="t-corpo text-[#6b7280] mt-0.5">
                   {pedido.cliente_telefone}
                 </p>
               )}
@@ -574,7 +574,7 @@ function Detalhe({
                 enderecoEmLinhas(pedido).length > 0 ? (
                   <button
                     onClick={copiarEndereco}
-                    className="sem-toque-minimo inline-flex items-center gap-1 text-[12px] font-semibold text-[#374151]"
+                    className="t-corpo sem-toque-minimo inline-flex items-center gap-1 font-semibold text-[#374151]"
                   >
                     <Copy size={12} />
                     Copiar
@@ -588,20 +588,20 @@ function Detalhe({
                     size={14}
                     className="text-[#9ca3af] shrink-0 mt-0.5"
                   />
-                  <div className="text-[13px] text-[#374151] leading-snug">
+                  <div className="t-corpo text-[#374151] leading-snug">
                     {enderecoEmLinhas(pedido).map((l) => (
                       <p key={l}>{l}</p>
                     ))}
                   </div>
                 </div>
               ) : (
-                <p className="text-[13px] text-[#9ca3af]">
+                <p className="t-corpo text-[#9ca3af]">
                   Sem endereço — retirada ou combinado direto.
                 </p>
               )}
 
               {pedido.frete_transportadora && (
-                <p className="text-[12.5px] text-[#6b7280] mt-2 flex items-center gap-1.5">
+                <p className="t-corpo text-[#6b7280] mt-2 flex items-center gap-1.5">
                   <Truck size={14} className="text-[#9ca3af]" />
                   {pedido.frete_transportadora}
                   {pedido.frete_prazo_dias != null &&
@@ -610,7 +610,7 @@ function Detalhe({
               )}
 
               {pedido.codigo_rastreio && (
-                <p className="text-[12.5px] text-[#0f1117] mt-1.5 font-semibold">
+                <p className="t-corpo text-[#0f1117] mt-1.5 font-semibold">
                   Rastreio: {pedido.codigo_rastreio}
                 </p>
               )}
@@ -659,7 +659,7 @@ function Detalhe({
                   onClick={() =>
                     setPainel(painel === "rastreio" ? null : "rastreio")
                   }
-                  className="sem-toque-minimo text-[12.5px] font-semibold text-[#6b7280] underline"
+                  className="t-corpo sem-toque-minimo font-semibold text-[#6b7280] underline"
                 >
                   Digitar código de rastreio à mão
                 </button>
@@ -692,19 +692,19 @@ function Detalhe({
                         <div key={i} className="flex gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#0f1117] mt-1.5 shrink-0" />
                           <div className="min-w-0">
-                            <p className="text-[12.5px] text-[#0f1117] leading-snug">
+                            <p className="t-corpo text-[#0f1117] leading-snug">
                               {ev.status ??
                                 ev.description ??
                                 ev.title ??
                                 "Movimentação"}
                             </p>
                             {(ev.location || ev.city) && (
-                              <p className="text-[11.5px] text-[#9ca3af]">
+                              <p className="t-apoio text-[#9ca3af]">
                                 {ev.location ?? ev.city}
                               </p>
                             )}
                             {ev.created_at && (
-                              <p className="text-[11.5px] text-[#9ca3af]">
+                              <p className="t-apoio text-[#9ca3af]">
                                 {dataHora(ev.created_at)}
                               </p>
                             )}
@@ -714,7 +714,7 @@ function Detalhe({
                     </div>
                   )}
                   {eventos && eventos.length === 0 && (
-                    <p className="text-[12px] text-[#9ca3af]">
+                    <p className="t-corpo text-[#9ca3af]">
                       Ainda sem movimentação registrada.
                     </p>
                   )}
@@ -727,15 +727,15 @@ function Detalhe({
               <div className="space-y-2.5">
                 {pedido.itens.map((i) => (
                   <div key={i.id} className="flex gap-3 items-start">
-                    <span className="text-[12px] font-bold text-[#6b7280] shrink-0 mt-0.5">
+                    <span className="t-corpo font-bold text-[#6b7280] shrink-0 mt-0.5">
                       {i.quantidade}×
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] text-[#0f1117] leading-snug">
+                      <p className="t-corpo text-[#0f1117] leading-snug">
                         {i.nome_produto}
                       </p>
                       {(i.cor_selecionada || i.tamanho_selecionado) && (
-                        <p className="text-[11.5px] text-[#9ca3af]">
+                        <p className="t-apoio text-[#9ca3af]">
                           {[
                             i.cor_selecionada && `Cor: ${i.cor_selecionada}`,
                             i.tamanho_selecionado &&
@@ -746,7 +746,7 @@ function Detalhe({
                         </p>
                       )}
                     </div>
-                    <span className="text-[13px] font-medium text-[#0f1117] shrink-0 tabular-nums">
+                    <span className="t-corpo font-medium text-[#0f1117] shrink-0 tabular-nums">
                       {brl(i.subtotal)}
                     </span>
                   </div>
@@ -754,29 +754,29 @@ function Detalhe({
               </div>
 
               <div className="mt-3 pt-3 border-t border-[#f0f0f1] space-y-1">
-                <div className="flex justify-between text-[12.5px] text-[#6b7280]">
+                <div className="t-corpo flex justify-between text-[#6b7280]">
                   <span>Subtotal</span>
                   <span className="tabular-nums">{brl(subtotal)}</span>
                 </div>
                 {pedido.frete > 0 && (
-                  <div className="flex justify-between text-[12.5px] text-[#6b7280]">
+                  <div className="t-corpo flex justify-between text-[#6b7280]">
                     <span>Frete</span>
                     <span className="tabular-nums">{brl(pedido.frete)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-[15px] font-bold text-[#0f1117] pt-1">
+                <div className="t-secao flex justify-between font-bold text-[#0f1117] pt-1">
                   <span>Total</span>
                   <span className="tabular-nums">{brl(pedido.total)}</span>
                 </div>
                 {pedido.valor_reembolsado > 0 && (
                   <>
-                    <div className="flex justify-between text-[12.5px] text-[#7e22ce]">
+                    <div className="t-corpo flex justify-between text-[#7e22ce]">
                       <span>Devolvido ao cliente</span>
                       <span className="tabular-nums">
                         − {brl(pedido.valor_reembolsado)}
                       </span>
                     </div>
-                    <div className="flex justify-between text-[12.5px] font-semibold text-[#374151]">
+                    <div className="t-corpo flex justify-between font-semibold text-[#374151]">
                       <span>Ficou com você</span>
                       <span className="tabular-nums">{brl(devolvivel)}</span>
                     </div>
@@ -785,7 +785,7 @@ function Detalhe({
                 {/* O que a Stripe viu, não o que o cliente disse:
                     tipo, bandeira e final vêm do BIN do cartão, lidos
                     no momento da cobrança. */}
-                <p className="text-[11.5px] text-[#9ca3af] pt-1">
+                <p className="t-apoio text-[#9ca3af] pt-1">
                   Pago com {descreverPagamento(pedido)}
                 </p>
                 {/* Cartão múltiplo é crédito e débito no mesmo
@@ -793,7 +793,7 @@ function Detalhe({
                     pelo BIN. Avisar evita o lojista achar que o
                     relatório está errado. */}
                 {divergenciaCartao(pedido) && (
-                  <p className="text-[11px] text-[#b45309] leading-snug pt-0.5">
+                  <p className="t-apoio text-[#b45309] leading-snug pt-0.5">
                     {divergenciaCartao(pedido)}
                   </p>
                 )}
@@ -807,7 +807,7 @@ function Detalhe({
                 painel === "observacoes" ? undefined : (
                   <button
                     onClick={() => setPainel("observacoes")}
-                    className="sem-toque-minimo inline-flex items-center gap-1 text-[12px] font-semibold text-[#374151]"
+                    className="t-corpo sem-toque-minimo inline-flex items-center gap-1 font-semibold text-[#374151]"
                   >
                     <StickyNote size={12} />
                     {pedido.observacoes_internas ? "Editar" : "Escrever"}
@@ -849,7 +849,7 @@ function Detalhe({
                   </div>
                 </div>
               ) : (
-                <p className="text-[13px] text-[#374151] whitespace-pre-wrap leading-snug">
+                <p className="t-corpo text-[#374151] whitespace-pre-wrap leading-snug">
                   {pedido.observacoes_internas || (
                     <span className="text-[#9ca3af]">
                       Nada anotado. Só você vê o que escrever aqui.
@@ -864,7 +864,7 @@ function Detalhe({
               <Secao titulo="Devolver dinheiro">
                 {painel === "devolucao" ? (
                   <div className="space-y-2.5">
-                    <p className="text-[12.5px] text-[#6b7280] leading-snug">
+                    <p className="t-corpo text-[#6b7280] leading-snug">
                       Disponível para devolver:{" "}
                       <strong>{brl(devolvivel)}</strong>. O valor sai do saldo
                       da sua conta de recebimentos e cai na fatura do cliente em
@@ -872,7 +872,7 @@ function Detalhe({
                     </p>
 
                     <div>
-                      <label className="text-[12px] font-semibold text-[#374151]">
+                      <label className="t-corpo font-semibold text-[#374151]">
                         Valor (deixe em branco para devolver tudo)
                       </label>
                       <input
@@ -888,7 +888,7 @@ function Detalhe({
                     </div>
 
                     <div>
-                      <label className="text-[12px] font-semibold text-[#374151]">
+                      <label className="t-corpo font-semibold text-[#374151]">
                         Motivo
                       </label>
                       <select
@@ -906,7 +906,7 @@ function Detalhe({
 
                     {confirmaDevolucao ? (
                       <>
-                        <p className="text-[12.5px] text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-xl px-3.5 py-2.5">
+                        <p className="t-corpo text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-lg px-3.5 py-2.5">
                           Devolver{" "}
                           <strong>
                             {valorDevolucao.trim() === ""
@@ -944,7 +944,7 @@ function Detalhe({
                         setPainel(null);
                         setConfirmaDevolucao(false);
                       }}
-                      className="sem-toque-minimo text-[12.5px] font-semibold text-[#6b7280] underline"
+                      className="t-corpo sem-toque-minimo font-semibold text-[#6b7280] underline"
                     >
                       Deixar para depois
                     </button>
@@ -971,7 +971,7 @@ function Detalhe({
             </button>
 
             {pedido.reembolsado_em && (
-              <p className="text-[11.5px] text-[#9ca3af] text-center">
+              <p className="t-apoio text-[#9ca3af] text-center">
                 Última devolução em {dataHora(pedido.reembolsado_em)}
               </p>
             )}
@@ -999,7 +999,7 @@ function Detalhe({
                 Marcar como {ROTULO_STATUS[avancoPrincipal].toLowerCase()}
               </button>
             ) : (
-              <p className="text-[12.5px] text-[#9ca3af] text-center py-1.5">
+              <p className="t-corpo text-[#9ca3af] text-center py-1.5">
                 Pedido {ROTULO_STATUS[pedido.status].toLowerCase()} — nada a
                 fazer aqui.
               </p>
@@ -1010,7 +1010,7 @@ function Detalhe({
                 <button
                   onClick={() => mudarStatus("cancelado")}
                   disabled={ocupado !== null}
-                  className="sem-toque-minimo text-[12px] font-semibold text-[#b91c1c] underline"
+                  className="t-corpo sem-toque-minimo font-semibold text-[#b91c1c] underline"
                 >
                   {ocupado === "status-cancelado"
                     ? "Cancelando…"
@@ -1019,15 +1019,15 @@ function Detalhe({
               )}
               <button
                 onClick={() => setCorrigindoStatus((v) => !v)}
-                className="sem-toque-minimo text-[12px] text-[#6b7280] underline"
+                className="t-corpo sem-toque-minimo text-[#6b7280] underline"
               >
                 Corrigir status
               </button>
             </div>
 
             {corrigindoStatus && (
-              <div className="mt-2.5 rounded-xl border border-[#e7e7ea] p-2.5">
-                <p className="text-[11.5px] text-[#6b7280] leading-snug mb-2">
+              <div className="mt-2.5 rounded-lg border border-[#e7e7ea] p-2.5">
+                <p className="t-apoio text-[#6b7280] leading-snug mb-2">
                   Marcou sem querer? Escolha onde o pedido realmente está. Isto
                   não mexe em dinheiro — só arruma a etiqueta.
                 </p>
@@ -1136,13 +1136,13 @@ export default function Orders() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Número, cliente, produto ou rastreio"
-              className="w-full h-12 pl-10 pr-3 rounded-xl bg-white border border-[#e7e7ea] text-[14px] outline-none focus:border-[#0f1117] transition-colors"
+              className="t-corpo w-full h-12 pl-10 pr-3 rounded-lg bg-white border border-[#e7e7ea] outline-none focus:border-[#0f1117] transition-colors"
             />
           </div>
           <button
             onClick={carregar}
             disabled={carregando}
-            className="toque w-12 rounded-xl bg-white border border-[#e7e7ea] flex items-center justify-center disabled:opacity-50"
+            className="toque w-12 rounded-lg bg-white border border-[#e7e7ea] flex items-center justify-center disabled:opacity-50"
             aria-label="Atualizar"
           >
             <RefreshCw
@@ -1167,7 +1167,7 @@ export default function Orders() {
               {rotulo}
               {contagem[id] > 0 && (
                 <span
-                  className={`ml-1 text-[11px] ${
+                  className={`t-apoio ml-1 ${
                     aba === id ? "text-white/70" : "text-[#9ca3af]"
                   }`}
                 >
@@ -1179,13 +1179,13 @@ export default function Orders() {
         </div>
 
         {erro && (
-          <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
+          <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
             <AlertCircle size={16} className="text-[#b91c1c] shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <p className="text-[12.5px] text-[#b91c1c] break-words">{erro}</p>
+              <p className="t-corpo text-[#b91c1c] break-words">{erro}</p>
               <button
                 onClick={carregar}
-                className="sem-toque-minimo text-[12px] font-semibold text-[#991b1b] underline mt-1"
+                className="t-corpo sem-toque-minimo font-semibold text-[#991b1b] underline mt-1"
               >
                 Tentar novamente
               </button>
@@ -1202,10 +1202,10 @@ export default function Orders() {
               className="mx-auto text-[#d4d4d8] mb-2.5"
               strokeWidth={1.5}
             />
-            <p className="text-[14px] font-semibold text-[#0f1117]">
+            <p className="t-corpo font-semibold text-[#0f1117]">
               {pedidos.length === 0 ? "Nenhum pedido ainda" : "Nada encontrado"}
             </p>
-            <p className="text-[12.5px] text-[#9ca3af] mt-1">
+            <p className="t-corpo text-[#9ca3af] mt-1">
               {pedidos.length === 0
                 ? "Os pedidos da sua loja aparecem aqui assim que o primeiro chegar."
                 : "Tente outro termo ou troque de aba."}
@@ -1223,23 +1223,23 @@ export default function Orders() {
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[14px] font-bold text-[#0f1117]">
+                      <span className="t-corpo font-bold text-[#0f1117]">
                         #{p.numero}
                       </span>
                       <Etiqueta status={p.status} />
                       {p.etiqueta_url && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-[#6b7280]">
+                        <span className="t-apoio inline-flex items-center gap-1 text-[#6b7280]">
                           <Tag size={11} />
                           etiqueta
                         </span>
                       )}
                     </div>
 
-                    <p className="text-[13px] text-[#374151] mt-1 truncate">
+                    <p className="t-corpo text-[#374151] mt-1 truncate">
                       {p.cliente_nome ?? "Cliente sem cadastro"}
                     </p>
 
-                    <p className="text-[11.5px] text-[#9ca3af] mt-0.5">
+                    <p className="t-apoio text-[#9ca3af] mt-0.5">
                       {dataCurta(p.created_at)} · {totalItens}{" "}
                       {totalItens === 1 ? "item" : "itens"}
                       {` · ${descreverPagamento(p)}`}
@@ -1247,11 +1247,11 @@ export default function Orders() {
                   </div>
 
                   <div className="text-right shrink-0">
-                    <p className="text-[15px] font-bold text-[#0f1117] tabular-nums">
+                    <p className="t-secao font-bold text-[#0f1117] tabular-nums">
                       {brl(p.total)}
                     </p>
                     {p.valor_reembolsado > 0 && (
-                      <p className="text-[11px] text-[#7e22ce]">
+                      <p className="t-apoio text-[#7e22ce]">
                         − {brl(p.valor_reembolsado)}
                       </p>
                     )}

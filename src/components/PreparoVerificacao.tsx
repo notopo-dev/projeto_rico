@@ -63,10 +63,10 @@ export default function PreparoVerificacao({
           <ShieldCheck size={18} className="text-[#16a34a]" />
         </div>
         <div className="min-w-0">
-          <h2 className="text-[14px] font-semibold text-[#0f1117]">
+          <h2 className="t-corpo font-semibold text-[#0f1117]">
             Confirmação de identidade
           </h2>
-          <p className="text-[12.5px] text-[#6b7280] mt-0.5 leading-snug">
+          <p className="t-corpo text-[#6b7280] mt-0.5 leading-snug">
             Última etapa para liberar os recebimentos da sua loja.
             {typeof quantidadePendencias === "number" &&
               quantidadePendencias > 0 &&
@@ -78,8 +78,8 @@ export default function PreparoVerificacao({
       </div>
 
       <div className="px-4 py-4 space-y-4">
-        <div className="rounded-xl bg-[#fafafa] border border-[#e4e4e7] px-3.5 py-3">
-          <p className="text-[12.5px] text-[#374151] leading-relaxed">
+        <div className="rounded-lg bg-[#fafafa] border border-[#e4e4e7] px-3.5 py-3">
+          <p className="t-corpo text-[#374151] leading-relaxed">
             Quem recebe dinheiro de clientes precisa comprovar identidade —
             é exigência do Banco Central, vale para qualquer plataforma de
             vendas. <strong>Leva cerca de 3 minutos</strong> e é uma vez só.
@@ -87,7 +87,7 @@ export default function PreparoVerificacao({
         </div>
 
         <div>
-          <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold mb-2">
+          <p className="t-apoio text-[#9ca3af] uppercase tracking-wide font-semibold mb-2">
             Antes de começar
           </p>
           <div className="space-y-2.5">
@@ -97,10 +97,10 @@ export default function PreparoVerificacao({
                   <Icone size={14} className="text-[#6b7280]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[13px] font-medium text-[#111827]">
+                  <p className="t-corpo font-medium text-[#111827]">
                     {titulo}
                   </p>
-                  <p className="text-[12px] text-[#6b7280] leading-snug mt-0.5">
+                  <p className="t-corpo text-[#6b7280] leading-snug mt-0.5">
                     {texto}
                   </p>
                 </div>
@@ -110,7 +110,7 @@ export default function PreparoVerificacao({
         </div>
 
         <div>
-          <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold mb-2">
+          <p className="t-apoio text-[#9ca3af] uppercase tracking-wide font-semibold mb-2">
             O que vai acontecer
           </p>
           <ol className="space-y-1.5">
@@ -121,10 +121,10 @@ export default function PreparoVerificacao({
               "Pronto — a análise leva de minutos a 2 dias úteis",
             ].map((passo, i) => (
               <li key={i} className="flex gap-2.5 items-start">
-                <span className="w-5 h-5 rounded-full bg-[#0f1117] text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                <span className="t-micro w-5 h-5 rounded-full bg-[#0f1117] text-white font-bold flex items-center justify-center shrink-0 mt-0.5">
                   {i + 1}
                 </span>
-                <span className="text-[12.5px] text-[#374151] leading-snug">
+                <span className="t-corpo text-[#374151] leading-snug">
                   {passo}
                 </span>
               </li>
@@ -134,13 +134,13 @@ export default function PreparoVerificacao({
 
         <button
           onClick={onComecar}
-          className="w-full h-12 min-h-[48px] rounded-xl bg-[#0f1117] text-white text-[14px] font-semibold flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
+          className="t-corpo w-full h-12 min-h-[48px] rounded-lg bg-[#0f1117] text-white font-semibold flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
         >
           Começar agora
           <ArrowRight size={16} />
         </button>
 
-        <p className="text-[11px] text-[#9ca3af] text-center leading-snug flex items-center justify-center gap-1.5">
+        <p className="t-apoio text-[#9ca3af] text-center leading-snug flex items-center justify-center gap-1.5">
           <Clock size={12} />
           Dá para parar no meio e continuar depois de onde parou.
         </p>

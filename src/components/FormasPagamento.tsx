@@ -64,8 +64,8 @@ function Linha({
         <span className="mt-0.5 shrink-0 text-[#6b7280]">{icone}</span>
 
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold text-[#0f1117]">{titulo}</p>
-          <p className="text-[11.5px] text-[#6b7280] leading-snug mt-0.5">
+          <p className="t-corpo font-semibold text-[#0f1117]">{titulo}</p>
+          <p className="t-apoio text-[#6b7280] leading-snug mt-0.5">
             {descricao}
           </p>
         </div>
@@ -98,7 +98,7 @@ function Linha({
       {!liberado && motivoTravado && (
         <div className="mt-2 ml-7 flex items-start gap-1.5 rounded-lg bg-[#fffbeb] border border-[#fde68a] px-2.5 py-2">
           <AlertTriangle size={13} className="text-[#b45309] shrink-0 mt-0.5" />
-          <div className="text-[11.5px] text-[#92400e] leading-snug">
+          <div className="t-apoio text-[#92400e] leading-snug">
             {motivoTravado}
           </div>
         </div>
@@ -167,12 +167,12 @@ export default function FormasPagamento({ status, aoSalvar }: Props) {
     !(metodos.pix.liberado && metodos.pix.aceita);
 
   return (
-    <div className="rounded-xl border border-[#e4e4e7]">
+    <div className="rounded-lg border border-[#e4e4e7]">
       <div className="px-3.5 py-3 border-b border-[#e4e4e7]">
-        <p className="text-[13px] font-semibold text-[#0f1117]">
+        <p className="t-corpo font-semibold text-[#0f1117]">
           Formas de pagamento
         </p>
-        <p className="text-[11.5px] text-[#6b7280] mt-0.5 leading-snug">
+        <p className="t-apoio text-[#6b7280] mt-0.5 leading-snug">
           O que aparece para o cliente no checkout da sua loja.
         </p>
       </div>
@@ -230,17 +230,17 @@ export default function FormasPagamento({ status, aoSalvar }: Props) {
           <div className="flex items-start gap-3">
             <Wallet size={16} className="mt-0.5 shrink-0 text-[#6b7280]" />
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-[#0f1117]">
+              <p className="t-corpo font-semibold text-[#0f1117]">
                 Apple Pay e Google Pay
               </p>
-              <p className="text-[11.5px] text-[#6b7280] leading-snug mt-0.5">
+              <p className="t-apoio text-[#6b7280] leading-snug mt-0.5">
                 Pagamento em um toque, sem digitar o cartão. Aparece sozinho
                 para quem abrir a loja num aparelho compatível.
               </p>
             </div>
 
             {carteiras.ativas && (
-              <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-[#f0fdf4] border border-[#bbf7d0] px-2 py-0.5 text-[11px] font-semibold text-[#15803d]">
+              <span className="t-apoio shrink-0 inline-flex items-center gap-1 rounded-full bg-[#f0fdf4] border border-[#bbf7d0] px-2 py-0.5 font-semibold text-[#15803d]">
                 <Check size={11} />
                 Ativo
               </span>
@@ -264,7 +264,7 @@ export default function FormasPagamento({ status, aoSalvar }: Props) {
                   : "Ativar carteiras digitais"}
               </button>
               {!metodos.cartao.liberado && (
-                <p className="mt-1.5 text-[11px] text-[#9ca3af]">
+                <p className="t-apoio mt-1.5 text-[#9ca3af]">
                   Disponível depois que a conta estiver ativa.
                 </p>
               )}
@@ -272,7 +272,7 @@ export default function FormasPagamento({ status, aoSalvar }: Props) {
           )}
 
           {avisoCarteiras && (
-            <p className="mt-2 ml-7 text-[11.5px] text-[#15803d] bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg px-2.5 py-2 leading-snug">
+            <p className="t-apoio mt-2 ml-7 text-[#15803d] bg-[#f0fdf4] border border-[#bbf7d0] rounded-lg px-2.5 py-2 leading-snug">
               {avisoCarteiras}
             </p>
           )}
@@ -281,7 +281,7 @@ export default function FormasPagamento({ status, aoSalvar }: Props) {
 
       {erro && (
         <div className="px-3.5 pb-3">
-          <p className="text-[11.5px] text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-lg px-2.5 py-2">
+          <p className="t-apoio text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-lg px-2.5 py-2">
             {erro}
           </p>
         </div>
@@ -289,7 +289,7 @@ export default function FormasPagamento({ status, aoSalvar }: Props) {
 
       {nenhumLigado && !erro && (
         <div className="px-3.5 pb-3">
-          <p className="text-[11.5px] text-[#92400e] bg-[#fffbeb] border border-[#fde68a] rounded-lg px-2.5 py-2 leading-snug">
+          <p className="t-apoio text-[#92400e] bg-[#fffbeb] border border-[#fde68a] rounded-lg px-2.5 py-2 leading-snug">
             Nenhuma forma de pagamento ligada. Sua loja só consegue receber
             pedidos pelo WhatsApp até ligar alguma.
           </p>

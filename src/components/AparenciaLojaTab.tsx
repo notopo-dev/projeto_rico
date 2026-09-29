@@ -99,7 +99,7 @@ export default function AparenciaLojaTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-[13px] text-[#6b7280] py-6">
+      <div className="t-corpo flex items-center gap-2 text-[#6b7280] py-6">
         <Loader2 size={16} className="animate-spin" />
         Carregando...
       </div>
@@ -108,7 +108,7 @@ export default function AparenciaLojaTab() {
 
   if (loadError) {
     return (
-      <div className="rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[13px] text-[#b91c1c]">
+      <div className="t-corpo rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[#b91c1c]">
         {loadError}
       </div>
     );
@@ -119,13 +119,13 @@ export default function AparenciaLojaTab() {
       {/* Cores */}
       <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
         <div className="px-4 py-3 border-b border-[#e4e4e7]">
-          <h2 className="text-[13px] font-semibold text-[#0f1117]">
+          <h2 className="t-corpo font-semibold text-[#0f1117]">
             Cores da loja
           </h2>
         </div>
         <div className="px-4 py-4 grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-[12px] font-medium text-[#374151] mb-1">
+            <label className="t-corpo block font-medium text-[#374151] mb-1">
               Cor principal
             </label>
             <div className="flex items-center gap-2">
@@ -139,12 +139,12 @@ export default function AparenciaLojaTab() {
                 type="text"
                 value={corPrimaria}
                 onChange={(e) => setCorPrimaria(e.target.value)}
-                className="flex-1 px-3 py-1.5 text-[13px] font-mono border border-[#e4e4e7] rounded-[6px]"
+                className="t-corpo flex-1 px-3 py-1.5 font-mono border border-[#e4e4e7] rounded-[6px]"
               />
             </div>
           </div>
           <div>
-            <label className="block text-[12px] font-medium text-[#374151] mb-1">
+            <label className="t-corpo block font-medium text-[#374151] mb-1">
               Cor secundária
             </label>
             <div className="flex items-center gap-2">
@@ -158,7 +158,7 @@ export default function AparenciaLojaTab() {
                 type="text"
                 value={corSecundaria}
                 onChange={(e) => setCorSecundaria(e.target.value)}
-                className="flex-1 px-3 py-1.5 text-[13px] font-mono border border-[#e4e4e7] rounded-[6px]"
+                className="t-corpo flex-1 px-3 py-1.5 font-mono border border-[#e4e4e7] rounded-[6px]"
               />
             </div>
           </div>
@@ -168,17 +168,17 @@ export default function AparenciaLojaTab() {
       {/* Logo e banner */}
       <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
         <div className="px-4 py-3 border-b border-[#e4e4e7]">
-          <h2 className="text-[13px] font-semibold text-[#0f1117]">
+          <h2 className="t-corpo font-semibold text-[#0f1117]">
             Logo e banner
           </h2>
         </div>
         <div className="px-4 py-4 space-y-4">
           <div>
-            <label className="block text-[12px] font-medium text-[#374151] mb-1.5">
+            <label className="t-corpo block font-medium text-[#374151] mb-1.5">
               Logo da loja
             </label>
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-xl border border-[#e4e4e7] bg-[#fafafa] overflow-hidden flex items-center justify-center shrink-0">
+              <div className="w-14 h-14 rounded-lg border border-[#e4e4e7] bg-[#fafafa] overflow-hidden flex items-center justify-center shrink-0">
                 {logoUrl ? (
                   <img src={logoUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
@@ -188,7 +188,7 @@ export default function AparenciaLojaTab() {
               <button
                 onClick={() => logoInputRef.current?.click()}
                 disabled={uploadingLogo}
-                className="h-9 px-3 text-[12px] font-medium text-[#374151] border border-[#e4e4e7] rounded-[6px] bg-white hover:bg-[#f4f4f5] disabled:opacity-60 flex items-center gap-1.5"
+                className="t-corpo h-9 px-3 font-medium text-[#374151] border border-[#e4e4e7] rounded-[6px] bg-white hover:bg-[#f4f4f5] disabled:opacity-60 flex items-center gap-1.5"
               >
                 {uploadingLogo && <Loader2 size={13} className="animate-spin" />}
                 {uploadingLogo ? "Enviando..." : "Enviar logo"}
@@ -208,19 +208,19 @@ export default function AparenciaLojaTab() {
           </div>
 
           <div>
-            <label className="block text-[12px] font-medium text-[#374151] mb-1.5">
+            <label className="t-corpo block font-medium text-[#374151] mb-1.5">
               Banner da loja
             </label>
             <div className="space-y-2">
               {bannerUrl && (
-                <div className="w-full aspect-[16/6] rounded-xl overflow-hidden border border-[#e4e4e7] bg-[#fafafa]">
+                <div className="w-full aspect-[16/6] rounded-lg overflow-hidden border border-[#e4e4e7] bg-[#fafafa]">
                   <img src={bannerUrl} alt="" className="w-full h-full object-cover" />
                 </div>
               )}
               <button
                 onClick={() => bannerInputRef.current?.click()}
                 disabled={uploadingBanner}
-                className="h-9 px-3 text-[12px] font-medium text-[#374151] border border-[#e4e4e7] rounded-[6px] bg-white hover:bg-[#f4f4f5] disabled:opacity-60 flex items-center gap-1.5"
+                className="t-corpo h-9 px-3 font-medium text-[#374151] border border-[#e4e4e7] rounded-[6px] bg-white hover:bg-[#f4f4f5] disabled:opacity-60 flex items-center gap-1.5"
               >
                 {uploadingBanner && <Loader2 size={13} className="animate-spin" />}
                 {uploadingBanner ? "Enviando..." : bannerUrl ? "Trocar banner" : "Enviar banner"}
@@ -244,10 +244,10 @@ export default function AparenciaLojaTab() {
       {/* Modo de compra */}
       <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
         <div className="px-4 py-3 border-b border-[#e4e4e7]">
-          <h2 className="text-[13px] font-semibold text-[#0f1117]">
+          <h2 className="t-corpo font-semibold text-[#0f1117]">
             Como o cliente vai comprar
           </h2>
-          <p className="text-[12px] text-[#6b7280] mt-0.5">
+          <p className="t-corpo text-[#6b7280] mt-0.5">
             Defina o que acontece quando o cliente clicar em "Comprar" na sua loja.
           </p>
         </div>
@@ -267,15 +267,15 @@ export default function AparenciaLojaTab() {
               }`}
             >
               <div>
-                <p className="text-[13px] font-medium text-[#111827]">{opt.label}</p>
-                <p className="text-[11px] text-[#6b7280]">{opt.desc}</p>
+                <p className="t-corpo font-medium text-[#111827]">{opt.label}</p>
+                <p className="t-apoio text-[#6b7280]">{opt.desc}</p>
               </div>
             </button>
           ))}
 
           {(modoCompra === "whatsapp" || modoCompra === "ambos") && (
             <div className="pt-2">
-              <label className="block text-[12px] font-medium text-[#374151] mb-1">
+              <label className="t-corpo block font-medium text-[#374151] mb-1">
                 WhatsApp para receber pedidos
               </label>
               <input
@@ -283,7 +283,7 @@ export default function AparenciaLojaTab() {
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
                 placeholder="(00) 00000-0000"
-                className="w-full px-3 py-1.5 text-[13px] border border-[#e4e4e7] rounded-[6px]"
+                className="t-corpo w-full px-3 py-1.5 border border-[#e4e4e7] rounded-[6px]"
               />
             </div>
           )}
@@ -291,7 +291,7 @@ export default function AparenciaLojaTab() {
       </div>
 
       {saveError && (
-        <div className="rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-4 py-2.5 text-[13px] text-[#b91c1c]">
+        <div className="t-corpo rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-4 py-2.5 text-[#b91c1c]">
           {saveError}
         </div>
       )}
@@ -300,7 +300,7 @@ export default function AparenciaLojaTab() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] text-white bg-[#16a34a] rounded-[6px] hover:bg-[#15803d] disabled:opacity-60 font-medium"
+          className="t-corpo flex items-center gap-1.5 px-3 py-1.5 text-white bg-[#16a34a] rounded-[6px] hover:bg-[#15803d] disabled:opacity-60 font-medium"
         >
           {saving ? (
             <Loader2 size={14} className="animate-spin" />

@@ -160,7 +160,7 @@ export default function StripeStatusPanel() {
   if (carregando && !status) {
     return (
       <div className="bg-white border border-[#e4e4e7] rounded-[6px] px-4 py-8">
-        <div className="flex items-center justify-center gap-2 text-[13px] text-[#6b7280]">
+        <div className="t-corpo flex items-center justify-center gap-2 text-[#6b7280]">
           <Loader2 size={16} className="animate-spin" />
           Verificando sua conta de recebimento...
         </div>
@@ -171,7 +171,7 @@ export default function StripeStatusPanel() {
   if (erro) {
     return (
       <div className="bg-white border border-[#e4e4e7] rounded-[6px] px-4 py-4">
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 text-[12px] text-[#b91c1c]">
+        <div className="t-corpo flex items-center justify-between gap-3 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 text-[#b91c1c]">
           <span>{erro}</span>
           <button
             onClick={carregar}
@@ -200,7 +200,7 @@ export default function StripeStatusPanel() {
               setModoEdicao(false);
               carregar();
             }}
-            className="mb-2 text-[12px] text-[#6b7280] underline"
+            className="t-corpo mb-2 text-[#6b7280] underline"
           >
             ← Voltar para o resumo
           </button>
@@ -220,7 +220,7 @@ export default function StripeStatusPanel() {
             setModoEdicao(false);
             setVerificacaoAberta(false);
           }}
-          className="mb-2 text-[12px] text-[#6b7280] underline"
+          className="t-corpo mb-2 text-[#6b7280] underline"
         >
           ← Voltar
         </button>
@@ -237,10 +237,10 @@ export default function StripeStatusPanel() {
       <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
         <div className="px-4 py-3 border-b border-[#e4e4e7] flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-[13px] font-semibold text-[#0f1117]">
+            <h2 className="t-corpo font-semibold text-[#0f1117]">
               Verificação da conta
             </h2>
-            <p className="text-[12px] text-[#6b7280] mt-0.5">
+            <p className="t-corpo text-[#6b7280] mt-0.5">
               Confirmação de identidade, aqui mesmo no painel.
             </p>
           </div>
@@ -251,7 +251,7 @@ export default function StripeStatusPanel() {
               setPreparoVisto(false);
               carregar(true);
             }}
-            className="shrink-0 text-[12px] text-[#6b7280] underline"
+            className="t-corpo shrink-0 text-[#6b7280] underline"
           >
             Voltar
           </button>
@@ -334,16 +334,16 @@ export default function StripeStatusPanel() {
     <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
       <div className="px-4 py-3 border-b border-[#e4e4e7] flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-[13px] font-semibold text-[#0f1117]">
+          <h2 className="t-corpo font-semibold text-[#0f1117]">
             Conta de recebimento
           </h2>
-          <p className="text-[12px] text-[#6b7280] mt-0.5">
+          <p className="t-corpo text-[#6b7280] mt-0.5">
             Onde os pagamentos da sua loja são depositados.
           </p>
         </div>
         <button
           onClick={carregar}
-          className="shrink-0 flex items-center gap-1 text-[11px] text-[#6b7280] hover:text-[#374151]"
+          className="t-apoio shrink-0 flex items-center gap-1 text-[#6b7280] hover:text-[#374151]"
           title="Atualizar status"
         >
           <RefreshCw size={13} />
@@ -355,13 +355,13 @@ export default function StripeStatusPanel() {
         {/* Acabou de enviar: explica que agora é só esperar, para o
             lojista não achar que precisa preencher tudo outra vez. */}
         {enviadoAgora && status.situacao !== "ativo" && (
-          <div className="flex items-start gap-2.5 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3.5 py-3">
+          <div className="flex items-start gap-2.5 rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-3.5 py-3">
             <CheckCircle2 size={18} className="text-[#16a34a] shrink-0" />
             <div>
-              <p className="text-[13px] font-medium text-[#15803d]">
+              <p className="t-corpo font-medium text-[#15803d]">
                 Recebemos seus dados
               </p>
-              <p className="text-[11px] text-[#166534] leading-snug">
+              <p className="t-apoio text-[#166534] leading-snug">
                 Não precisa preencher de novo. Esta tela se atualiza sozinha
                 assim que a análise terminar — pode sair e voltar depois.
               </p>
@@ -376,14 +376,14 @@ export default function StripeStatusPanel() {
 
         {/* Situação atual */}
         <div
-          className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 ${situacaoVisual.cor}`}
+          className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-3 ${situacaoVisual.cor}`}
         >
           {situacaoVisual.icone}
           <div>
-            <p className={`text-[13px] font-medium ${situacaoVisual.titulo}`}>
+            <p className={`t-corpo font-medium ${situacaoVisual.titulo}`}>
               {situacaoVisual.tituloTexto}
             </p>
-            <p className={`text-[11px] ${situacaoVisual.texto}`}>
+            <p className={`t-apoio ${situacaoVisual.texto}`}>
               {situacaoVisual.descricao}
             </p>
           </div>
@@ -391,8 +391,8 @@ export default function StripeStatusPanel() {
 
         {/* Pendências específicas + atalho para a verificação da Stripe */}
         {temPendencias && (
-          <div className="rounded-xl border border-[#e4e4e7] px-3.5 py-3">
-            <p className="text-[12px] font-semibold text-[#374151] mb-2">
+          <div className="rounded-lg border border-[#e4e4e7] px-3.5 py-3">
+            <p className="t-corpo font-semibold text-[#374151] mb-2">
               Informações pendentes
             </p>
             <ul className="space-y-1">
@@ -406,7 +406,7 @@ export default function StripeStatusPanel() {
               ).map((texto) => (
                 <li
                   key={texto}
-                  className="text-[11px] text-[#6b7280] flex items-start gap-1.5"
+                  className="t-apoio text-[#6b7280] flex items-start gap-1.5"
                 >
                   <span className="text-[#b45309] mt-0.5">•</span>
                   <span>{texto}</span>
@@ -416,12 +416,12 @@ export default function StripeStatusPanel() {
 
             <button
               onClick={() => setVerificacaoAberta(true)}
-              className="mt-3 w-full h-11 rounded-xl bg-[#0f1117] text-white text-[13px] font-semibold flex items-center justify-center gap-1.5"
+              className="t-corpo mt-3 w-full h-11 rounded-lg bg-[#0f1117] text-white font-semibold flex items-center justify-center gap-1.5"
             >
               <ShieldCheck size={15} />
               Concluir verificação
             </button>
-            <p className="mt-2 text-[10.5px] text-[#9ca3af] leading-snug">
+            <p className="t-micro mt-2 text-[#9ca3af] leading-snug">
               A confirmação de identidade é feita aqui mesmo, em ambiente
               criptografado. Seus documentos não ficam armazenados no painel.
             </p>
@@ -429,7 +429,7 @@ export default function StripeStatusPanel() {
         )}
 
         {/* Resumo dos dados cadastrados */}
-        <div className="rounded-xl border border-[#e4e4e7] divide-y divide-[#f0f0f1]">
+        <div className="rounded-lg border border-[#e4e4e7] divide-y divide-[#f0f0f1]">
           {/* Titular */}
           <div className="px-3.5 py-3 flex items-start gap-3">
             {ehEmpresa ? (
@@ -438,35 +438,35 @@ export default function StripeStatusPanel() {
               <User size={16} className="text-[#9ca3af] shrink-0 mt-0.5" />
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold">
+              <p className="t-apoio text-[#9ca3af] uppercase tracking-wide font-semibold">
                 {ehEmpresa ? "Empresa" : "Titular"}
               </p>
               {ehEmpresa && dados?.empresa ? (
                 <>
-                  <p className="text-[13px] text-[#111827] mt-0.5">
+                  <p className="t-corpo text-[#111827] mt-0.5">
                     {dados.empresa.razao_social ?? "—"}
                   </p>
                   {dados.empresa.telefone && (
-                    <p className="text-[11px] text-[#6b7280]">
+                    <p className="t-apoio text-[#6b7280]">
                       {dados.empresa.telefone}
                     </p>
                   )}
                 </>
               ) : dados?.individual ? (
                 <>
-                  <p className="text-[13px] text-[#111827] mt-0.5">
+                  <p className="t-corpo text-[#111827] mt-0.5">
                     {[dados.individual.nome, dados.individual.sobrenome]
                       .filter(Boolean)
                       .join(" ") || "—"}
                   </p>
                   {dados.individual.email && (
-                    <p className="text-[11px] text-[#6b7280]">
+                    <p className="t-apoio text-[#6b7280]">
                       {dados.individual.email}
                     </p>
                   )}
                 </>
               ) : (
-                <p className="text-[13px] text-[#9ca3af] mt-0.5">
+                <p className="t-corpo text-[#9ca3af] mt-0.5">
                   Não informado
                 </p>
               )}
@@ -477,23 +477,23 @@ export default function StripeStatusPanel() {
           <div className="px-3.5 py-3 flex items-start gap-3">
             <Landmark size={16} className="text-[#9ca3af] shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] text-[#9ca3af] uppercase tracking-wide font-semibold">
+              <p className="t-apoio text-[#9ca3af] uppercase tracking-wide font-semibold">
                 Conta bancária
               </p>
               {dados?.conta_bancaria ? (
                 <>
-                  <p className="text-[13px] text-[#111827] mt-0.5">
+                  <p className="t-corpo text-[#111827] mt-0.5">
                     {dados.conta_bancaria.banco_nome ?? "Banco"} ••••{" "}
                     {dados.conta_bancaria.ultimos_digitos ?? "----"}
                   </p>
                   {dados.conta_bancaria.titular && (
-                    <p className="text-[11px] text-[#6b7280]">
+                    <p className="t-apoio text-[#6b7280]">
                       {dados.conta_bancaria.titular}
                     </p>
                   )}
                 </>
               ) : (
-                <p className="text-[13px] text-[#9ca3af] mt-0.5">
+                <p className="t-corpo text-[#9ca3af] mt-0.5">
                   Não cadastrada
                 </p>
               )}
@@ -514,11 +514,11 @@ export default function StripeStatusPanel() {
             eles montavam escondidos, com altura zero, e continuavam
             em branco depois de abrir — era o "não aparece nada".
             Agora só montam quando a seção abre de fato. */}
-        <div className="rounded-xl border border-[#e4e4e7]">
+        <div className="rounded-lg border border-[#e4e4e7]">
           <button
             onClick={() => setDadosAbertos((v) => !v)}
             aria-expanded={dadosAbertos}
-            className="w-full px-3.5 py-3 flex items-center justify-between gap-2 text-left text-[13px] font-medium text-[#374151]"
+            className="t-corpo w-full px-3.5 py-3 flex items-center justify-between gap-2 text-left font-medium text-[#374151]"
           >
             Dados da conta de recebimento
             <ChevronDown
@@ -538,7 +538,7 @@ export default function StripeStatusPanel() {
         {/* Ação */}
         <button
           onClick={() => setModoEdicao(true)}
-          className="w-full h-11 rounded-xl border border-[#e4e4e7] bg-white text-[13px] font-medium text-[#374151] hover:bg-[#f4f4f5] flex items-center justify-center gap-1.5"
+          className="t-corpo w-full h-11 rounded-lg border border-[#e4e4e7] bg-white font-medium text-[#374151] hover:bg-[#f4f4f5] flex items-center justify-center gap-1.5"
         >
           <Pencil size={14} />
           {status.situacao === "ativo" || status.situacao === "em_analise"

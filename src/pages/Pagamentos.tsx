@@ -64,7 +64,7 @@ export default function Pagamentos() {
             <button
               key={id}
               onClick={() => setAba(id)}
-              className={`shrink-0 px-3.5 py-2.5 text-[13px] font-medium inline-flex items-center gap-1.5 border-b-2 -mb-px transition-colors ${
+              className={`t-corpo shrink-0 px-3.5 py-2.5 font-medium inline-flex items-center gap-1.5 border-b-2 -mb-px transition-colors ${
                 ativa
                   ? "border-[#0f1117] text-[#0f1117]"
                   : "border-transparent text-[#6b7280] hover:text-[#374151]"
@@ -79,10 +79,10 @@ export default function Pagamentos() {
 
       <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
         <div className="px-4 py-3 border-b border-[#e4e4e7]">
-          <h2 className="text-[13px] font-semibold text-[#0f1117]">
+          <h2 className="t-corpo font-semibold text-[#0f1117]">
             {atual.nome}
           </h2>
-          <p className="text-[12px] text-[#6b7280] mt-0.5">{atual.texto}</p>
+          <p className="t-corpo text-[#6b7280] mt-0.5">{atual.texto}</p>
         </div>
 
         <div className="px-4 py-4">
@@ -97,7 +97,7 @@ export default function Pagamentos() {
         </div>
       </div>
 
-      <p className="mt-3 text-[11.5px] text-[#9ca3af] leading-snug">
+      <p className="t-apoio mt-3 text-[#9ca3af] leading-snug">
         Os valores aqui vêm direto do provedor de pagamento e refletem o
         estado atual da sua conta. Se a conta ainda estiver em verificação,
         os painéis aparecem vazios até a liberação.

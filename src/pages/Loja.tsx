@@ -137,11 +137,11 @@ export default function Loja() {
     const value = form[name] as string;
 
     const cls =
-      "w-full px-3 py-1.5 text-[13px] border border-[#e4e4e7] rounded-[6px] bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a]";
+      "t-corpo w-full px-3 py-1.5 border border-[#e4e4e7] rounded-[6px] bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a]";
 
     return (
       <div>
-        <label className="block text-[12px] font-medium text-[#374151] mb-1">
+        <label className="t-corpo block font-medium text-[#374151] mb-1">
           {label}
         </label>
 
@@ -157,7 +157,7 @@ export default function Loja() {
               }))
             }
             className={
-              cls + " resize-none"
+              cls + "resize-none"
             }
           />
         ) : (
@@ -192,11 +192,11 @@ export default function Loja() {
     return (
       <div className="flex items-center justify-between gap-4 py-3 border-b border-[#f4f4f5] last:border-0">
         <div className="min-w-0">
-          <p className="text-[13px] font-medium text-[#0f1117]">
+          <p className="t-corpo font-medium text-[#0f1117]">
             {label}
           </p>
 
-          <p className="text-[12px] text-[#6b7280]">
+          <p className="t-corpo text-[#6b7280]">
             {description}
           </p>
         </div>
@@ -229,7 +229,7 @@ export default function Loja() {
   if (loading) {
     return (
       <div className="p-4 sm:p-6 max-w-[860px]">
-        <div className="flex items-center gap-2 text-[13px] text-[#6b7280]">
+        <div className="t-corpo flex items-center gap-2 text-[#6b7280]">
           <Loader2
             size={16}
             className="animate-spin"
@@ -244,7 +244,7 @@ export default function Loja() {
   if (loadError || !store) {
     return (
       <div className="p-4 sm:p-6 max-w-[860px]">
-        <div className="flex items-center justify-between gap-3 rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[13px] text-[#b91c1c]">
+        <div className="t-corpo flex items-center justify-between gap-3 rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[#b91c1c]">
           <span>
             {loadError ??
               "Loja não encontrada."}
@@ -282,7 +282,7 @@ export default function Loja() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-[#e4e4e7]">
         <div className="flex items-center gap-3">
           <div
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-[12px] font-medium border ${
+            className={`t-corpo flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] font-medium border ${
               form.ativo
                 ? "bg-[#f0fdf4] text-[#15803d] border-[#bbf7d0]"
                 : "bg-[#f4f4f5] text-[#52525b] border-[#e4e4e7]"
@@ -302,7 +302,7 @@ export default function Loja() {
             href={storeUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-[12px] text-[#6b7280] hover:text-[#0f1117]"
+            className="t-corpo flex items-center gap-1 text-[#6b7280] hover:text-[#0f1117]"
           >
             {form.slug || "sua-loja"}
             <ExternalLink
@@ -326,7 +326,7 @@ export default function Loja() {
                 "noopener,noreferrer"
               );
             }}
-            className="toque flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-1.5 text-[13px] font-medium text-[#374151] border border-[#e4e4e7] rounded-xl sm:rounded-[6px] bg-white hover:bg-[#f4f4f5] active:scale-[0.98] transition-all"
+            className="t-corpo toque flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-1.5 font-medium text-[#374151] border border-[#e4e4e7] rounded-lg sm:rounded-[6px] bg-white hover:bg-[#f4f4f5] active:scale-[0.98] transition-all"
           >
             <Eye
               size={14}
@@ -339,7 +339,7 @@ export default function Loja() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="toque flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-1.5 text-[13px] text-white bg-[#0f1117] sm:bg-[#16a34a] rounded-xl sm:rounded-[6px] hover:opacity-90 active:scale-[0.98] transition-all font-semibold disabled:opacity-60"
+            className="t-corpo toque flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-1.5 text-white bg-[#0f1117] sm:bg-[#16a34a] rounded-lg sm:rounded-[6px] hover:opacity-90 active:scale-[0.98] transition-all font-semibold disabled:opacity-60"
           >
             {saving ? (
               <Loader2
@@ -368,7 +368,7 @@ export default function Loja() {
       </div>
 
       {saveError && (
-        <div className="mb-4 rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-4 py-2.5 text-[13px] text-[#b91c1c]">
+        <div className="t-corpo mb-4 rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-4 py-2.5 text-[#b91c1c]">
           {saveError}
         </div>
       )}
@@ -379,10 +379,10 @@ export default function Loja() {
           {/* Informações */}
           <section className="bg-white border border-[#e4e4e7] rounded-[6px]">
             <div className="px-4 py-3 border-b border-[#e4e4e7]">
-              <h2 className="text-[13px] font-semibold text-[#0f1117]">
+              <h2 className="t-corpo font-semibold text-[#0f1117]">
                 Informações públicas
               </h2>
-              <p className="mt-0.5 text-[11.5px] text-[#6b7280] leading-snug">
+              <p className="t-apoio mt-0.5 text-[#6b7280] leading-snug">
                 Tudo desta seção aparece na sua loja, em "Sobre a loja", para
                 quem está comprando.
               </p>
@@ -396,12 +396,12 @@ export default function Loja() {
               />
 
               <div>
-                <label className="block text-[12px] font-medium text-[#374151] mb-1">
+                <label className="t-corpo block font-medium text-[#374151] mb-1">
                   Endereço da loja (slug)
                 </label>
 
                 <div className="flex items-center border border-[#e4e4e7] rounded-[6px] overflow-hidden focus-within:ring-1 focus-within:ring-[#16a34a] focus-within:border-[#16a34a]">
-                  <span className="px-3 py-1.5 bg-[#f4f4f5] text-[12px] text-[#6b7280] border-r border-[#e4e4e7] whitespace-nowrap">
+                  <span className="t-corpo px-3 py-1.5 bg-[#f4f4f5] text-[#6b7280] border-r border-[#e4e4e7] whitespace-nowrap">
                     {dominioPublico}/
                   </span>
 
@@ -414,7 +414,7 @@ export default function Loja() {
                         slug: e.target.value,
                       }))
                     }
-                    className="flex-1 min-w-0 px-3 py-1.5 text-[13px] bg-white focus:outline-none"
+                    className="t-corpo flex-1 min-w-0 px-3 py-1.5 bg-white focus:outline-none"
                   />
                 </div>
               </div>
@@ -431,7 +431,7 @@ export default function Loja() {
           {/* Contato */}
           <section className="bg-white border border-[#e4e4e7] rounded-[6px]">
             <div className="px-4 py-3 border-b border-[#e4e4e7]">
-              <h2 className="text-[13px] font-semibold text-[#0f1117]">
+              <h2 className="t-corpo font-semibold text-[#0f1117]">
                 Contato
               </h2>
             </div>
@@ -458,10 +458,10 @@ export default function Loja() {
           {/* Políticas */}
           <section className="bg-white border border-[#e4e4e7] rounded-[6px]">
             <div className="px-4 py-3 border-b border-[#e4e4e7]">
-              <h2 className="text-[13px] font-semibold text-[#0f1117]">
+              <h2 className="t-corpo font-semibold text-[#0f1117]">
                 Políticas · públicas
               </h2>
-              <p className="mt-0.5 text-[11.5px] text-[#6b7280] leading-snug">
+              <p className="t-apoio mt-0.5 text-[#6b7280] leading-snug">
                 O cliente lê isto antes de comprar. Loja sem política de troca
                 escrita gera mais dúvida no WhatsApp do que venda.
               </p>
@@ -488,7 +488,7 @@ export default function Loja() {
           {/* Configurações */}
           <section className="bg-white border border-[#e4e4e7] rounded-[6px]">
             <div className="px-4 py-3 border-b border-[#e4e4e7]">
-              <h2 className="text-[13px] font-semibold text-[#0f1117]">
+              <h2 className="t-corpo font-semibold text-[#0f1117]">
                 Configurações
               </h2>
             </div>
@@ -517,13 +517,13 @@ export default function Loja() {
           {/* Plano */}
           <section className="bg-white border border-[#e4e4e7] rounded-[6px]">
             <div className="px-4 py-3 border-b border-[#e4e4e7]">
-              <h2 className="text-[13px] font-semibold text-[#0f1117]">
+              <h2 className="t-corpo font-semibold text-[#0f1117]">
                 Plano atual
               </h2>
             </div>
 
             <div className="px-4 py-4">
-              <p className="text-[13px] font-semibold text-[#0f1117] mb-0.5">
+              <p className="t-corpo font-semibold text-[#0f1117] mb-0.5">
                 {store.plano
                   ? store.plano
                       .charAt(0)
@@ -532,7 +532,7 @@ export default function Loja() {
                   : "Gratuito"}
               </p>
 
-              <p className="text-[12px] text-[#6b7280] mb-3">
+              <p className="t-corpo text-[#6b7280] mb-3">
                 {store.plano_renovacao
                   ? `Renovação em ${new Date(
                       store.plano_renovacao
@@ -544,7 +544,7 @@ export default function Loja() {
 
               <button
                 type="button"
-                className="w-full px-3 py-1.5 text-[13px] text-[#374151] border border-[#e4e4e7] rounded-[6px] bg-white hover:bg-[#f4f4f5] transition-colors"
+                className="t-corpo w-full px-3 py-1.5 text-[#374151] border border-[#e4e4e7] rounded-[6px] bg-white hover:bg-[#f4f4f5] transition-colors"
               >
                 Gerenciar plano
               </button>

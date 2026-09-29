@@ -28,12 +28,12 @@ export default function Termos() {
           >
             <ChevronLeft size={19} className="text-[#374151]" />
           </button>
-          <h1 className="text-[15px] font-bold text-[#111827]">Termos de Uso</h1>
+          <h1 className="t-secao font-bold text-[#111827]">Termos de Uso</h1>
         </div>
       </header>
 
       <main className="max-w-[720px] mx-auto px-4 py-6 pb-20">
-        <p className="text-[12px] text-[#9ca3af] mb-6">
+        <p className="t-corpo text-[#9ca3af] mb-6">
           Última atualização: {ATUALIZADO_EM}
         </p>
 
@@ -197,7 +197,7 @@ export default function Termos() {
           </P>
         </Secao>
 
-        <footer className="mt-10 pt-6 border-t border-black/5 text-[12px] text-[#9ca3af]">
+        <footer className="t-corpo mt-10 pt-6 border-t border-black/5 text-[#9ca3af]">
           <p>
             [[RAZÃO SOCIAL]] — CNPJ [[CNPJ]] — Barreiras/BA
             <br />
@@ -220,7 +220,7 @@ function Secao({
 }) {
   return (
     <section className="mb-7">
-      <h2 className="text-[15px] font-bold text-[#111827] mb-2">{titulo}</h2>
+      <h2 className="t-secao font-bold text-[#111827] mb-2">{titulo}</h2>
       <div className="space-y-2.5">{children}</div>
     </section>
   );
@@ -228,7 +228,7 @@ function Secao({
 
 function P({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[13.5px] leading-relaxed text-[#374151]">{children}</p>
+    <p className="t-corpo leading-relaxed text-[#374151]">{children}</p>
   );
 }
 
@@ -238,7 +238,7 @@ function Lista({ itens }: { itens: string[] }) {
       {itens.map((item, i) => (
         <li
           key={i}
-          className="text-[13.5px] leading-relaxed text-[#374151] flex gap-2"
+          className="t-corpo leading-relaxed text-[#374151] flex gap-2"
         >
           <span className="text-[#9ca3af] shrink-0">•</span>
           <span>{item}</span>

@@ -20,20 +20,20 @@ export default function DimensoesProdutoSection({
   onChange,
 }: Props) {
   const inputCls =
-    "w-full h-11 px-3 rounded-xl border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10 lg:text-[13px]";
-  const labelCls = "block text-[12px] font-semibold text-[#374151] mb-1.5";
+    "t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10";
+  const labelCls = "t-corpo block font-semibold text-[#374151] mb-1.5";
 
   const incompleto = !peso || !altura || !largura || !comprimento;
 
   return (
-    <div className="rounded-xl border border-[#e4e4e7] bg-[#fafafa] p-3.5">
+    <div className="rounded-lg border border-[#e4e4e7] bg-[#fafafa] p-3.5">
       <div className="flex items-center gap-1.5 mb-1">
         <Package size={14} className="text-[#6b7280]" />
-        <p className="text-[13px] font-medium text-[#111827]">
+        <p className="t-corpo font-medium text-[#111827]">
           Peso e medidas (para o frete)
         </p>
       </div>
-      <p className="text-[11px] text-[#6b7280] mb-3">
+      <p className="t-apoio text-[#6b7280] mb-3">
         Informe as medidas do produto embalado, pronto para envio.
       </p>
 
@@ -91,7 +91,7 @@ export default function DimensoesProdutoSection({
       </div>
 
       {incompleto && (
-        <div className="mt-3 flex items-start gap-2 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[11px] text-[#92400e]">
+        <div className="t-apoio mt-3 flex items-start gap-2 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[#92400e]">
           <Info size={13} className="shrink-0 mt-0.5" />
           <span>
             Sem essas medidas, este produto não poderá ser vendido com cálculo

@@ -42,7 +42,7 @@ function Moldura({
 
   if (carregando) {
     return (
-      <div className="flex items-center justify-center gap-2 py-8 text-[13px] text-[#6b7280]">
+      <div className="t-corpo flex items-center justify-center gap-2 py-8 text-[#6b7280]">
         <Loader2 size={15} className="animate-spin" />
         Carregando…
       </div>
@@ -55,8 +55,8 @@ function Moldura({
   if (erro) {
     if (silencioso) return null;
     return (
-      <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3">
-        <p className="text-[12.5px] text-[#b91c1c] break-words">{erro}</p>
+      <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3">
+        <p className="t-corpo text-[#b91c1c] break-words">{erro}</p>
         <button
           onClick={tentarDeNovo}
           className="btn-app-pequeno mt-2.5 bg-white border border-[#fecaca] text-[#991b1b]"

@@ -97,18 +97,28 @@ body {
   overscroll-behavior-y: none;
 }
 
-/* Evita o zoom automático do iOS ao focar um campo: acontece sempre que
-   a fonte do input é menor que 16px. */
+/* ---------------------------------------------------------------
+   Campos: 16px no celular, sempre.
+
+   Abaixo de 16px o Safari do iPhone dá zoom sozinho ao focar, e a
+   tela "pula" na cara de quem está digitando. Isso não é preferência
+   de estilo, é uma regra da plataforma — por isso o !important, que
+   no resto do arquivo eu evito.
+
+   Sem ele, qualquer classe de tamanho escrita no campo (a escala
+   inclusive, que é 15px no celular) venceria a regra de elemento e
+   o zoom voltaria. Já aconteceu em dois campos do cadastro Stripe.
+   --------------------------------------------------------------- */
 input,
 select,
 textarea {
-  font-size: 16px;
+  font-size: 16px !important;
 }
 @media (min-width: 640px) {
   input,
   select,
   textarea {
-    font-size: 14px;
+    font-size: 14px !important;
   }
 }
 
@@ -136,150 +146,156 @@ textarea {
   background: #9ca3af;
 }
 
-/* ---------------------------------------------------------------
-   ESCALA DE TEXTO
+/* A escala e a densidade moram em @layer components de propósito:
+   assim qualquer utilitário do Tailwind escrito na marcação (um
+   font-semibold, um leading-tight) continua vencendo. A escala é o
+   padrão da casa, não uma camisa de força. */
+@layer components {
+  /* ---------------------------------------------------------------
+     ESCALA DE TEXTO
 
-   Sete papéis, não vinte e cinco tamanhos. Cada classe diz para que
-   serve, não quantos pixels tem — assim uma mudança de escala é uma
-   linha aqui, e não uma varredura em dezoito telas.
+     Sete papéis, não vinte e cinco tamanhos. Cada classe diz para que
+     serve, não quantos pixels tem — assim uma mudança de escala é uma
+     linha aqui, e não uma varredura em dezoito telas.
 
-   Os valores são do celular. A partir de 640px eles descem um
-   degrau: com o monitor mais longe e mais área, cabe mais densidade.
-   Esse é o único lugar do projeto onde tamanho de texto é decidido.
+     Os valores são do celular. A partir de 640px eles descem um
+     degrau: com o monitor mais longe e mais área, cabe mais densidade.
+     Esse é o único lugar do projeto onde tamanho de texto é decidido.
 
-   Piso de 12px. Abaixo disso não é "discreto", é ilegível — e o que
-   existia no painel (8, 9 e 10px) não passa nem de perto.
-   --------------------------------------------------------------- */
-.t-micro       { font-size: 12px; line-height: 1.35; }
-.t-apoio       { font-size: 13px; line-height: 1.45; }
-.t-corpo       { font-size: 15px; line-height: 1.5; }
-.t-corpo-forte { font-size: 15px; line-height: 1.5; font-weight: 600; }
-.t-secao       { font-size: 16px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
-.t-titulo      { font-size: 20px; line-height: 1.25; font-weight: 700; letter-spacing: -0.02em; }
-.t-numero      { font-size: 26px; line-height: 1.1;  font-weight: 700; letter-spacing: -0.02em;
-                 font-variant-numeric: tabular-nums; }
+     Piso de 12px. Abaixo disso não é "discreto", é ilegível — e o que
+     existia no painel (8, 9 e 10px) não passa nem de perto.
+     --------------------------------------------------------------- */
+  .t-micro       { font-size: 12px; line-height: 1.35; }
+  .t-apoio       { font-size: 13px; line-height: 1.45; }
+  .t-corpo       { font-size: 15px; line-height: 1.5; }
+  .t-corpo-forte { font-size: 15px; line-height: 1.5; font-weight: 600; }
+  .t-secao       { font-size: 16px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
+  .t-titulo      { font-size: 20px; line-height: 1.25; font-weight: 700; letter-spacing: -0.02em; }
+  .t-numero      { font-size: 26px; line-height: 1.1;  font-weight: 700; letter-spacing: -0.02em;
+                   font-variant-numeric: tabular-nums; }
 
-@media (min-width: 640px) {
-  .t-micro       { font-size: 11.5px; }
-  .t-apoio       { font-size: 12.5px; }
-  .t-corpo       { font-size: 14px; }
-  .t-corpo-forte { font-size: 14px; }
-  .t-secao       { font-size: 15px; }
-  .t-titulo      { font-size: 19px; }
-  .t-numero      { font-size: 24px; }
-}
+  @media (min-width: 640px) {
+    .t-micro       { font-size: 11.5px; }
+    .t-apoio       { font-size: 12.5px; }
+    .t-corpo       { font-size: 14px; }
+    .t-corpo-forte { font-size: 14px; }
+    .t-secao       { font-size: 15px; }
+    .t-titulo      { font-size: 19px; }
+    .t-numero      { font-size: 24px; }
+  }
 
-/* Números em coluna só alinham se cada dígito ocupar a mesma
-   largura. Sem isso, R$ 1.111,00 e R$ 9.999,00 desencontram. */
-.numeros { font-variant-numeric: tabular-nums; }
+  /* Números em coluna só alinham se cada dígito ocupar a mesma
+     largura. Sem isso, R$ 1.111,00 e R$ 9.999,00 desencontram. */
+  .numeros { font-variant-numeric: tabular-nums; }
 
-/* ---------------------------------------------------------------
-   DENSIDADE DE SISTEMA
+  /* ---------------------------------------------------------------
+     DENSIDADE DE SISTEMA
 
-   Estas classes seguem o visual-guidelines.md do projeto: cantos
-   discretos (8px), divisórias em vez de cartão para tudo, tabela
-   como componente de primeira classe. A loja e o login continuam
-   mais macios — lá o público é o comprador, aqui é quem trabalha
-   no sistema o dia inteiro.
-   --------------------------------------------------------------- */
+     Estas classes seguem o visual-guidelines.md do projeto: cantos
+     discretos (8px), divisórias em vez de cartão para tudo, tabela
+     como componente de primeira classe. A loja e o login continuam
+     mais macios — lá o público é o comprador, aqui é quem trabalha
+     no sistema o dia inteiro.
+     --------------------------------------------------------------- */
 
-/* Cabeçalho de tela: título à esquerda, ações à direita. */
-.cabecalho-tela {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
+  /* Cabeçalho de tela: título à esquerda, ações à direita. */
+  .cabecalho-tela {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
 
-/* Painel de conteúdo. Borda fina, canto de 8px, sem sombra: é uma
-   superfície de trabalho, não um cartão flutuante. */
-.painel-app {
-  background: var(--app-cartao);
-  border: 1px solid var(--app-borda);
-  border-radius: 8px;
-}
+  /* Painel de conteúdo. Borda fina, canto de 8px, sem sombra: é uma
+     superfície de trabalho, não um cartão flutuante. */
+  .painel-app {
+    background: var(--app-cartao);
+    border: 1px solid var(--app-borda);
+    border-radius: 8px;
+  }
 
-/* Cabeçalho e rodapé de painel, separados por divisória. */
-.painel-topo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--app-borda);
-}
+  /* Cabeçalho e rodapé de painel, separados por divisória. */
+  .painel-topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--app-borda);
+  }
 
-/* Lista de linhas com divisória entre elas — o padrão do painel
-   no celular, onde tabela não cabe. */
-.lista-linhas > * + * {
-  border-top: 1px solid var(--app-borda);
-}
-.linha-app {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  min-height: 56px;
-}
+  /* Lista de linhas com divisória entre elas — o padrão do painel
+     no celular, onde tabela não cabe. */
+  .lista-linhas > * + * {
+    border-top: 1px solid var(--app-borda);
+  }
+  .linha-app {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    min-height: 56px;
+  }
 
-/* Tabela. No celular ela rola dentro do próprio painel, nunca
-   empurra a página para os lados. */
-.rolagem-tabela {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-.tabela-app {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 15px;
-}
-.tabela-app thead th {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--app-texto-fraco);
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--app-borda);
-  white-space: nowrap;
-}
-.tabela-app tbody td {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--app-borda);
-  vertical-align: middle;
-}
-.tabela-app tbody tr:last-child td {
-  border-bottom: none;
-}
-.tabela-app tbody tr:hover {
-  background: #fafafa;
-}
-@media (min-width: 640px) {
-  .tabela-app { font-size: 14px; }
-}
+  /* Tabela. No celular ela rola dentro do próprio painel, nunca
+     empurra a página para os lados. */
+  .rolagem-tabela {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tabela-app {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+  .tabela-app thead th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--app-texto-fraco);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--app-borda);
+    white-space: nowrap;
+  }
+  .tabela-app tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--app-borda);
+    vertical-align: middle;
+  }
+  .tabela-app tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .tabela-app tbody tr:hover {
+    background: #fafafa;
+  }
+  @media (min-width: 640px) {
+    .tabela-app { font-size: 14px; }
+  }
 
-/* Selo de estado. Discreto por regra: fundo claro, texto escuro,
-   canto de 4px. Nada de pílula colorida saltando da linha. */
-.selo {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.3;
-  white-space: nowrap;
-  border: 1px solid transparent;
+  /* Selo de estado. Discreto por regra: fundo claro, texto escuro,
+     canto de 4px. Nada de pílula colorida saltando da linha. */
+  .selo {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .selo-neutro  { background: #f4f4f5; color: #3f3f46; border-color: #e4e4e7; }
+  .selo-ok      { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+  .selo-atencao { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+  .selo-erro    { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+  .selo-info    { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 }
-.selo-neutro  { background: #f4f4f5; color: #3f3f46; border-color: #e4e4e7; }
-.selo-ok      { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
-.selo-atencao { background: #fffbeb; color: #92400e; border-color: #fde68a; }
-.selo-erro    { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
-.selo-info    { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 
 /* ---------------------------------------------------------------
    Componentes de interface
@@ -484,15 +500,17 @@ textarea {
 /* ---------------------------------------------------------------
    PONTE TEMPORÁRIA — remapeamento de tamanhos soltos
 
-   As telas do painel ainda carregam tamanhos escritos à mão
-   (text-[11px], text-[13px]…): 25 valores diferentes, a maioria
-   pequena demais para a mão. Enquanto cada tela não for migrada
-   para a escala de baixo (.t-corpo, .t-titulo…), este bloco sobe
-   os tamanhos antigos no celular para que nada fique ilegível.
+   O PAINEL NÃO DEPENDE MAIS DESTE BLOCO. As 29 telas e componentes
+   do painel usam a escala (.t-corpo, .t-titulo…), e nenhuma delas
+   escreve mais text-[Npx].
 
-   Este bloco é para SUMIR. A cada tela migrada ele fica menor, e
-   quando nenhuma tela usar mais text-[Npx] ele sai inteiro. Não
-   escreva tamanhos novos contando com ele.
+   Quem ainda depende é a LOJA PÚBLICA (src/store), que foi desenhada
+   antes e ficou de fora desta migração de propósito: os tamanhos
+   dela foram escolhidos e aprovados na reforma da vitrine, e mexer
+   neles seria desfazer trabalho aceito.
+
+   Quando a loja também for migrada, este bloco inteiro sai. Até lá,
+   não escreva tamanho novo contando com ele — use a escala.
    --------------------------------------------------------------- */
 @media (max-width: 640px) {
   .text-\[10px\]    { font-size: 12px !important; }

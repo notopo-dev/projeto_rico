@@ -55,25 +55,25 @@ export default function EnderecoOrigemSection({ form, setForm }: Props) {
   }
 
   const inputCls =
-    "w-full px-3 py-1.5 text-[13px] border border-[#e4e4e7] rounded-[6px] bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a]";
-  const labelCls = "block text-[12px] font-medium text-[#374151] mb-1";
+    "t-corpo w-full px-3 py-1.5 border border-[#e4e4e7] rounded-[6px] bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a]";
+  const labelCls = "t-corpo block font-medium text-[#374151] mb-1";
 
   return (
     <section className="bg-white border border-[#e4e4e7] rounded-[6px]">
       <div className="px-4 py-3 border-b border-[#e4e4e7]">
         <div className="flex items-center gap-1.5">
           <MapPin size={14} className="text-[#6b7280]" />
-          <h2 className="text-[13px] font-semibold text-[#0f1117]">
+          <h2 className="t-corpo font-semibold text-[#0f1117]">
             Endereço de envio
           </h2>
         </div>
-        <p className="text-[12px] text-[#6b7280] mt-0.5">
+        <p className="t-corpo text-[#6b7280] mt-0.5">
           De onde suas encomendas são postadas. Usado para calcular o frete.
         </p>
       </div>
 
       <div className="px-4 py-4 space-y-4">
-        <div className="flex items-start gap-2.5 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2.5 text-[11px] text-[#1e40af]">
+        <div className="t-apoio flex items-start gap-2.5 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2.5 text-[#1e40af]">
           <Info size={14} className="shrink-0 mt-0.5" />
           <span>
             Sem esse endereço, seus clientes não conseguem calcular o frete no
@@ -101,7 +101,7 @@ export default function EnderecoOrigemSection({ form, setForm }: Props) {
               )}
             </div>
             {avisoCep && (
-              <p className="mt-1 text-[11px] text-[#b45309]">{avisoCep}</p>
+              <p className="t-apoio mt-1 text-[#b45309]">{avisoCep}</p>
             )}
           </div>
 

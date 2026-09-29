@@ -77,7 +77,7 @@ export default function BottomNav({ current, onNavigate }: Props) {
           />
           <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-3xl anim-surgir safe-bottom">
             <div className="flex items-center justify-between px-5 pt-4 pb-2">
-              <h2 className="text-[15px] font-bold text-[#0f1117]">Menu</h2>
+              <h2 className="t-secao font-bold text-[#0f1117]">Menu</h2>
               <button
                 onClick={() => setMaisAberto(false)}
                 className="toque w-9 h-9 rounded-full bg-[#f4f4f5] flex items-center justify-center"
@@ -94,14 +94,14 @@ export default function BottomNav({ current, onNavigate }: Props) {
                   <button
                     key={id}
                     onClick={() => ir(id)}
-                    className={`cartao-toque flex flex-col items-center justify-center gap-2 py-4 rounded-2xl border ${
+                    className={`cartao-toque flex flex-col items-center justify-center gap-2 py-4 rounded-lg border ${
                       ativa
                         ? "bg-[#0f1117] border-[#0f1117] text-white"
                         : "bg-[#fafafa] border-[#e7e7ea] text-[#374151]"
                     }`}
                   >
                     <Icone size={21} strokeWidth={1.9} />
-                    <span className="text-[11.5px] font-medium leading-none text-center px-1">
+                    <span className="t-apoio font-medium leading-none text-center px-1">
                       {label}
                     </span>
                   </button>
@@ -133,7 +133,7 @@ export default function BottomNav({ current, onNavigate }: Props) {
                   className={ativa ? "text-[#0f1117]" : "text-[#9ca3af]"}
                 />
                 <span
-                  className={`text-[10.5px] leading-none ${
+                  className={`t-micro leading-none ${
                     ativa
                       ? "font-bold text-[#0f1117]"
                       : "font-medium text-[#9ca3af]"
@@ -158,7 +158,7 @@ export default function BottomNav({ current, onNavigate }: Props) {
               }
             />
             <span
-              className={`text-[10.5px] leading-none ${
+              className={`t-micro leading-none ${
                 emSecundaria || maisAberto
                   ? "font-bold text-[#0f1117]"
                   : "font-medium text-[#9ca3af]"

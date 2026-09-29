@@ -100,9 +100,9 @@ function Cartao({
   return (
     <div className="cartao-app overflow-hidden">
       <div className="px-3.5 pt-3.5 pb-2">
-        <p className="text-[13px] font-bold text-[#0f1117]">{titulo}</p>
+        <p className="t-corpo font-bold text-[#0f1117]">{titulo}</p>
         {descricao && (
-          <p className="text-[11.5px] text-[#6b7280] leading-snug mt-0.5">
+          <p className="t-apoio text-[#6b7280] leading-snug mt-0.5">
             {descricao}
           </p>
         )}
@@ -150,12 +150,12 @@ function Campo({
 } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
-      <label className="block text-[11.5px] font-medium text-[#6b7280] mb-1">
+      <label className="t-apoio block font-medium text-[#6b7280] mb-1">
         {rotulo}
       </label>
       <input {...props} className="campo-app" />
       {dica && (
-        <p className="mt-1 text-[11px] text-[#9ca3af] leading-snug">{dica}</p>
+        <p className="t-apoio mt-1 text-[#9ca3af] leading-snug">{dica}</p>
       )}
     </div>
   );
@@ -348,9 +348,9 @@ export default function Frete() {
   return (
     <div className="p-4 sm:p-6 max-w-[760px] mx-auto space-y-3.5 pb-28">
       {erro && (
-        <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
+        <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
           <AlertCircle size={16} className="text-[#b91c1c] shrink-0 mt-0.5" />
-          <p className="text-[12.5px] text-[#b91c1c] break-words">{erro}</p>
+          <p className="t-corpo text-[#b91c1c] break-words">{erro}</p>
         </div>
       )}
 
@@ -368,7 +368,7 @@ export default function Frete() {
                 key={m.id}
                 onClick={() => setModo(m.id)}
                 aria-pressed={ativo}
-                className={`w-full text-left rounded-xl border p-3 flex items-start gap-3 transition-colors ${
+                className={`w-full text-left rounded-lg border p-3 flex items-start gap-3 transition-colors ${
                   ativo
                     ? "border-[#0f1117] bg-[#fafafa]"
                     : "border-[#e7e7ea] bg-white"
@@ -380,10 +380,10 @@ export default function Frete() {
                   <Icone size={17} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-semibold text-[#0f1117]">
+                  <span className="t-corpo block font-semibold text-[#0f1117]">
                     {m.titulo}
                   </span>
-                  <span className="block text-[11.5px] text-[#6b7280] leading-snug mt-0.5">
+                  <span className="t-apoio block text-[#6b7280] leading-snug mt-0.5">
                     {m.descricao}
                   </span>
                 </span>
@@ -434,12 +434,12 @@ export default function Frete() {
         )}
 
         {modo === "combinar" && (
-          <div className="mt-3 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2.5 flex items-start gap-2.5">
+          <div className="mt-3 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2.5 flex items-start gap-2.5">
             <AlertTriangle
               size={14}
               className="text-[#b45309] shrink-0 mt-0.5"
             />
-            <p className="text-[11.5px] text-[#92400e] leading-snug">
+            <p className="t-apoio text-[#92400e] leading-snug">
               O pedido fecha só com o valor dos produtos. Você combina a
               entrega depois, e o que o cliente pagou não inclui o frete.
             </p>
@@ -454,7 +454,7 @@ export default function Frete() {
             <Gift size={16} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[12.5px] text-[#374151] leading-snug">
+            <p className="t-corpo text-[#374151] leading-snug">
               A partir de um valor de compra, o frete sai de graça.
             </p>
           </div>
@@ -486,7 +486,7 @@ export default function Frete() {
             <StoreIcon size={16} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[12.5px] text-[#374151] leading-snug">
+            <p className="t-corpo text-[#374151] leading-snug">
               O cliente busca pessoalmente. Sem frete e sem pedir endereço
               de entrega.
             </p>
@@ -500,7 +500,7 @@ export default function Frete() {
 
         {retirada && (
           <div className="mt-3">
-            <label className="block text-[11.5px] font-medium text-[#6b7280] mb-1">
+            <label className="t-apoio block font-medium text-[#6b7280] mb-1">
               Onde e quando retirar
             </label>
             <textarea
@@ -510,7 +510,7 @@ export default function Frete() {
               placeholder="Rua X, 123 — Centro. De segunda a sexta, das 8h às 18h."
               className="campo-app h-auto py-2.5 resize-y"
             />
-            <p className="mt-1 text-[11px] text-[#9ca3af] leading-snug">
+            <p className="t-apoio mt-1 text-[#9ca3af] leading-snug">
               Aparece para o cliente assim que ele escolher retirar.
             </p>
           </div>
@@ -519,15 +519,15 @@ export default function Frete() {
 
       {/* ---------------- pendências ---------------- */}
       {(bloqueiaME || (precisaMelhorEnvio && semMedidas.length > 0)) && (
-        <div className="rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3.5 py-3 space-y-2.5">
-          <p className="text-[12.5px] font-semibold text-[#92400e]">
+        <div className="rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3.5 py-3 space-y-2.5">
+          <p className="t-corpo font-semibold text-[#92400e]">
             Falta isto para a tabela das transportadoras funcionar
           </p>
 
           {!config?.cep_origem && (
             <div className="flex items-start gap-2">
               <MapPin size={14} className="text-[#b45309] shrink-0 mt-0.5" />
-              <p className="text-[11.5px] text-[#92400e] leading-snug">
+              <p className="t-apoio text-[#92400e] leading-snug">
                 <strong>CEP de origem.</strong> Sem saber de onde sai a
                 encomenda não dá para calcular nada. Preencha em
                 Configurações → Loja → Endereço de origem.
@@ -538,7 +538,7 @@ export default function Frete() {
           {!config?.conectado && (
             <div className="flex items-start gap-2">
               <Plug size={14} className="text-[#b45309] shrink-0 mt-0.5" />
-              <p className="text-[11.5px] text-[#92400e] leading-snug">
+              <p className="t-apoio text-[#92400e] leading-snug">
                 <strong>Conta do Melhor Envio conectada.</strong> Logo abaixo.
               </p>
             </div>
@@ -547,7 +547,7 @@ export default function Frete() {
           {semMedidas.length > 0 && (
             <div className="flex items-start gap-2">
               <Package size={14} className="text-[#b45309] shrink-0 mt-0.5" />
-              <p className="text-[11.5px] text-[#92400e] leading-snug">
+              <p className="t-apoio text-[#92400e] leading-snug">
                 <strong>
                   {semMedidas.length}{" "}
                   {semMedidas.length === 1 ? "produto" : "produtos"} sem peso
@@ -572,29 +572,29 @@ export default function Frete() {
         descricao="Usado para cotar a tabela das transportadoras e para imprimir a etiqueta de envio."
       >
         {config?.conectado ? (
-          <div className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-2.5 flex items-start gap-2.5">
+          <div className="rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-2.5 flex items-start gap-2.5">
             <CheckCircle2 size={15} className="text-[#15803d] shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold text-[#15803d]">
+              <p className="t-corpo font-semibold text-[#15803d]">
                 Conectado
                 {recemConectado || config.conta
                   ? ` como ${recemConectado ?? config.conta}`
                   : ""}
               </p>
-              <p className="text-[11.5px] text-[#166534] leading-snug mt-0.5">
+              <p className="t-apoio text-[#166534] leading-snug mt-0.5">
                 A autorização se renova sozinha — você não precisa fazer
                 nada.
               </p>
             </div>
           </div>
         ) : (
-          <div className="rounded-xl border border-[#e7e7ea] bg-[#fafafa] px-3 py-2.5">
-            <p className="text-[12px] text-[#374151] leading-snug">
+          <div className="rounded-lg border border-[#e7e7ea] bg-[#fafafa] px-3 py-2.5">
+            <p className="t-corpo text-[#374151] leading-snug">
               Conecte sua conta para cotar a tabela das transportadoras e
               imprimir etiqueta. Você vai para uma tela do Melhor Envio,
               autoriza, e volta para cá.
             </p>
-            <p className="text-[11.5px] text-[#9ca3af] leading-snug mt-1.5">
+            <p className="t-apoio text-[#9ca3af] leading-snug mt-1.5">
               Não existe mais token para copiar e colar: o Melhor Envio
               passou a usar só este tipo de autorização.
             </p>
@@ -602,14 +602,14 @@ export default function Frete() {
         )}
 
         {erroME && (
-          <div className="mt-2.5 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2.5">
-            <p className="text-[12px] text-[#b91c1c] leading-snug">{erroME}</p>
+          <div className="mt-2.5 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2.5">
+            <p className="t-corpo text-[#b91c1c] leading-snug">{erroME}</p>
           </div>
         )}
 
         {teste && (
           <div
-            className={`mt-2.5 rounded-xl border px-3 py-2.5 flex items-start gap-2.5 ${
+            className={`mt-2.5 rounded-lg border px-3 py-2.5 flex items-start gap-2.5 ${
               teste.conectado
                 ? "border-[#bbf7d0] bg-[#f0fdf4]"
                 : "border-[#fecaca] bg-[#fef2f2]"
@@ -629,10 +629,10 @@ export default function Frete() {
             <div className="min-w-0">
               {teste.conectado ? (
                 <>
-                  <p className="text-[12px] font-semibold text-[#15803d]">
+                  <p className="t-corpo font-semibold text-[#15803d]">
                     Tudo certo com {teste.nome}
                   </p>
-                  <p className="text-[11.5px] text-[#166534] leading-snug mt-0.5">
+                  <p className="t-apoio text-[#166534] leading-snug mt-0.5">
                     {teste.saldo !== null && teste.saldo !== undefined
                       ? `Saldo de ${brl(teste.saldo)}. `
                       : ""}
@@ -642,7 +642,7 @@ export default function Frete() {
                   </p>
                 </>
               ) : (
-                <p className="text-[12px] text-[#b91c1c] leading-snug">
+                <p className="t-corpo text-[#b91c1c] leading-snug">
                   {teste.mensagem}
                 </p>
               )}

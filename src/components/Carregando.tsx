@@ -21,11 +21,11 @@ export function Esqueleto({
 export function TelaCarregando({ texto }: { texto?: string }) {
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center gap-3 bg-[var(--app-fundo)]">
-      <div className="w-11 h-11 rounded-2xl bg-[#0f1117] flex items-center justify-center">
+      <div className="w-11 h-11 rounded-lg bg-[#0f1117] flex items-center justify-center">
         <Loader2 size={20} className="animate-spin text-white" />
       </div>
       {texto && (
-        <p className="text-[13px] text-[#6b7280] anim-surgir">{texto}</p>
+        <p className="t-corpo text-[#6b7280] anim-surgir">{texto}</p>
       )}
     </div>
   );
@@ -34,7 +34,7 @@ export function TelaCarregando({ texto }: { texto?: string }) {
 /** Dentro de um cartão ou seção. */
 export function BlocoCarregando({ texto = "Carregando…" }: { texto?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-10 text-[13px] text-[#6b7280]">
+    <div className="t-corpo flex items-center justify-center gap-2 py-10 text-[#6b7280]">
       <Loader2 size={15} className="animate-spin" />
       {texto}
     </div>
@@ -47,7 +47,7 @@ export function ListaCarregando({ linhas = 4 }: { linhas?: number }) {
     <div className="space-y-2.5" aria-busy="true" aria-live="polite">
       {Array.from({ length: linhas }).map((_, i) => (
         <div key={i} className="cartao-app p-3.5 flex gap-3 items-center">
-          <Esqueleto className="w-11 h-11 rounded-xl shrink-0" />
+          <Esqueleto className="w-11 h-11 rounded-lg shrink-0" />
           <div className="flex-1 space-y-2">
             <Esqueleto className="h-3 w-1/2" />
             <Esqueleto className="h-2.5 w-1/3" />

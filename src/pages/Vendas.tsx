@@ -62,7 +62,7 @@ function Variacao({ atual, anterior }: { atual: number; anterior: number }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1 text-[11px] font-medium ${cor}`}
+      className={`t-apoio inline-flex items-center gap-1 font-medium ${cor}`}
     >
       <Icone size={12} strokeWidth={2.2} />
       {igual ? "estável" : `${pct > 0 ? "+" : ""}${pct.toFixed(0)}%`}
@@ -86,15 +86,15 @@ function Cartao({
   return (
     <div className="cartao-app p-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[12px] text-[#6b7280]">{titulo}</p>
+        <p className="t-corpo text-[#6b7280]">{titulo}</p>
         <Icone size={15} className="text-[#9ca3af] shrink-0" />
       </div>
-      <p className="text-[22px] font-extrabold text-[#0f1117] mt-1.5 leading-none">
+      <p className="t-titulo font-extrabold text-[#0f1117] mt-1.5 leading-none">
         {valor}
       </p>
       <div className="mt-2">
         <Variacao atual={atual} anterior={anterior} />
-        <span className="text-[11px] text-[#9ca3af] ml-1.5">
+        <span className="t-apoio text-[#9ca3af] ml-1.5">
           vs. período anterior
         </span>
       </div>
@@ -109,7 +109,7 @@ function Grafico({ pontos }: { pontos: PontoGrafico[] }) {
 
   if (!temVenda) {
     return (
-      <p className="text-[13px] text-[#9ca3af] py-10 text-center">
+      <p className="t-corpo text-[#9ca3af] py-10 text-center">
         Nenhuma venda registrada neste período.
       </p>
     );
@@ -119,7 +119,7 @@ function Grafico({ pontos }: { pontos: PontoGrafico[] }) {
     <div className="space-y-1.5">
       {pontos.map((p) => (
         <div key={p.rotulo} className="flex items-center gap-2.5">
-          <span className="text-[11px] text-[#9ca3af] w-12 shrink-0 tabular-nums">
+          <span className="t-apoio text-[#9ca3af] w-12 shrink-0 tabular-nums">
             {p.rotulo}
           </span>
           <div className="flex-1 h-6 bg-[#f4f4f5] rounded-lg overflow-hidden">
@@ -133,7 +133,7 @@ function Grafico({ pontos }: { pontos: PontoGrafico[] }) {
               }}
             />
           </div>
-          <span className="text-[11.5px] font-medium text-[#374151] w-20 text-right shrink-0 tabular-nums">
+          <span className="t-apoio font-medium text-[#374151] w-20 text-right shrink-0 tabular-nums">
             {p.valor > 0 ? brl(p.valor) : "—"}
           </span>
         </div>
@@ -155,7 +155,7 @@ function Secao({
     <div className="cartao-app">
       <div className="px-4 py-3 border-b border-[#e7e7ea] flex items-center gap-2">
         <Icone size={15} className="text-[#6b7280]" />
-        <h2 className="text-[13px] font-semibold text-[#0f1117]">{titulo}</h2>
+        <h2 className="t-corpo font-semibold text-[#0f1117]">{titulo}</h2>
       </div>
       <div className="px-4 py-4">{children}</div>
     </div>
@@ -163,7 +163,7 @@ function Secao({
 }
 
 function Vazio({ texto }: { texto: string }) {
-  return <p className="text-[13px] text-[#9ca3af] py-8 text-center">{texto}</p>;
+  return <p className="t-corpo text-[#9ca3af] py-8 text-center">{texto}</p>;
 }
 
 export default function Vendas() {
@@ -240,13 +240,13 @@ export default function Vendas() {
       </div>
 
       {erro && (
-        <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
+        <div className="rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-3 flex items-start gap-2.5">
           <AlertCircle size={16} className="text-[#b91c1c] shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <p className="text-[12.5px] text-[#b91c1c] break-words">{erro}</p>
+            <p className="t-corpo text-[#b91c1c] break-words">{erro}</p>
             <button
               onClick={() => carregar(periodo)}
-              className="text-[12px] font-semibold text-[#991b1b] underline mt-1"
+              className="t-corpo font-semibold text-[#991b1b] underline mt-1"
             >
               Tentar novamente
             </button>
@@ -308,19 +308,19 @@ export default function Vendas() {
                     key={`${p.sku}-${i}`}
                     className="flex items-center gap-3 py-1"
                   >
-                    <span className="w-6 h-6 rounded-lg bg-[#f4f4f5] text-[11px] font-bold text-[#6b7280] flex items-center justify-center shrink-0">
+                    <span className="t-apoio w-6 h-6 rounded-lg bg-[#f4f4f5] font-bold text-[#6b7280] flex items-center justify-center shrink-0">
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium text-[#0f1117] truncate">
+                      <p className="t-corpo font-medium text-[#0f1117] truncate">
                         {p.nome}
                       </p>
-                      <p className="text-[11.5px] text-[#9ca3af]">
+                      <p className="t-apoio text-[#9ca3af]">
                         {p.unidades} {p.unidades === 1 ? "unidade" : "unidades"}
                         {p.sku !== "—" && ` · ${p.sku}`}
                       </p>
                     </div>
-                    <span className="text-[13px] font-semibold text-[#0f1117] shrink-0 tabular-nums">
+                    <span className="t-corpo font-semibold text-[#0f1117] shrink-0 tabular-nums">
                       {brl(p.receita)}
                     </span>
                   </div>
@@ -341,10 +341,10 @@ export default function Vendas() {
                   return (
                     <div key={p.metodo}>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-[13px] text-[#0f1117]">
+                        <span className="t-corpo text-[#0f1117]">
                           {p.metodo}
                         </span>
-                        <span className="text-[12.5px] text-[#6b7280] tabular-nums">
+                        <span className="t-corpo text-[#6b7280] tabular-nums">
                           {brl(p.receita)}
                           <span className="text-[#9ca3af] ml-1.5">
                             {pct.toFixed(0)}%
@@ -375,10 +375,10 @@ export default function Vendas() {
                     className="flex items-center gap-3 py-1"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium text-[#0f1117] truncate">
+                      <p className="t-corpo font-medium text-[#0f1117] truncate">
                         {c.nome}
                       </p>
-                      <p className="text-[11.5px] text-[#9ca3af]">
+                      <p className="t-apoio text-[#9ca3af]">
                         {c.pedidos} {c.pedidos === 1 ? "pedido" : "pedidos"}
                         {c.ultimaCompra &&
                           ` · última em ${new Date(
@@ -386,7 +386,7 @@ export default function Vendas() {
                           ).toLocaleDateString("pt-BR")}`}
                       </p>
                     </div>
-                    <span className="text-[13px] font-semibold text-[#0f1117] shrink-0 tabular-nums">
+                    <span className="t-corpo font-semibold text-[#0f1117] shrink-0 tabular-nums">
                       {brl(c.receita)}
                     </span>
                   </div>

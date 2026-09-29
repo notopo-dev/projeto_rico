@@ -602,17 +602,17 @@ export default function Products() {
       <div className="mb-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-[17px] sm:text-[18px] font-semibold text-[#0f1117]">
+            <h1 className="t-secao font-semibold text-[#0f1117]">
               Produtos
             </h1>
-            <p className="mt-0.5 text-[12px] text-[#6b7280]">
+            <p className="t-corpo mt-0.5 text-[#6b7280]">
               Gerencie os produtos da sua loja
             </p>
           </div>
 
           <button
             onClick={openNewProduct}
-            className="flex shrink-0 items-center justify-center gap-1.5 h-10 px-3.5 rounded-xl bg-[#16a34a] text-white text-[13px] font-semibold shadow-sm active:scale-[0.98] transition-transform lg:h-9 lg:px-3 lg:rounded-[6px]"
+            className="t-corpo flex shrink-0 items-center justify-center gap-1.5 h-10 px-3.5 rounded-lg bg-[#16a34a] text-white font-semibold shadow-sm active:scale-[0.98] transition-transform lg:h-9 lg:px-3 lg:rounded-[6px]"
           >
             <Plus size={17} strokeWidth={2.2} />
             <span className="hidden xs:inline sm:inline">Novo produto</span>
@@ -633,13 +633,13 @@ export default function Products() {
             placeholder="Buscar produto ou SKU..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-11 pl-10 pr-4 rounded-xl border border-[#e4e4e7] bg-white text-base text-[#111827] placeholder:text-[#9ca3af] outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10 transition lg:h-9 lg:rounded-[6px] lg:text-[13px]"
+            className="t-corpo w-full h-11 pl-10 pr-4 rounded-lg border border-[#e4e4e7] bg-white text-base text-[#111827] placeholder:text-[#9ca3af] outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10 transition lg:h-9 lg:rounded-[6px]"
           />
         </div>
       </div>
 
       {loadError && (
-        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5 text-[12px] text-[#b91c1c]">
+        <div className="t-corpo mb-3 flex items-center justify-between gap-3 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5 text-[#b91c1c]">
           <span>{loadError}</span>
           <button onClick={loadProducts} className="shrink-0 font-semibold underline">
             Tentar novamente
@@ -648,7 +648,7 @@ export default function Products() {
       )}
 
       {loading && (
-        <div className="mb-3 flex items-center gap-2 text-[12px] text-[#6b7280]">
+        <div className="t-corpo mb-3 flex items-center gap-2 text-[#6b7280]">
           <Loader2 size={14} className="animate-spin" />
           Carregando produtos...
         </div>
@@ -656,14 +656,14 @@ export default function Products() {
 
       {/* BARRA DE RESULTADOS */}
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-[12px] text-[#6b7280]">
+        <span className="t-corpo text-[#6b7280]">
           {filtered.length} produto{filtered.length !== 1 ? "s" : ""}
         </span>
         <div className="flex items-center gap-1.5 lg:hidden">
-          <span className="text-[11px] text-[#9ca3af]">Ordenar:</span>
+          <span className="t-apoio text-[#9ca3af]">Ordenar:</span>
           <button
             onClick={() => toggleSort("nome")}
-            className={`flex items-center gap-0.5 text-[11px] font-medium ${
+            className={`t-apoio flex items-center gap-0.5 font-medium ${
               sortKey === "nome" ? "text-[#16a34a]" : "text-[#6b7280]"
             }`}
           >
@@ -676,14 +676,14 @@ export default function Products() {
       {/* LISTA MOBILE */}
       <div className="space-y-2.5 lg:hidden">
         {filtered.length === 0 ? (
-          <div className="bg-white border border-[#e4e4e7] rounded-2xl px-5 py-12 text-center">
-            <div className="mx-auto mb-3 w-12 h-12 rounded-2xl bg-[#f4f4f5] flex items-center justify-center">
+          <div className="bg-white border border-[#e4e4e7] rounded-lg px-5 py-12 text-center">
+            <div className="mx-auto mb-3 w-12 h-12 rounded-lg bg-[#f4f4f5] flex items-center justify-center">
               <Package size={23} strokeWidth={1.7} className="text-[#a1a1aa]" />
             </div>
-            <p className="text-[13px] font-medium text-[#374151]">
+            <p className="t-corpo font-medium text-[#374151]">
               Nenhum produto encontrado
             </p>
-            <p className="mt-1 text-[11px] text-[#9ca3af]">
+            <p className="t-apoio mt-1 text-[#9ca3af]">
               {search
                 ? "Tente buscar por outro nome ou SKU."
                 : "Sua loja ainda não possui produtos cadastrados."}
@@ -693,10 +693,10 @@ export default function Products() {
           filtered.map((p) => (
             <div
               key={p.id}
-              className="bg-white border border-[#e4e4e7] rounded-2xl p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+              className="bg-white border border-[#e4e4e7] rounded-lg p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
             >
               <div className="flex items-start gap-3">
-                <div className="shrink-0 w-11 h-11 rounded-xl bg-[#f0fdf4] border border-[#dcfce7] flex items-center justify-center overflow-hidden">
+                <div className="shrink-0 w-11 h-11 rounded-lg bg-[#f0fdf4] border border-[#dcfce7] flex items-center justify-center overflow-hidden">
                   {p.imagens[0] ? (
                     <img
                       src={p.imagens[0].url}
@@ -712,21 +712,21 @@ export default function Products() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-[13px] font-semibold text-[#111827] leading-5 truncate">
+                        <h3 className="t-corpo font-semibold text-[#111827] leading-5 truncate">
                           {p.nome}
                         </h3>
                         {p.itemPromocao && (
-                          <span className="shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#fef2f2] text-[#dc2626]">
+                          <span className="t-micro shrink-0 font-bold px-2 py-0.5 rounded-full bg-[#fef2f2] text-[#dc2626]">
                             OFERTA
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] text-[#9ca3af] font-mono">
+                        <span className="t-micro text-[#9ca3af] font-mono">
                           {p.sku}
                         </span>
                         <span className="text-[#d4d4d8]">•</span>
-                        <span className="text-[10px] text-[#9ca3af] truncate">
+                        <span className="t-micro text-[#9ca3af] truncate">
                           {p.categoria}
                         </span>
                       </div>
@@ -736,21 +736,21 @@ export default function Products() {
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 divide-x divide-[#f0f0f1] rounded-xl bg-[#fafafa] border border-[#f4f4f5]">
+              <div className="mt-3 grid grid-cols-2 divide-x divide-[#f0f0f1] rounded-lg bg-[#fafafa] border border-[#f4f4f5]">
                 <div className="px-3 py-2.5">
-                  <p className="text-[9px] uppercase tracking-wide text-[#9ca3af] font-semibold">
+                  <p className="t-micro uppercase tracking-wide text-[#9ca3af] font-semibold">
                     Preço
                   </p>
-                  <p className="mt-0.5 text-[14px] font-semibold text-[#111827]">
+                  <p className="t-corpo mt-0.5 font-semibold text-[#111827]">
                     {p.precoFormatado}
                   </p>
                 </div>
                 <div className="px-3 py-2.5">
-                  <p className="text-[9px] uppercase tracking-wide text-[#9ca3af] font-semibold">
+                  <p className="t-micro uppercase tracking-wide text-[#9ca3af] font-semibold">
                     Estoque
                   </p>
                   <p
-                    className={`mt-0.5 text-[14px] font-semibold ${
+                    className={`t-corpo mt-0.5 font-semibold ${
                       p.estoque === 0
                         ? "text-[#b91c1c]"
                         : p.estoque < 10
@@ -766,14 +766,14 @@ export default function Products() {
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={() => openEditProduct(p)}
-                  className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl border border-[#e4e4e7] bg-white text-[12px] font-medium text-[#374151] active:bg-[#f4f4f5] transition"
+                  className="t-corpo flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg border border-[#e4e4e7] bg-white font-medium text-[#374151] active:bg-[#f4f4f5] transition"
                 >
                   <Pencil size={14} strokeWidth={1.8} />
                   Editar
                 </button>
                 <button
                   onClick={() => setDeleteTarget(p)}
-                  className="w-10 h-9 flex items-center justify-center rounded-xl border border-[#fee2e2] bg-[#fffafa] text-[#b91c1c] active:bg-[#fef2f2] transition"
+                  className="w-10 h-9 flex items-center justify-center rounded-lg border border-[#fee2e2] bg-[#fffafa] text-[#b91c1c] active:bg-[#fef2f2] transition"
                   aria-label={`Excluir ${p.nome}`}
                 >
                   <Trash2 size={15} strokeWidth={1.8} />
@@ -787,7 +787,7 @@ export default function Products() {
       {/* TABELA DESKTOP */}
       <div className="hidden lg:block bg-white border border-[#e4e4e7] rounded-[8px] overflow-hidden">
         <div className="px-4 py-2.5 border-b border-[#e4e4e7] flex items-center justify-between">
-          <span className="text-[12px] text-[#6b7280]">
+          <span className="t-corpo text-[#6b7280]">
             {filtered.length} produto{filtered.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -797,22 +797,22 @@ export default function Products() {
               <tr className="border-b border-[#e4e4e7] bg-[#fafafa]">
                 <th className="px-4 py-2 text-left">
                   <button
-                    className="flex items-center gap-1 text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider hover:text-[#0f1117]"
+                    className="t-apoio flex items-center gap-1 font-semibold text-[#6b7280] uppercase tracking-wider hover:text-[#0f1117]"
                     onClick={() => toggleSort("nome")}
                   >
                     Produto
                     <SortIcon k="nome" />
                   </button>
                 </th>
-                <th className="px-4 py-2 text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider">
+                <th className="t-apoio px-4 py-2 text-left font-semibold text-[#6b7280] uppercase tracking-wider">
                   SKU
                 </th>
-                <th className="px-4 py-2 text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider">
+                <th className="t-apoio px-4 py-2 text-left font-semibold text-[#6b7280] uppercase tracking-wider">
                   Categoria
                 </th>
                 <th className="px-4 py-2 text-left">
                   <button
-                    className="flex items-center gap-1 text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider hover:text-[#0f1117]"
+                    className="t-apoio flex items-center gap-1 font-semibold text-[#6b7280] uppercase tracking-wider hover:text-[#0f1117]"
                     onClick={() => toggleSort("preco")}
                   >
                     Preço
@@ -821,17 +821,17 @@ export default function Products() {
                 </th>
                 <th className="px-4 py-2 text-left">
                   <button
-                    className="flex items-center gap-1 text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider hover:text-[#0f1117]"
+                    className="t-apoio flex items-center gap-1 font-semibold text-[#6b7280] uppercase tracking-wider hover:text-[#0f1117]"
                     onClick={() => toggleSort("estoque")}
                   >
                     Estoque
                     <SortIcon k="estoque" />
                   </button>
                 </th>
-                <th className="px-4 py-2 text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider">
+                <th className="t-apoio px-4 py-2 text-left font-semibold text-[#6b7280] uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-4 py-2 text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider">
+                <th className="t-apoio px-4 py-2 text-left font-semibold text-[#6b7280] uppercase tracking-wider">
                   Ações
                 </th>
               </tr>
@@ -841,7 +841,7 @@ export default function Products() {
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center">
                     <Package size={32} strokeWidth={1.5} className="mx-auto text-[#d1d5db] mb-2" />
-                    <p className="text-[13px] text-[#6b7280]">Nenhum produto encontrado</p>
+                    <p className="t-corpo text-[#6b7280]">Nenhum produto encontrado</p>
                   </td>
                 </tr>
               ) : (
@@ -860,21 +860,21 @@ export default function Products() {
                             <ImageOff size={13} className="text-[#c4c4c8]" strokeWidth={1.6} />
                           )}
                         </div>
-                        <span className="text-[13px] font-medium text-[#0f1117]">
+                        <span className="t-corpo font-medium text-[#0f1117]">
                           {p.nome}
                         </span>
                       </div>
                     </td>
                     <td className="px-4 py-2.5">
-                      <span className="text-[12px] text-[#6b7280] font-mono">{p.sku}</span>
+                      <span className="t-corpo text-[#6b7280] font-mono">{p.sku}</span>
                     </td>
-                    <td className="px-4 py-2.5 text-[12px] text-[#374151]">{p.categoria}</td>
-                    <td className="px-4 py-2.5 text-[13px] font-medium text-[#0f1117]">
+                    <td className="t-corpo px-4 py-2.5 text-[#374151]">{p.categoria}</td>
+                    <td className="t-corpo px-4 py-2.5 font-medium text-[#0f1117]">
                       {p.precoFormatado}
                     </td>
                     <td className="px-4 py-2.5">
                       <span
-                        className={`text-[12px] font-medium ${
+                        className={`t-corpo font-medium ${
                           p.estoque === 0
                             ? "text-[#b91c1c]"
                             : p.estoque < 10
@@ -890,7 +890,7 @@ export default function Products() {
                         <Badge variant={statusVariant[p.status]} label={p.status} />
                         {p.permiteVendaSemEstoque && (
                           <span
-                            className="text-[10px] font-medium text-[#6b7280]"
+                            className="t-micro font-medium text-[#6b7280]"
                             title="Vende mesmo sem estoque"
                           >
                             (venda liberada)
@@ -925,15 +925,15 @@ export default function Products() {
       {/* MODAL NOVO/EDITAR PRODUTO */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/45 flex items-end lg:items-center justify-center">
-          <div className="w-full bg-white rounded-t-[24px] lg:rounded-[12px] lg:max-w-lg border border-[#e4e4e7] overflow-hidden max-h-[92dvh] flex flex-col shadow-2xl">
+          <div className="w-full bg-white rounded-t-[24px] lg:rounded-lg lg:max-w-lg border border-[#e4e4e7] overflow-hidden max-h-[92dvh] flex flex-col shadow-2xl">
             {/* Cabeçalho */}
             <div className="px-4 pt-4 pb-3 border-b border-[#f0f0f1]">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-[16px] font-semibold text-[#111827]">
+                  <h2 className="t-secao font-semibold text-[#111827]">
                     {editTarget ? "Editar produto" : "Novo produto"}
                   </h2>
-                  <p className="mt-0.5 text-[11px] text-[#9ca3af]">
+                  <p className="t-apoio mt-0.5 text-[#9ca3af]">
                     {editTarget
                       ? "Atualize os dados do produto"
                       : "Cadastre um produto na sua loja"}
@@ -941,7 +941,7 @@ export default function Products() {
                 </div>
                 <button
                   onClick={closeModal}
-                  className="w-9 h-9 rounded-xl bg-[#f4f4f5] flex items-center justify-center text-[#6b7280] active:bg-[#e4e4e7]"
+                  className="w-9 h-9 rounded-lg bg-[#f4f4f5] flex items-center justify-center text-[#6b7280] active:bg-[#e4e4e7]"
                   aria-label="Fechar"
                 >
                   <X size={17} />
@@ -952,7 +952,7 @@ export default function Products() {
             {/* Formulário */}
             <div className="flex-1 overflow-y-auto px-4 py-4">
               {loadingEditData ? (
-                <div className="flex items-center justify-center py-16 gap-2 text-[13px] text-[#6b7280]">
+                <div className="t-corpo flex items-center justify-center py-16 gap-2 text-[#6b7280]">
                   <Loader2 size={16} className="animate-spin" />
                   Carregando dados do produto...
                 </div>
@@ -960,10 +960,10 @@ export default function Products() {
                 <div className="space-y-4">
                   {/* Imagens */}
                   <div>
-                    <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
+                    <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
                       Fotos do produto
                     </label>
-                    <p className="text-[11px] text-[#9ca3af] mb-2">
+                    <p className="t-apoio text-[#9ca3af] mb-2">
                       A primeira foto é a que aparece na vitrine da loja.
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -978,7 +978,7 @@ export default function Products() {
                             className="w-full h-full object-cover"
                           />
                           {i === 0 && (
-                            <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] font-medium text-center py-0.5">
+                            <span className="t-micro absolute bottom-0 left-0 right-0 bg-black/60 text-white font-medium text-center py-0.5">
                               Capa
                             </span>
                           )}
@@ -1004,7 +1004,7 @@ export default function Products() {
                             className="w-full h-full object-cover"
                           />
                           {imagensVisiveis.length === 0 && i === 0 && (
-                            <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] font-medium text-center py-0.5">
+                            <span className="t-micro absolute bottom-0 left-0 right-0 bg-black/60 text-white font-medium text-center py-0.5">
                               Capa
                             </span>
                           )}
@@ -1026,7 +1026,7 @@ export default function Products() {
                           className="w-16 h-16 rounded-lg border-2 border-dashed border-[#d4d4d8] flex flex-col items-center justify-center text-[#9ca3af] hover:border-[#16a34a] hover:text-[#16a34a] transition-colors"
                         >
                           <ImagePlus size={18} strokeWidth={1.8} />
-                          <span className="text-[9px] mt-0.5">Adicionar</span>
+                          <span className="t-micro mt-0.5">Adicionar</span>
                         </button>
                       )}
                     </div>
@@ -1041,14 +1041,14 @@ export default function Products() {
                         e.target.value = "";
                       }}
                     />
-                    <p className="mt-1.5 text-[10px] text-[#9ca3af]">
+                    <p className="t-micro mt-1.5 text-[#9ca3af]">
                       Até {MAX_IMAGES} fotos, {MAX_IMAGE_MB}MB cada.
                     </p>
                   </div>
 
                   {/* Nome */}
                   <div>
-                    <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
+                    <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
                       Nome do produto
                     </label>
                     <input
@@ -1056,13 +1056,13 @@ export default function Products() {
                       placeholder="Ex: Camiseta Masculina Básica"
                       value={formNome}
                       onChange={(e) => setFormNome(e.target.value)}
-                      className="w-full h-11 px-3 rounded-xl border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10 lg:text-[13px]"
+                      className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
                     />
                   </div>
 
                   {/* Descrição */}
                   <div>
-                    <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
+                    <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
                       Descrição
                     </label>
                     <textarea
@@ -1070,13 +1070,13 @@ export default function Products() {
                       placeholder="Descreva o produto: material, medidas, cuidados..."
                       value={formDescricao}
                       onChange={(e) => setFormDescricao(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10 resize-none lg:text-[13px]"
+                      className="t-corpo w-full px-3 py-2.5 rounded-lg border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10 resize-none"
                     />
                   </div>
 
                   {/* SKU */}
                   <div>
-                    <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
+                    <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
                       SKU
                     </label>
                     <input
@@ -1084,14 +1084,14 @@ export default function Products() {
                       placeholder="Ex: CAM001"
                       value={formSku}
                       onChange={(e) => setFormSku(e.target.value)}
-                      className="w-full h-11 px-3 rounded-xl border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10 lg:text-[13px]"
+                      className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
                     />
                   </div>
 
                   {/* Preço + Preço promocional */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
+                      <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
                         Preço
                       </label>
                       <input
@@ -1099,11 +1099,11 @@ export default function Products() {
                         placeholder="R$ 0,00"
                         value={formPreco}
                         onChange={(e) => setFormPreco(e.target.value)}
-                        className="w-full h-11 px-3 rounded-xl border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10 lg:text-[13px]"
+                        className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
                       />
                     </div>
                     <div>
-                      <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
+                      <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
                         Preço promocional
                       </label>
                       <input
@@ -1111,7 +1111,7 @@ export default function Products() {
                         placeholder="Opcional"
                         value={formPrecoPromocional}
                         onChange={(e) => setFormPrecoPromocional(e.target.value)}
-                        className="w-full h-11 px-3 rounded-xl border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10 lg:text-[13px]"
+                        className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
                       />
                     </div>
                   </div>
@@ -1119,7 +1119,7 @@ export default function Products() {
                   {/* Estoque + Estoque mínimo */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
+                      <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
                         Estoque
                       </label>
                       <input
@@ -1128,11 +1128,11 @@ export default function Products() {
                         placeholder="0"
                         value={formEstoque}
                         onChange={(e) => setFormEstoque(e.target.value)}
-                        className="w-full h-11 px-3 rounded-xl border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10 lg:text-[13px]"
+                        className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
                       />
                     </div>
                     <div>
-                      <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
+                      <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
                         Estoque mínimo
                       </label>
                       <input
@@ -1141,20 +1141,20 @@ export default function Products() {
                         placeholder="0"
                         value={formEstoqueMinimo}
                         onChange={(e) => setFormEstoqueMinimo(e.target.value)}
-                        className="w-full h-11 px-3 rounded-xl border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10 lg:text-[13px]"
+                        className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
                       />
                     </div>
                   </div>
 
                   {/* Categoria */}
                   <div>
-                    <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
+                    <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
                       Categoria
                     </label>
                     <select
                       value={formCategoriaId}
                       onChange={(e) => setFormCategoriaId(e.target.value)}
-                      className="w-full h-11 px-3 rounded-xl border border-[#e4e4e7] bg-white text-base text-[#374151] outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10 lg:text-[13px]"
+                      className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base text-[#374151] outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
                     >
                       <option value="">Sem categoria</option>
                       {categorias.map((c) => (
@@ -1167,12 +1167,12 @@ export default function Products() {
 
 
                   {/* Promoção */}
-                  <div className="flex items-center justify-between rounded-xl border border-[#e4e4e7] bg-[#fafafa] px-3.5 py-3">
+                  <div className="flex items-center justify-between rounded-lg border border-[#e4e4e7] bg-[#fafafa] px-3.5 py-3">
                     <div>
-                      <p className="text-[13px] font-medium text-[#111827]">
+                      <p className="t-corpo font-medium text-[#111827]">
                         Item em promoção
                       </p>
-                      <p className="text-[11px] text-[#6b7280]">
+                      <p className="t-apoio text-[#6b7280]">
                         Exibir destaque de oferta na loja
                       </p>
                     </div>
@@ -1191,7 +1191,7 @@ export default function Products() {
 
                   {/* Cores */}
                   <div>
-                    <label className="block text-[12px] font-semibold text-[#374151] mb-2">
+                    <label className="t-corpo block font-semibold text-[#374151] mb-2">
                       Cores do produto
                     </label>
 
@@ -1210,7 +1210,7 @@ export default function Products() {
                             if (palpite) setNovaCorHex(palpite);
                           }
                         }}
-                        className="h-10 px-3 rounded-xl border border-[#e4e4e7]"
+                        className="h-10 px-3 rounded-lg border border-[#e4e4e7]"
                       />
 
                       <input
@@ -1220,11 +1220,11 @@ export default function Products() {
                           setNovaCorHex(e.target.value);
                           setCorEscolhidaAMao(true);
                         }}
-                        className="h-10 rounded-xl"
+                        className="h-10 rounded-lg"
                       />
                     </div>
 
-                    <label className="mt-2 w-full h-10 px-3 rounded-xl border border-[#e4e4e7] flex items-center gap-2 cursor-pointer text-sm text-[#6b7280]">
+                    <label className="mt-2 w-full h-10 px-3 rounded-lg border border-[#e4e4e7] flex items-center gap-2 cursor-pointer text-sm text-[#6b7280]">
                       <ImagePlus size={16}/>
                       Anexar imagem da cor
                       <input
@@ -1251,14 +1251,14 @@ export default function Products() {
                     <button
                       type="button"
                       onClick={adicionarCor}
-                      className="mt-2 w-full h-10 rounded-xl bg-[#16a34a] text-white text-sm font-semibold"
+                      className="mt-2 w-full h-10 rounded-lg bg-[#16a34a] text-white text-sm font-semibold"
                     >
                       Adicionar cor
                     </button>
 
                     <div className="mt-2 space-y-2">
                       {formCores.map((cor,index)=>(
-                        <div key={index} className="flex items-center justify-between border rounded-xl p-2">
+                        <div key={index} className="flex items-center justify-between border rounded-lg p-2">
                           <div className="flex items-center gap-2.5">
                             {cor.imagem_url ? (
                               <img
@@ -1295,7 +1295,7 @@ export default function Products() {
 
                   {/* Tamanhos */}
                   <div>
-                    <label className="block text-[12px] font-semibold text-[#374151] mb-2">
+                    <label className="t-corpo block font-semibold text-[#374151] mb-2">
                       Tamanhos
                     </label>
 
@@ -1309,7 +1309,7 @@ export default function Products() {
                               ? v.filter((x)=>x !== t)
                               : [...v, t]
                           )}
-                          className={`px-4 py-2 rounded-xl border text-sm ${
+                          className={`px-4 py-2 rounded-lg border text-sm ${
                             formTamanhos.includes(t)
                             ? "bg-[#16a34a] text-white"
                             : "bg-white"
@@ -1322,12 +1322,12 @@ export default function Products() {
                   </div>
 
                   {/* Vender sem estoque */}
-                  <div className="flex items-center justify-between rounded-xl border border-[#e4e4e7] bg-[#fafafa] px-3.5 py-3">
+                  <div className="flex items-center justify-between rounded-lg border border-[#e4e4e7] bg-[#fafafa] px-3.5 py-3">
                     <div className="pr-3">
-                      <p className="text-[13px] font-medium text-[#111827]">
+                      <p className="t-corpo font-medium text-[#111827]">
                         Vender mesmo sem estoque
                       </p>
-                      <p className="mt-0.5 text-[11px] text-[#6b7280]">
+                      <p className="t-apoio mt-0.5 text-[#6b7280]">
                         O produto continua disponível na loja mesmo com estoque zerado
                       </p>
                     </div>
@@ -1362,7 +1362,7 @@ export default function Products() {
                   />
 
                   {saveError && (
-                    <p className="text-[12px] text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-lg px-3 py-2">
+                    <p className="t-corpo text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] rounded-lg px-3 py-2">
                       {saveError}
                     </p>
                   )}
@@ -1375,14 +1375,14 @@ export default function Products() {
               <button
                 onClick={closeModal}
                 disabled={saving}
-                className="flex-1 h-11 rounded-xl border border-[#e4e4e7] bg-white text-[13px] font-medium text-[#374151] active:bg-[#f4f4f5] disabled:opacity-50"
+                className="t-corpo flex-1 h-11 rounded-lg border border-[#e4e4e7] bg-white font-medium text-[#374151] active:bg-[#f4f4f5] disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSaveProduct}
                 disabled={saving || loadingEditData}
-                className="flex-[1.3] h-11 rounded-xl bg-[#16a34a] text-white text-[13px] font-semibold active:bg-[#15803d] disabled:opacity-60 flex items-center justify-center gap-2"
+                className="t-corpo flex-[1.3] h-11 rounded-lg bg-[#16a34a] text-white font-semibold active:bg-[#15803d] disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {saving && <Loader2 size={15} className="animate-spin" />}
                 {saving
@@ -1399,15 +1399,15 @@ export default function Products() {
       {/* CONFIRMAR EXCLUSÃO */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/45 z-50 flex items-end lg:items-center justify-center">
-          <div className="bg-white w-full rounded-t-[24px] lg:rounded-[12px] lg:max-w-sm overflow-hidden shadow-2xl">
+          <div className="bg-white w-full rounded-t-[24px] lg:rounded-lg lg:max-w-sm overflow-hidden shadow-2xl">
             <div className="px-4 pt-5 pb-4">
               <div className="mx-auto mb-4 w-11 h-11 rounded-full bg-[#fef2f2] flex items-center justify-center">
                 <Trash2 size={20} className="text-[#b91c1c]" strokeWidth={1.8} />
               </div>
-              <h2 className="text-[16px] font-semibold text-[#111827] text-center">
+              <h2 className="t-secao font-semibold text-[#111827] text-center">
                 Excluir produto?
               </h2>
-              <p className="mt-2 text-[12px] leading-5 text-[#6b7280] text-center">
+              <p className="t-corpo mt-2 leading-5 text-[#6b7280] text-center">
                 O produto{" "}
                 <strong className="text-[#374151]">{deleteTarget.nome}</strong>{" "}
                 será removido permanentemente.
@@ -1416,13 +1416,13 @@ export default function Products() {
             <div className="px-4 py-3 border-t border-[#f0f0f1] flex gap-2">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 h-11 rounded-xl border border-[#e4e4e7] bg-white text-[13px] font-medium text-[#374151]"
+                className="t-corpo flex-1 h-11 rounded-lg border border-[#e4e4e7] bg-white font-medium text-[#374151]"
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmDelete}
-                className="flex-1 h-11 rounded-xl bg-[#b91c1c] text-white text-[13px] font-semibold"
+                className="t-corpo flex-1 h-11 rounded-lg bg-[#b91c1c] text-white font-semibold"
               >
                 Excluir
               </button>
