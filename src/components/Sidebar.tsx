@@ -11,6 +11,7 @@ import {
   CreditCard,
   MessageCircle,
   Settings,
+  GraduationCap,
   ChevronDown,
   Landmark,
   Truck,
@@ -32,6 +33,7 @@ export type Page =
   | "vendas"
   | "pagamentos"
   | "whatsapp"
+  | "academy"
   | "configuracoes";
 
 interface SidebarProps {
@@ -128,6 +130,11 @@ const groups: {
   {
     items: [
       {
+        id: "academy",
+        label: "Academy",
+        icon: GraduationCap,
+      },
+      {
         id: "configuracoes",
         label: "Configurações",
         icon: Settings,
@@ -151,6 +158,10 @@ export default function Sidebar({
   const [logo, setLogo] = useState<string | null>(
     storeLogoUrl ?? null
   );
+
+  // O nome que o lojista escreveu. Vem da mesma consulta que traz o
+  // logo, logo abaixo — não custa uma ida a mais ao banco.
+  const [nome, setNome] = useState<string | null>(null);
 
   /*
    * BUSCAR SLUG
@@ -188,7 +199,9 @@ export default function Sidebar({
   useEffect(() => {
     if (storeLogoUrl !== undefined) {
       setLogo(storeLogoUrl);
-      return;
+      // Não retorna aqui: o logo veio por prop, mas o NOME ainda
+      // precisa ser buscado. Antes este return antecipado existia
+      // porque só o logo importava.
     }
 
     let mounted = true;
@@ -198,7 +211,11 @@ export default function Sidebar({
         const data = await getStoreCustomization();
 
         if (mounted) {
-          setLogo(data.logo_url || null);
+          if (storeLogoUrl === undefined) setLogo(data.logo_url || null);
+          if (data.nome?.trim()) setNome(data.nome.trim());
+          // O slug do banco vence o do localStorage: aquele pode ter
+          // ficado velho se a loja foi renomeada em outro aparelho.
+          if (data.slug?.trim()) setSlug(data.slug.trim());
         }
       } catch {
         // Mantém sem logo caso ocorra erro.
@@ -218,11 +235,16 @@ export default function Sidebar({
   useEffect(() => {
     function handleStoreUpdated(event: Event) {
       const customEvent = event as CustomEvent<{
+        nome?: string;
         slug?: string;
         logoUrl?: string | null;
       }>;
 
       const detail = customEvent.detail;
+
+      if (detail?.nome?.trim()) {
+        setNome(detail.nome.trim());
+      }
 
       if (detail?.slug?.trim()) {
         setSlug(detail.slug.trim());
@@ -248,8 +270,12 @@ export default function Sidebar({
 
   const displaySlug = slug.trim() || "minhaloja";
 
-  const initial =
-    displaySlug.charAt(0).toUpperCase() || "M";
+  // O nome manda. O slug só aparece como nome quando o lojista ainda
+  // não deu nome à loja — e "Minha loja" é o último recurso, não o
+  // primeiro como era antes.
+  const displayNome = nome?.trim() || slug.trim() || "Minha loja";
+
+  const initial = displayNome.charAt(0).toUpperCase() || "M";
 
   return (
     <>
@@ -320,7 +346,7 @@ export default function Sidebar({
               >
                 <img
                   src={logo}
-                  alt={displaySlug}
+                  alt={displayNome}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -332,19 +358,19 @@ export default function Sidebar({
               </div>
             )}
 
-            {/* SLUG */}
+            {/* NOME DA LOJA + ENDEREÇO PÚBLICO */}
             <div className="flex-1 min-w-0">
 
               <p
                 className="t-corpo font-medium text-[#111827] truncate"
               >
-                {displaySlug}
+                {displayNome}
               </p>
 
               <p
                 className="t-micro text-[#6b7280] truncate mt-0.5"
               >
-                {displaySlug}
+                /loja/{displaySlug}
               </p>
 
             </div>

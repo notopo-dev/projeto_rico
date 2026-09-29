@@ -33,6 +33,9 @@ export default function Header({
     storeLogoUrl ?? null
   );
 
+  // Nome da loja, da mesma consulta que traz o logo.
+  const [nome, setNome] = useState<string | null>(null);
+
   /*
    * Busca o slug da loja.
    * A prioridade é:
@@ -73,7 +76,8 @@ export default function Header({
   useEffect(() => {
     if (storeLogoUrl !== undefined) {
       setLogo(storeLogoUrl);
-      return;
+      // Sem return: o logo pode ter vindo por prop, mas o NOME ainda
+      // precisa ser buscado.
     }
 
     let mounted = true;
@@ -83,7 +87,9 @@ export default function Header({
         const data = await getStoreCustomization();
 
         if (mounted) {
-          setLogo(data.logo_url || null);
+          if (storeLogoUrl === undefined) setLogo(data.logo_url || null);
+          if (data.nome?.trim()) setNome(data.nome.trim());
+          if (data.slug?.trim()) setSlug(data.slug.trim());
         }
       } catch {
         // Mantém sem logo caso não consiga carregar.
@@ -104,11 +110,16 @@ export default function Header({
   useEffect(() => {
     function handleStoreUpdated(event: Event) {
       const customEvent = event as CustomEvent<{
+        nome?: string;
         slug?: string;
         logoUrl?: string | null;
       }>;
 
       const detail = customEvent.detail;
+
+      if (detail?.nome?.trim()) {
+        setNome(detail.nome.trim());
+      }
 
       if (detail?.slug?.trim()) {
         setSlug(detail.slug.trim());
@@ -133,6 +144,8 @@ export default function Header({
   }, []);
 
   const displaySlug = slug.trim() || "minhaloja";
+
+  const displayNome = nome?.trim() || slug.trim() || "Minha loja";
 
   const initial =
     displaySlug.charAt(0).toUpperCase() || "M";
@@ -177,7 +190,11 @@ export default function Header({
             strokeWidth={1.8}
           />
 
-          <span className="absolute right-[7px] top-[7px] h-1.5 w-1.5 rounded-full bg-[#16a34a]" />
+          {/* A bolinha verde saiu daqui.
+              Ela era fixa no código: ficava sempre acesa, indicando
+              notificação não lida numa loja que nunca teve
+              notificação nenhuma. Quando o sino passar a ler de
+              verdade, o ponto volta ligado à contagem — não antes. */}
         </button>
 
         {/* LOJA */}
@@ -225,7 +242,7 @@ export default function Header({
 
               <div className="border-b border-[#f0f0f1] px-3 py-2.5">
                 <p className="t-corpo truncate font-medium text-[#111827]">
-                  {displaySlug}
+                  {displayNome}
                 </p>
 
                 <p className="t-micro mt-0.5 truncate text-[#9ca3af]">

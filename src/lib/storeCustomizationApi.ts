@@ -1,8 +1,18 @@
 import { supabase } from "./supabaseClient";
 import { getCurrentStoreId } from "./currentStore";
-import { validarImagem } from "./imagemSegura";
 
 export interface StoreCustomization {
+  /**
+   * Nome da loja, como o lojista escreveu.
+   *
+   * O painel mostrava o SLUG no topo, com "minhaloja" quando vazio —
+   * o nome digitado no cadastro não aparecia em lugar nenhum. Vem
+   * junto aqui porque Header e Sidebar já chamam esta função; buscar
+   * numa consulta separada seria uma ida ao banco a mais em cada
+   * carregamento de tela, pelo mesmo dado.
+   */
+  nome: string | null;
+  slug: string | null;
   cor_primaria: string;
   cor_secundaria: string;
   logo_url: string | null;
@@ -15,7 +25,9 @@ export async function getStoreCustomization(): Promise<StoreCustomization> {
 
   const { data, error } = await supabase
     .from("stores")
-    .select("cor_primaria, cor_secundaria, logo_url, banner_url, modo_compra")
+    .select(
+      "nome, slug, cor_primaria, cor_secundaria, logo_url, banner_url, modo_compra",
+    )
     .eq("id", storeId)
     .single();
 
@@ -23,32 +35,18 @@ export async function getStoreCustomization(): Promise<StoreCustomization> {
   return data;
 }
 
-/**
- * Salva a aparência da loja.
- *
- * Copia campo a campo de propósito. Antes era `.update(input)` com o
- * objeto do chamador repassado inteiro: o tipo `Partial<...>` só existe
- * na compilação, e em tempo de execução qualquer chave enviada chegava
- * ao update — inclusive `owner_id`, `slug`, `plano` ou
- * `assinatura_status`, pelo console do navegador.
- */
 export async function updateStoreCustomization(
-  input: Partial<StoreCustomization>
+  input: Partial<Omit<StoreCustomization, "nome" | "slug">>,
 ) {
   const storeId = await getCurrentStoreId();
 
-  const permitido: Record<string, unknown> = {};
-  if (input.cor_primaria !== undefined) permitido.cor_primaria = input.cor_primaria;
-  if (input.cor_secundaria !== undefined) permitido.cor_secundaria = input.cor_secundaria;
-  if (input.logo_url !== undefined) permitido.logo_url = input.logo_url;
-  if (input.banner_url !== undefined) permitido.banner_url = input.banner_url;
-  if (input.modo_compra !== undefined) permitido.modo_compra = input.modo_compra;
-
-  if (Object.keys(permitido).length === 0) return;
-
+  // nome e slug ficam de fora de propósito. Eles entraram na
+  // interface para LEITURA; quem os grava é a tela Loja, que valida
+  // obrigatoriedade e slug repetido. Deixar passar por aqui abriria
+  // um segundo caminho sem essas checagens.
   const { error } = await supabase
     .from("stores")
-    .update(permitido)
+    .update(input)
     .eq("id", storeId);
 
   if (error) throw error;
@@ -62,19 +60,13 @@ export async function uploadStoreAsset(
   file: File,
   tipo: "logo" | "banner"
 ): Promise<string> {
-  // Logo e banner não tinham limite de tamanho nem checagem de tipo.
-  const { ext, contentType } = await validarImagem(file, 5);
-
   const storeId = await getCurrentStoreId();
+  const ext = file.name.split(".").pop() || "jpg";
   const path = `${storeId}/${tipo}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from("store-assets")
-    .upload(path, file, {
-      cacheControl: "3600",
-      upsert: true,
-      contentType,
-    });
+    .upload(path, file, { cacheControl: "3600", upsert: true });
 
   if (uploadError) throw uploadError;
 

@@ -16,6 +16,7 @@ import Pagamentos from "./pages/Pagamentos";
 import Recebimentos from "./pages/Recebimentos";
 import WhatsApp from "./pages/WhatsApp";
 import Configuracoes from "./pages/Configuracoes";
+import Academy from "./pages/Academy";
 import Header from "./components/Header";
 import Sidebar, { Page } from "./components/Sidebar";
 import BottomNav from "./components/BottomNav";
@@ -34,6 +35,7 @@ const pageConfig: Record<Page, { title: string; component: ReactNode }> = {
   pagamentos: { title: "Pagamentos", component: <Pagamentos /> },
   recebimentos: { title: "Recebimentos", component: <Recebimentos /> },
   whatsapp: { title: "WhatsApp", component: <WhatsApp /> },
+  academy: { title: "Academy", component: <Academy /> },
   configuracoes: { title: "Configurações", component: <Configuracoes /> },
 };
 

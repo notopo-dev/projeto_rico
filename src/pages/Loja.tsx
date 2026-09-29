@@ -104,6 +104,27 @@ export default function Loja() {
 
       setStore(updated);
 
+      /*
+       * Avisa o topo do painel que a loja mudou.
+       *
+       * O Header e a Sidebar JÁ escutavam "loja-updated" — mas
+       * ninguém no projeto disparava esse evento. Dois ouvintes
+       * esperando um aviso que nunca vinha: por isso renomear a loja
+       * não mudava nada no topo até recarregar a página.
+       *
+       * Disparar daqui é o que faltava para aqueles dois efeitos
+       * deixarem de ser código morto.
+       */
+      window.dispatchEvent(
+        new CustomEvent("loja-updated", {
+          detail: {
+            nome: updated.nome,
+            slug: updated.slug,
+            logoUrl: updated.logo_url ?? null,
+          },
+        }),
+      );
+
       setSaved(true);
 
       setTimeout(

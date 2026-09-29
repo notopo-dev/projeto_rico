@@ -14,6 +14,7 @@ import {
   Landmark,
   MessageCircle,
   Settings,
+  GraduationCap,
   X,
 } from "lucide-react";
 import type { Page } from "./Sidebar";
@@ -49,6 +50,7 @@ const SECUNDARIAS: { id: Page; label: string; icone: React.ElementType }[] = [
   { id: "pagamentos", label: "Pagamentos", icone: CreditCard },
   { id: "recebimentos", label: "Recebimentos", icone: Landmark },
   { id: "whatsapp", label: "WhatsApp", icone: MessageCircle },
+  { id: "academy", label: "Academy", icone: GraduationCap },
   { id: "configuracoes", label: "Configurações", icone: Settings },
 ];
 
