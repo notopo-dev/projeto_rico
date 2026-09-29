@@ -70,19 +70,21 @@ function semMedidas(p: {
 export async function getConfigFrete(): Promise<ConfigFrete> {
   const storeId = await getCurrentStoreId();
 
-  const [loja, settings, produtos] = await Promise.all([
+  const [loja, settings, conectado, produtos] = await Promise.all([
     supabase
       .from("stores")
       .select(`${CAMPOS_REGRAS}, cep_origem`)
       .eq("id", storeId)
       .single(),
+    // Nunca seleciona melhor_envio_token: ele compra etiqueta com o
+    // saldo do lojista e não tem por que existir dentro do navegador.
+    // A função no banco responde só sim ou não.
     supabase
       .from("store_settings")
-      .select(
-        "melhor_envio_token, melhor_envio_conta, melhor_envio_expira_em",
-      )
+      .select("melhor_envio_conta, melhor_envio_expira_em")
       .eq("store_id", storeId)
       .maybeSingle(),
+    supabase.rpc("melhor_envio_conectado"),
     supabase
       .from("products")
       .select("id, nome, peso_gramas, altura_cm, largura_cm, comprimento_cm")
@@ -105,7 +107,7 @@ export async function getConfigFrete(): Promise<ConfigFrete> {
     retirada_na_loja: Boolean(s.retirada_na_loja),
     retirada_instrucoes: s.retirada_instrucoes ?? null,
     cep_origem: s.cep_origem ?? null,
-    conectado: Boolean(settings.data?.melhor_envio_token),
+    conectado: conectado.data === true,
     conta: settings.data?.melhor_envio_conta ?? null,
     expira_em: settings.data?.melhor_envio_expira_em ?? null,
     produtos_sem_medidas: (produtos.data ?? [])

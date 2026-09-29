@@ -16,6 +16,11 @@
 import Stripe from "https://esm.sh/stripe@17.4.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import {
+  dentroDoLimite,
+  origemDaChamada,
+  respostaLimite,
+} from "../_shared/limite.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2024-12-18.acacia",
@@ -43,6 +48,20 @@ Deno.serve(async (req) => {
     const { storeId, orderId, amountInCents, metodo }: RequestBody =
       await req.json();
 
+    // Esta função responde sem login. Sem limite, dá para encher a
+    // conta Stripe do lojista de cobranças abandonadas em laço.
+    // Service role aqui porque quem chama é o CLIENTE FINAL — anônimo,
+    // sem login, sem sessão para autenticar. A proteção é outra: a loja
+    // precisa estar ativa e habilitada, o pedido precisa ser dela, e o
+    // valor precisa bater com o total gravado no banco.
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    if (!(await dentroDoLimite(admin, `pi:${origemDaChamada(req)}`, 20, 60))) {
+      return respostaLimite(corsHeaders);
+    }
+
     if (
       !storeId ||
       !orderId ||
@@ -52,15 +71,6 @@ Deno.serve(async (req) => {
     ) {
       return json({ error: "Dados inválidos para criar o pagamento." }, 400);
     }
-
-    // Service role aqui porque quem chama é o CLIENTE FINAL — anônimo,
-    // sem login, sem sessão para autenticar. A proteção é outra: a loja
-    // precisa estar ativa e habilitada, o pedido precisa ser dela, e o
-    // valor precisa bater com o total gravado no banco.
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     const { data: store } = await admin
       .from("stores")
@@ -208,8 +218,13 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Quem chama esta função é o CLIENTE FINAL, sem login. Mensagem
+    // crua da Stripe aqui entrega id de conta conectada, nome de campo
+    // e detalhe de configuração para qualquer pessoa. O detalhe fica
+    // no log; o comprador vê uma frase que dá para entender.
+    console.error("stripe-create-payment-intent:", bruto);
     return json(
-      { error: bruto || "Erro ao iniciar o pagamento." },
+      { error: "Não foi possível iniciar o pagamento. Tente de novo." },
       500
     );
   }

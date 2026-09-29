@@ -10,10 +10,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
-  cabecalhosME,
-  ErroMelhorEnvio,
-  obterAcesso,
-} from "../_shared/melhorEnvio.ts";
+  dentroDoLimite,
+  origemDaChamada,
+  respostaLimite,
+} from "../_shared/limite.ts";
 
 function apenasDigitos(v: string) {
   return (v ?? "").replace(/\D/g, "");
@@ -39,8 +39,25 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Consulta por CPF + telefone sem login. Sem limite, vira
+    // ferramenta de varredura: testar pares até descobrir quem é
+    // cliente da loja.
+    if (!(await dentroDoLimite(supabaseAdmin, `rastreio:${origemDaChamada(req)}`, 15, 60))) {
+      return respostaLimite(corsHeaders);
+    }
+
     const authHeader = req.headers.get("Authorization");
     let lojaIdAutorizada: string | null = null;
+    /**
+     * Quando quem consulta é o CLIENTE FINAL, o pedido precisa ser
+     * dele — não basta ser da mesma loja.
+     *
+     * Antes, provar CPF e telefone liberava a loja inteira: bastava
+     * comprar uma vez para poder rastrear o pedido de qualquer outro
+     * cliente daquela loja. Agora a prova é confrontada com a
+     * identidade gravada NO PEDIDO.
+     */
+    let exigirDonoDoPedido: { cpf: string; telefone: string } | null = null;
 
     // Caminho 1: lojista autenticado
     if (authHeader) {
@@ -72,32 +89,43 @@ Deno.serve(async (req) => {
         );
       }
 
-      const { data: cliente } = await supabaseAdmin
-        .from("customers")
-        .select("id")
-        .eq("store_id", storeId)
-        .eq("cpf", apenasDigitos(cpf))
-        .eq("telefone", apenasDigitos(telefone))
-        .maybeSingle();
+      const cpfLimpo = apenasDigitos(cpf);
+      const telLimpo = apenasDigitos(telefone);
 
-      if (!cliente) {
-        return new Response(JSON.stringify({ error: "Dados não conferem." }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      // Exige documento completo. Sem isto, campo curto ou vazio casa
+      // com muita coisa e vira ferramenta de varredura.
+      if (cpfLimpo.length !== 11 || telLimpo.length < 10) {
+        return new Response(
+          JSON.stringify({ error: "Informe CPF e telefone completos." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
       lojaIdAutorizada = storeId;
+      exigirDonoDoPedido = { cpf: cpfLimpo, telefone: telLimpo };
     }
 
-    const { data: order } = await supabaseAdmin
+    let consulta = supabaseAdmin
       .from("orders")
-      .select("id, store_id, melhor_envio_order_id, codigo_rastreio")
+      .select("id, store_id, melhor_envio_order_id, codigo_rastreio, cpf_comprador, telefone_comprador")
       .eq("id", orderId)
-      .eq("store_id", lojaIdAutorizada)
-      .single();
+      .eq("store_id", lojaIdAutorizada);
+
+    // Cliente final: o pedido tem que ser DELE. A identidade fica
+    // gravada na própria compra (13_identidade_no_pedido.sql), que é
+    // justamente a prova de quem comprou naquele dia.
+    if (exigirDonoDoPedido) {
+      consulta = consulta
+        .eq("cpf_comprador", exigirDonoDoPedido.cpf)
+        .eq("telefone_comprador", exigirDonoDoPedido.telefone);
+    }
+
+    const { data: order } = await consulta.maybeSingle();
 
     if (!order) {
+      // Mesma resposta para pedido inexistente e para pedido de outra
+      // pessoa. Distinguir os dois casos transformaria esta função num
+      // verificador de "esse CPF comprou aqui?".
       return new Response(JSON.stringify({ error: "Pedido não encontrado." }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -111,26 +139,32 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Token válido da loja. O helper renova sozinho se estiver perto
-    // de vencer — o access_token do Melhor Envio dura 30 dias.
-    let acesso;
-    try {
-      acesso = await obterAcesso(supabaseAdmin, order.store_id);
-    } catch (err) {
-      if (err instanceof ErroMelhorEnvio) {
-        return new Response(
-          JSON.stringify({ error: err.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      throw err;
+    const { data: settings } = await supabaseAdmin
+      .from("store_settings")
+      .select("melhor_envio_token, melhor_envio_ambiente")
+      .eq("store_id", order.store_id)
+      .maybeSingle();
+
+    if (!settings?.melhor_envio_token) {
+      return new Response(
+        JSON.stringify({ error: "Loja sem Melhor Envio configurado." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const baseUrl = acesso.base;
+    const baseUrl =
+      settings.melhor_envio_ambiente === "producao"
+        ? "https://melhorenvio.com.br"
+        : "https://sandbox.melhorenvio.com.br";
 
     const res = await fetch(`${baseUrl}/api/v2/me/shipment/tracking`, {
       method: "POST",
-      headers: cabecalhosME(acesso.token),
+      headers: {
+        Authorization: `Bearer ${settings.melhor_envio_token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": "LojaPro (contato@lojapro.com.br)",
+      },
       body: JSON.stringify({ orders: [order.melhor_envio_order_id] }),
     });
 

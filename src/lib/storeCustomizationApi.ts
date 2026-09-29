@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { getCurrentStoreId } from "./currentStore";
+import { validarImagem } from "./imagemSegura";
 
 export interface StoreCustomization {
   cor_primaria: string;
@@ -22,14 +23,32 @@ export async function getStoreCustomization(): Promise<StoreCustomization> {
   return data;
 }
 
+/**
+ * Salva a aparência da loja.
+ *
+ * Copia campo a campo de propósito. Antes era `.update(input)` com o
+ * objeto do chamador repassado inteiro: o tipo `Partial<...>` só existe
+ * na compilação, e em tempo de execução qualquer chave enviada chegava
+ * ao update — inclusive `owner_id`, `slug`, `plano` ou
+ * `assinatura_status`, pelo console do navegador.
+ */
 export async function updateStoreCustomization(
   input: Partial<StoreCustomization>
 ) {
   const storeId = await getCurrentStoreId();
 
+  const permitido: Record<string, unknown> = {};
+  if (input.cor_primaria !== undefined) permitido.cor_primaria = input.cor_primaria;
+  if (input.cor_secundaria !== undefined) permitido.cor_secundaria = input.cor_secundaria;
+  if (input.logo_url !== undefined) permitido.logo_url = input.logo_url;
+  if (input.banner_url !== undefined) permitido.banner_url = input.banner_url;
+  if (input.modo_compra !== undefined) permitido.modo_compra = input.modo_compra;
+
+  if (Object.keys(permitido).length === 0) return;
+
   const { error } = await supabase
     .from("stores")
-    .update(input)
+    .update(permitido)
     .eq("id", storeId);
 
   if (error) throw error;
@@ -43,13 +62,19 @@ export async function uploadStoreAsset(
   file: File,
   tipo: "logo" | "banner"
 ): Promise<string> {
+  // Logo e banner não tinham limite de tamanho nem checagem de tipo.
+  const { ext, contentType } = await validarImagem(file, 5);
+
   const storeId = await getCurrentStoreId();
-  const ext = file.name.split(".").pop() || "jpg";
   const path = `${storeId}/${tipo}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from("store-assets")
-    .upload(path, file, { cacheControl: "3600", upsert: true });
+    .upload(path, file, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType,
+    });
 
   if (uploadError) throw uploadError;
 

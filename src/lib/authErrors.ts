@@ -16,7 +16,13 @@ export function traduzirErroAuth(mensagem: string): string {
     return "Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.";
   }
   if (m.includes("user already registered") || m.includes("already been registered")) {
-    return "Já existe uma conta com esse e-mail.";
+    // Não confirma nem nega que o e-mail tem conta.
+    //
+    // A mensagem antiga transformava o cadastro num verificador: dava
+    // para testar uma lista de e-mails e descobrir quem é lojista da
+    // plataforma. O login e o "esqueci a senha" já respondiam igual
+    // nos dois casos; faltava o cadastro.
+    return "Não foi possível concluir o cadastro. Se você já tem conta, entre por Login ou use \"Esqueci minha senha\".";
   }
   if (m.includes("password should be at least")) {
     return "A senha é muito curta.";

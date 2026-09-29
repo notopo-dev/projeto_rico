@@ -12,11 +12,6 @@
 // ============================================================
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
-import {
-  cabecalhosME,
-  ErroMelhorEnvio,
-  obterAcesso,
-} from "../_shared/melhorEnvio.ts";
 
 function apenasDigitos(v: string) {
   return (v ?? "").replace(/\D/g, "");
@@ -82,24 +77,30 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Token válido da loja. O helper renova sozinho se estiver perto
-    // de vencer — o access_token do Melhor Envio dura 30 dias.
-    let acesso;
-    try {
-      acesso = await obterAcesso(supabaseAdmin, store.id);
-    } catch (err) {
-      if (err instanceof ErroMelhorEnvio) {
-        return new Response(
-          JSON.stringify({ error: err.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      throw err;
+    const { data: settings } = await supabaseAdmin
+      .from("store_settings")
+      .select("melhor_envio_token, melhor_envio_ambiente")
+      .eq("store_id", store.id)
+      .maybeSingle();
+
+    if (!settings?.melhor_envio_token) {
+      return new Response(
+        JSON.stringify({ error: "Configure o Melhor Envio antes de gerar etiquetas." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const baseUrl = acesso.base;
+    const baseUrl =
+      settings.melhor_envio_ambiente === "producao"
+        ? "https://melhorenvio.com.br"
+        : "https://sandbox.melhorenvio.com.br";
 
-    const meHeaders = cabecalhosME(acesso.token);
+    const meHeaders = {
+      Authorization: `Bearer ${settings.melhor_envio_token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "User-Agent": "LojaPro (contato@lojapro.com.br)",
+    };
 
     // Pedido + cliente + itens
     const { data: order } = await supabaseAdmin
@@ -126,6 +127,36 @@ Deno.serve(async (req) => {
           melhorEnvioOrderId: order.melhor_envio_order_id,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    /**
+     * Reserva a geração ANTES de gastar dinheiro.
+     *
+     * A guarda acima olhava `melhor_envio_order_id`, que só é gravado
+     * DEPOIS de registrar o envio e pagar. Dois cliques seguidos, ou o
+     * retry do navegador, criavam dois envios e pagavam dois
+     * checkouts com o saldo do lojista — prejuízo direto, sem aviso.
+     *
+     * O update condicional é atômico: quem chegar depois não encontra
+     * mais a linha com etiqueta_status nulo e desiste.
+     */
+    const { data: reserva } = await supabaseAdmin
+      .from("orders")
+      .update({ etiqueta_status: "pendente" })
+      .eq("id", orderId)
+      .eq("store_id", store.id)
+      .is("etiqueta_status", null)
+      .select("id")
+      .maybeSingle();
+
+    if (!reserva) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "A etiqueta deste pedido já está sendo gerada. Aguarde alguns segundos e atualize a página.",
+        }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

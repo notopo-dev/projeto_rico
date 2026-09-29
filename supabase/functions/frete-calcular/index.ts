@@ -16,6 +16,11 @@ import {
   ErroMelhorEnvio,
   obterAcesso,
 } from "../_shared/melhorEnvio.ts";
+import {
+  dentroDoLimite,
+  origemDaChamada,
+  respostaLimite,
+} from "../_shared/limite.ts";
 
 interface ItemCarrinho {
   product_id: string;
@@ -61,6 +66,18 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // Função aberta, sem login, que gasta a cota do Melhor Envio do
+    // lojista a cada chamada. Sem limite, qualquer pessoa queima o
+    // token da loja num laço e o frete para de funcionar para todo
+    // mundo. O limite é por origem E por loja: um atacante não derruba
+    // a cota de uma loja alheia consumindo o limite dela.
+    if (
+      !(await dentroDoLimite(supabaseAdmin, `frete:${origemDaChamada(req)}`, 30, 60)) ||
+      !(await dentroDoLimite(supabaseAdmin, `frete-loja:${storeId}`, 300, 60))
+    ) {
+      return respostaLimite(corsHeaders);
+    }
 
     // 1. Busca a loja (precisa estar ativa e ter CEP de origem)
     const { data: store, error: storeError } = await supabaseAdmin
@@ -191,9 +208,11 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    // Quem chama é o cliente final, anônimo. Detalhe interno fica no
+    // log, não na tela de quem está comprando.
     console.error("Erro ao calcular frete:", err);
     return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Erro desconhecido." }),
+      JSON.stringify({ error: "Não foi possível calcular o frete agora." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

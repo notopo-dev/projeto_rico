@@ -25,6 +25,8 @@ import {
   type ProductInput,
 } from "../lib/productsApi";
 import { supabase } from "../lib/supabase";
+import { validarImagem } from "../lib/imagemSegura";
+import { getCurrentStoreId } from "../lib/currentStore";
 import {
   uploadProductImages,
   deleteProductImage,
@@ -384,11 +386,39 @@ export default function Products() {
     let imagemUrl = novaCorImagem || null;
 
     if (novaCorArquivo) {
-      const arquivo = `cores/${Date.now()}-${novaCorArquivo.name}`;
+      /**
+       * Este upload era o mais frouxo do sistema.
+       *
+       * Ia para `cores/<timestamp>-<nome do arquivo>` — uma pasta
+       * GLOBAL, fora do espaço da loja, com o nome do arquivo usado
+       * literalmente. Sem tamanho, sem tipo, sem nada. Um lojista
+       * podia plantar ou sobrescrever arquivo no espaço compartilhado
+       * por todos os outros, e o nome controlado dava margem a tentar
+       * sair da pasta.
+       *
+       * Agora: conteúdo conferido, nome gerado aqui, e dentro da pasta
+       * da própria loja — que é o que a policy do Storage protege.
+       */
+      let validada;
+      try {
+        validada = await validarImagem(novaCorArquivo, 15);
+      } catch (e) {
+        setSaveError(
+          e instanceof Error ? e.message : "Imagem da cor inválida.",
+        );
+        return;
+      }
+
+      const storeIdAtual = await getCurrentStoreId();
+      const arquivo = `${storeIdAtual}/cores/${crypto.randomUUID()}.${validada.ext}`;
 
       const { error } = await supabase.storage
         .from("product-images")
-        .upload(arquivo, novaCorArquivo);
+        .upload(arquivo, novaCorArquivo, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: validada.contentType,
+        });
 
       if (error) {
         setSaveError("Erro ao enviar imagem da cor.");

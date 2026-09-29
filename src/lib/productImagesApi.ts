@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { getCurrentStoreId } from "./currentStore";
+import { validarImagem } from "./imagemSegura";
 
 export interface ProductImage {
   id: string;
@@ -20,18 +21,25 @@ export async function uploadProductImage(
   file: File,
   posicao: number
 ): Promise<ProductImage> {
-  if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
-    throw new Error(`"${file.name}" excede o limite de ${MAX_IMAGE_MB}MB.`);
-  }
+  // Confere o CONTEÚDO, não o nome. A extensão vinha de
+  // `file.name.split(".")` e o tipo do objeto vinha de `file.type` —
+  // os dois escolhidos por quem envia. Dava para publicar um SVG com
+  // <script> dentro como se fosse foto de produto.
+  const { ext, contentType } = await validarImagem(file, MAX_IMAGE_MB);
 
   const storeId = await getCurrentStoreId();
 
-  const ext = file.name.split(".").pop() || "jpg";
+  // Nome gerado aqui: o nome original nunca entra no caminho, o que
+  // elimina qualquer tentativa de escapar da pasta com "../".
   const path = `${storeId}/${productId}/${crypto.randomUUID()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from("product-images")
-    .upload(path, file, { cacheControl: "3600", upsert: false });
+    .upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType,
+    });
 
   if (uploadError) throw uploadError;
 

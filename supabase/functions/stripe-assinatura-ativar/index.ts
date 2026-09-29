@@ -64,16 +64,27 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const priceId: string = body.price_id || PRICE_PADRAO;
+    /**
+     * O preço da mensalidade vem do SERVIDOR. Sempre.
+     *
+     * Antes era `body.price_id || PRICE_PADRAO`: o lojista mandava o
+     * price_ que quisesse e a única checagem era começar com "price_".
+     * Price IDs aparecem no código do site, então qualquer lojista
+     * autenticado podia assinar o plano mais barato — ou um de R$ 0 —
+     * enquanto o painel mostrava o plano contratado. Era a receita da
+     * plataforma inteira aberta.
+     *
+     * O corpo da requisição não é mais lido para nada aqui.
+     */
+    const priceId: string = PRICE_PADRAO;
 
-    if (!priceId.startsWith("price_")) {
+    if (!priceId || !priceId.startsWith("price_")) {
       return json(
         {
           error:
-            "Preço da mensalidade não configurado. Crie um produto recorrente na Stripe e ponha o price_... em STRIPE_PRICE_MENSALIDADE.",
+            "A mensalidade ainda não está configurada. Fale com o suporte.",
         },
-        400
+        500
       );
     }
 

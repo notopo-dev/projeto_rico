@@ -61,6 +61,14 @@ export async function getStoreSettings(): Promise<StoreSettings> {
   return data as StoreSettings;
 }
 
+/**
+ * Salva as notificações.
+ *
+ * Copia campo a campo: `.update(input)` com o objeto do chamador
+ * deixava escrever qualquer coluna de store_settings a partir do
+ * console do navegador — e é lá que moram o token do Melhor Envio e a
+ * chave da Stripe.
+ */
 export async function updateNotificacoes(
   input: NotificacoesSettings
 ): Promise<void> {
@@ -68,7 +76,14 @@ export async function updateNotificacoes(
 
   const { error } = await supabase
     .from("store_settings")
-    .update(input)
+    .update({
+      notif_novo_pedido: Boolean(input.notif_novo_pedido),
+      notif_pedido_cancelado: Boolean(input.notif_pedido_cancelado),
+      notif_estoque_minimo: Boolean(input.notif_estoque_minimo),
+      notif_novo_cliente: Boolean(input.notif_novo_cliente),
+      notif_relatorio_semanal: Boolean(input.notif_relatorio_semanal),
+      notif_marketing: Boolean(input.notif_marketing),
+    })
     .eq("store_id", storeId);
 
   if (error) throw error;

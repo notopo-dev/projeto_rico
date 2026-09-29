@@ -116,6 +116,39 @@ Deno.serve(async (req) => {
     return data?.id ?? null;
   }
 
+  /**
+   * Qual loja este evento pode alterar.
+   *
+   * A ordem importa e estava invertida: era
+   * `metadata.store_id ?? lojaDaConta()`, ou seja, o metadata mandava.
+   * Metadata é um campo que acompanha o objeto; a CONTA que emitiu o
+   * evento é o que a assinatura da Stripe realmente prova. Com a
+   * ordem antiga, um evento de uma conta conectada com metadata
+   * apontando para outra loja quitava pedido alheio.
+   *
+   * Agora a conta emissora manda. O metadata só é aceito quando não
+   * há conta conectada (eventos da própria plataforma, como a
+   * mensalidade), e quando os dois discordam o evento é recusado.
+   */
+  async function lojaAutorizada(
+    metadataStoreId: string | null | undefined,
+  ): Promise<string | null> {
+    const daConta = await lojaDaConta();
+
+    if (daConta) {
+      if (metadataStoreId && metadataStoreId !== daConta) {
+        console.error(
+          "Evento recusado: metadata aponta para loja diferente da conta emissora",
+          { conta: contaConectada },
+        );
+        return null;
+      }
+      return daConta;
+    }
+
+    return metadataStoreId ?? null;
+  }
+
   try {
     switch (event.type) {
       // -----------------------------------------------------------
@@ -124,7 +157,8 @@ Deno.serve(async (req) => {
       case "payment_intent.succeeded": {
         const pi = event.data.object as Stripe.PaymentIntent;
         const orderId = pi.metadata?.order_id;
-        const storeId = pi.metadata?.store_id ?? (await lojaDaConta());
+        const storeId = await lojaAutorizada(pi.metadata?.store_id);
+        if (!storeId) break;
         const chargeId =
           typeof pi.latest_charge === "string" ? pi.latest_charge : null;
 

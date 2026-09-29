@@ -15,19 +15,39 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://*.stripe.com https://*.stripecdn.com; style-src 'self' 'unsafe-inline' https://*.stripe.com https://*.stripecdn.com; img-src 'self' data: blob: https:; font-src 'self' data: https://*.stripe.com https://*.stripecdn.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.stripe.com https://*.stripecdn.com https://m.stripe.network https://viacep.com.br https://melhorenvio.com.br https://sandbox.melhorenvio.com.br; frame-src 'self' https://*.stripe.com https://*.stripecdn.com https://m.stripe.network; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://*.stripe.com https://*.stripecdn.com; style-src 'self' 'unsafe-inline' https://*.stripe.com https://*.stripecdn.com; img-src 'self' data: blob: https://*.supabase.co https://*.stripe.com https://*.stripecdn.com; font-src 'self' data: https://*.stripe.com https://*.stripecdn.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.stripe.com https://*.stripecdn.com https://m.stripe.network https://viacep.com.br https://melhorenvio.com.br https://sandbox.melhorenvio.com.br; frame-src 'self' https://*.stripe.com https://*.stripecdn.com https://m.stripe.network; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
         },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Cross-Origin-Opener-Policy", "value": "unsafe-none" },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "unsafe-none"
+        },
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=63072000; includeSubDomains; preload"
         },
         {
           "key": "Permissions-Policy",
-          "value": "camera=(self \"https://connect-js.stripe.com\" \"https://js.stripe.com\"), microphone=(), geolocation=()"
+          "value": "camera=(self \"https://connect-js.stripe.com\" \"https://js.stripe.com\"), microphone=(), geolocation=(), interest-cohort=(), payment=(self \"https://js.stripe.com\"), usb=(), serial=()"
+        },
+        {
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "same-site"
+        },
+        {
+          "key": "X-DNS-Prefetch-Control",
+          "value": "off"
         }
       ]
     }
