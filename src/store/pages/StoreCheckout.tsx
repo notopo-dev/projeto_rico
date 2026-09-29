@@ -672,9 +672,7 @@ export default function StoreCheckout() {
         storeId: store.id,
         itens: items.map((i) => ({
           product_id: i.productId,
-          nome_produto: i.nome,
           quantidade: i.quantidade,
-          preco_unitario: i.preco,
           cor_selecionada: i.corSelecionada,
           tamanho_selecionado: i.tamanhoSelecionado,
         })),

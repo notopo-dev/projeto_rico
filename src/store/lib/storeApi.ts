@@ -160,11 +160,16 @@ export async function getPublicProductBySlug(
   return mapProduct(data);
 }
 
+/**
+ * O que o navegador tem direito de dizer sobre um item.
+ *
+ * Nome e preço saíram daqui de propósito: quem decide os dois é o
+ * servidor, lendo a tabela de produtos. Manter os campos seria manter
+ * a porta por onde o preço vinha adulterado.
+ */
 export interface CartItemInput {
   product_id: string;
-  nome_produto: string;
   quantidade: number;
-  preco_unitario: number;
   cor_selecionada?: string;
   tamanho_selecionado?: string;
 }
@@ -222,131 +227,62 @@ export interface CheckoutInput {
 }
 
 /**
- * Cria o pedido no banco (cliente + pedido + itens), já com o
- * frete escolhido somado ao total. Usado tanto no fluxo de
- * WhatsApp quanto no de pagamento online.
+ * Cria o pedido.
+ *
+ * Todo o trabalho acontece no banco, numa função só
+ * (19_checkout_seguro.sql). O navegador manda O QUE o cliente quer —
+ * produto, quantidade, cor, tamanho, endereço — e o servidor decide
+ * QUANTO custa, lendo o preço da tabela de produtos.
+ *
+ * Antes era o contrário: esta função mandava `preco_unitario` junto, e
+ * o banco aceitava. Quem soubesse mexer na requisição comprava
+ * qualquer coisa por um centavo, porque a cobrança na Stripe sai do
+ * total do pedido. Por isso o preço sumiu daqui.
+ *
+ * E como quem grava é a função, o navegador não precisa mais de
+ * permissão de escrita em tabela nenhuma — as políticas que abriam
+ * `orders`, `order_items` e `customers` para visitantes foram
+ * removidas, junto com uma que deixava QUALQUER pessoa ler os
+ * clientes de todas as lojas.
  */
 export async function createPublicOrder(input: CheckoutInput) {
-  // 1. Garante o cliente (busca por CPF+telefone; cria se não existir)
-  let customerId: string | null = null;
+  const { data, error } = await supabase.rpc("criar_pedido_publico", {
+    p_store_id: input.storeId,
+    p_cliente: {
+      nome: input.cliente.nome,
+      telefone: input.cliente.telefone,
+      cpf: input.cliente.cpf,
+      email: input.cliente.email ?? null,
+    },
+    p_itens: input.itens.map((i) => ({
+      product_id: i.product_id,
+      quantidade: i.quantidade,
+      cor: i.cor_selecionada ?? null,
+      tamanho: i.tamanho_selecionado ?? null,
+    })),
+    p_metodo: input.metodoPagamento,
+    p_endereco: input.enderecoEntrega
+      ? { ...input.enderecoEntrega, cep: input.enderecoEntrega.cep.replace(/\D/g, "") }
+      : null,
+    p_frete: input.frete
+      ? {
+          servicoId: input.frete.servicoId,
+          nome: input.frete.nome,
+          transportadora: input.frete.transportadora,
+          preco: input.frete.preco,
+          prazoDias: input.frete.prazoDias,
+        }
+      : null,
+  });
 
-  const cpfDigits = input.cliente.cpf.replace(/\D/g, "");
-  const telefoneDigits = input.cliente.telefone.replace(/\D/g, "");
+  if (error) throw error;
 
-  const emailLimpo = (input.cliente.email || "").trim().toLowerCase() || null;
-
-  // Procura o cliente em ordem de confiabilidade: CPF, depois
-  // telefone, depois e-mail.
-  //
-  // Antes exigia CPF **E** telefone iguais, os dois ao mesmo tempo.
-  // Bastava o cliente ter comprado antes de a loja passar a pedir
-  // CPF — ou ter digitado o CPF de um jeito diferente — para nascer
-  // um cadastro novo. O mesmo comprador aparecia duas vezes na lista
-  // de clientes, com o histórico partido ao meio.
-  async function procurar(coluna: string, valor: string) {
-    const { data } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("store_id", input.storeId)
-      .eq(coluna, valor)
-      .limit(1)
-      .maybeSingle();
-    return data?.id ?? null;
+  const pedido = Array.isArray(data) ? data[0] : data;
+  if (!pedido?.id) {
+    throw new Error("Não foi possível registrar o pedido. Tente de novo.");
   }
 
-  if (cpfDigits) customerId = await procurar("cpf", cpfDigits);
-  if (!customerId && telefoneDigits) {
-    customerId = await procurar("telefone", telefoneDigits);
-  }
-  if (!customerId && emailLimpo) {
-    customerId = await procurar("email", emailLimpo);
-  }
-
-  // Achado o cliente, os dados dele NÃO são sobrescritos daqui.
-  // Esta função roda no navegador de quem está comprando, sem login:
-  // deixar ela regravar nome e e-mail de um cadastro existente
-  // permitiria trocar os dados de outra pessoa conhecendo só o
-  // telefone. Quem corrige cadastro é o lojista, no painel.
-
-  if (!customerId) {
-    const { data: created, error: customerError } = await supabase
-      .from("customers")
-      .insert({
-        store_id: input.storeId,
-        nome: input.cliente.nome,
-        telefone: telefoneDigits,
-        cpf: cpfDigits,
-        email: emailLimpo,
-      })
-      .select("id")
-      .single();
-
-    if (customerError) throw customerError;
-    customerId = created.id;
-  }
-
-  // 2. Cria o pedido
-  const subtotal = input.itens.reduce(
-    (sum, item) => sum + item.preco_unitario * item.quantidade,
-    0
-  );
-  const valorFrete = input.frete?.preco ?? 0;
-
-  const { data: order, error: orderError } = await supabase
-    .from("orders")
-    .insert({
-      store_id: input.storeId,
-      customer_id: customerId,
-      status: "pendente",
-
-      // A identidade desta compra fica NO PEDIDO.
-      //
-      // É o que o comprador acabou de digitar, e é com isso que ele
-      // consulta "Meus pedidos" depois. Guardar aqui — e não completar
-      // o cadastro — é de propósito: o cadastro é compartilhado, e
-      // quem estivesse comprando poderia carimbar o próprio CPF no
-      // registro de outra pessoa e passar a enxergar o histórico dela.
-      // Assim, cada pedido responde apenas por si.
-      cpf_comprador: cpfDigits || null,
-      telefone_comprador: telefoneDigits || null,
-
-      metodo_pagamento: input.metodoPagamento,
-      subtotal,
-      frete: valorFrete,
-      total: subtotal + valorFrete,
-      endereco_entrega: input.enderecoEntrega ?? null,
-      cep_entrega: input.enderecoEntrega?.cep?.replace(/\D/g, "") || null,
-      frete_servico:
-        input.frete?.servicoId != null ? String(input.frete.servicoId) : null,
-      frete_transportadora: input.frete
-        ? `${input.frete.transportadora} ${input.frete.nome}`.trim()
-        : null,
-      frete_prazo_dias: input.frete?.prazoDias ?? null,
-    })
-    .select("id, numero")
-    .single();
-
-  if (orderError) throw orderError;
-
-  // 3. Itens do pedido (com cor/tamanho)
-  const itemsPayload = input.itens.map((item) => ({
-    order_id: order.id,
-    product_id: item.product_id,
-    nome_produto: item.nome_produto,
-    quantidade: item.quantidade,
-    preco_unitario: item.preco_unitario,
-    subtotal: item.preco_unitario * item.quantidade,
-    cor_selecionada: item.cor_selecionada ?? null,
-    tamanho_selecionado: item.tamanho_selecionado ?? null,
-  }));
-
-  const { error: itemsError } = await supabase
-    .from("order_items")
-    .insert(itemsPayload);
-
-  if (itemsError) throw itemsError;
-
-  return order;
+  return pedido as { id: string; numero: string; total: number };
 }
 
 export interface PedidoConsultado {

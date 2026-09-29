@@ -97,6 +97,73 @@ const statusVariant: Record<
 
 type SortKey = "nome" | "estoque" | "preco";
 
+/**
+ * Cores comuns pelo nome.
+ *
+ * O seletor de cor nascia em preto e voltava para preto depois de cada
+ * cor cadastrada. Quem digitava "Branco" e não mexia no quadradinho
+ * gravava branco com o código do PRETO — e na loja a bolinha saía
+ * preta. Era silencioso: nada avisava, e o lojista só descobria
+ * olhando a vitrine.
+ *
+ * Agora o nome puxa a cor. Quem quiser um tom específico continua
+ * ajustando no seletor; isto só chuta o óbvio.
+ */
+const CORES_CONHECIDAS: Record<string, string> = {
+  branco: "#ffffff",
+  preto: "#000000",
+  cinza: "#9ca3af",
+  "cinza claro": "#d4d4d8",
+  "cinza escuro": "#4b5563",
+  vermelho: "#dc2626",
+  vinho: "#7f1d1d",
+  rosa: "#ec4899",
+  "rosa claro": "#f9a8d4",
+  pink: "#ec4899",
+  laranja: "#f97316",
+  amarelo: "#eab308",
+  dourado: "#d4af37",
+  prata: "#c0c0c0",
+  verde: "#16a34a",
+  "verde claro": "#4ade80",
+  "verde escuro": "#166534",
+  "verde militar": "#4b5320",
+  azul: "#2563eb",
+  "azul claro": "#60a5fa",
+  "azul escuro": "#1e3a8a",
+  "azul marinho": "#1e3a5f",
+  marinho: "#1e3a5f",
+  turquesa: "#14b8a6",
+  roxo: "#7c3aed",
+  lilas: "#c4b5fd",
+  marrom: "#78350f",
+  bege: "#e7d7c1",
+  caramelo: "#b45309",
+  nude: "#e3bc9a",
+  creme: "#fdf6e3",
+  "off white": "#faf9f6",
+  jeans: "#4a6fa5",
+  mescla: "#b8b8b8",
+};
+
+function semAcento(v: string) {
+  return v
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+const CORES_POR_NOME: Record<string, string> = Object.fromEntries(
+  Object.entries(CORES_CONHECIDAS).map(([k, v]) => [semAcento(k), v]),
+);
+
+function corDoNome(nome: string): string | null {
+  const limpo = semAcento(nome);
+  if (!limpo) return null;
+  return CORES_POR_NOME[limpo] ?? null;
+}
+
 const MAX_IMAGE_MB = 15;
 const MAX_IMAGES = 8;
 
@@ -137,6 +204,8 @@ export default function Products() {
   const [formComprimento, setFormComprimento] = useState("");
   const [novaCorNome, setNovaCorNome] = useState("");
   const [novaCorHex, setNovaCorHex] = useState("#000000");
+  /** O lojista mexeu no seletor? Então o nome para de mandar na cor. */
+  const [corEscolhidaAMao, setCorEscolhidaAMao] = useState(false);
   const [novaCorImagem, setNovaCorImagem] = useState("");
   const [novaCorArquivo, setNovaCorArquivo] = useState<File | null>(null);
 
@@ -193,6 +262,7 @@ export default function Products() {
     setFormComprimento("");
     setNovaCorNome("");
     setNovaCorHex("#000000");
+    setCorEscolhidaAMao(false);
     setNovaCorImagem("");
     setNovaCorArquivo(null);
     setImagensExistentes([]);
@@ -343,6 +413,7 @@ export default function Products() {
 
     setNovaCorNome("");
     setNovaCorHex("#000000");
+    setCorEscolhidaAMao(false);
     setNovaCorImagem("");
     setNovaCorArquivo(null);
   }
@@ -1098,14 +1169,27 @@ export default function Products() {
                       <input
                         placeholder="Nome da cor"
                         value={novaCorNome}
-                        onChange={(e)=>setNovaCorNome(e.target.value)}
+                        onChange={(e)=>{
+                          const nome = e.target.value;
+                          setNovaCorNome(nome);
+                          // Só sugere enquanto o lojista não escolheu um
+                          // tom à mão: mexeu no seletor, a escolha dele
+                          // manda.
+                          if (!corEscolhidaAMao) {
+                            const palpite = corDoNome(nome);
+                            if (palpite) setNovaCorHex(palpite);
+                          }
+                        }}
                         className="h-10 px-3 rounded-xl border border-[#e4e4e7]"
                       />
 
                       <input
                         type="color"
                         value={novaCorHex}
-                        onChange={(e)=>setNovaCorHex(e.target.value)}
+                        onChange={(e)=>{
+                          setNovaCorHex(e.target.value);
+                          setCorEscolhidaAMao(true);
+                        }}
                         className="h-10 rounded-xl"
                       />
                     </div>
