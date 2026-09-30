@@ -26,6 +26,7 @@ import {
   type StatusPedido,
 } from "../lib/pedidosApi";
 import { ListaCarregando } from "../components/Carregando";
+import Portal from "../components/Portal";
 
 /**
  * Clientes da loja, vindos do banco.
@@ -188,6 +189,7 @@ function Ficha({
   const zap = apenasDigitos(cliente.telefone);
 
   return (
+    <Portal>
     <div className="folha-fundo">
       <button
         aria-label="Fechar"
@@ -562,6 +564,7 @@ function Ficha({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
 

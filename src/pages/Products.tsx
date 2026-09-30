@@ -33,6 +33,7 @@ import {
   deleteProductImage,
   type ProductImage,
 } from "../lib/productImagesApi";
+import Interruptor from "../components/Interruptor";
 
 interface Product {
   id: string;
@@ -1183,17 +1184,11 @@ export default function Products() {
                         Exibir destaque de oferta na loja
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setFormItemPromocao((v) => !v)}
-                      className={`relative w-11 h-6 rounded-full ${
-                        formItemPromocao ? "bg-[#16a34a]" : "bg-[#d1d5db]"
-                      }`}
-                    >
-                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition ${
-                        formItemPromocao ? "translate-x-5" : ""
-                      }`} />
-                    </button>
+                    <Interruptor
+                      ligado={formItemPromocao}
+                      onAlternar={setFormItemPromocao}
+                      rotulo="Item em promoção"
+                    />
                   </div>
 
                   {/* Cores */}
@@ -1338,20 +1333,11 @@ export default function Products() {
                         O produto continua disponível na loja mesmo com estoque zerado
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setFormVendaSemEstoque((v) => !v)}
-                      aria-pressed={formVendaSemEstoque}
-                      className={`relative w-11 h-6 shrink-0 rounded-full transition-colors duration-200 focus:outline-none ${
-                        formVendaSemEstoque ? "bg-[#16a34a]" : "bg-[#d1d5db]"
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ${
-                          formVendaSemEstoque ? "translate-x-5" : "translate-x-0"
-                        }`}
-                      />
-                    </button>
+                    <Interruptor
+                      ligado={formVendaSemEstoque}
+                      onAlternar={setFormVendaSemEstoque}
+                      rotulo="Vender mesmo sem estoque"
+                    />
                   </div>
 
                   {/* Peso e medidas (frete) */}

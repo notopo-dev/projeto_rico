@@ -43,6 +43,7 @@ import {
 } from "../lib/pedidosApi";
 import { gerarEtiqueta, rastrearPedidoAdmin } from "../lib/freteAdminApi";
 import { ListaCarregando } from "../components/Carregando";
+import Portal from "../components/Portal";
 
 /**
  * Pedidos da loja — lista + painel de gestão.
@@ -486,7 +487,7 @@ function Detalhe({
   const temEtiqueta = Boolean(pedido.etiqueta_url);
 
   return (
-    <>
+    <Portal>
       <div className="folha-fundo nao-imprimir">
         <button
           aria-label="Fechar"
@@ -1055,7 +1056,7 @@ function Detalhe({
       </div>
 
       <Comprovante pedido={pedido} />
-    </>
+    </Portal>
   );
 }
 

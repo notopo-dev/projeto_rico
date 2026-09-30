@@ -27,6 +27,7 @@ import {
   type TesteMelhorEnvio,
 } from "../lib/freteConfigApi";
 import { TelaCarregando } from "../components/Carregando";
+import Interruptor from "../components/Interruptor";
 
 /**
  * Frete da loja.
@@ -109,34 +110,6 @@ function Cartao({
       </div>
       <div className="px-3.5 pb-3.5">{children}</div>
     </div>
-  );
-}
-
-function Interruptor({
-  ligado,
-  onAlternar,
-  rotulo,
-}: {
-  ligado: boolean;
-  onAlternar: (v: boolean) => void;
-  rotulo: string;
-}) {
-  return (
-    <button
-      role="switch"
-      aria-checked={ligado}
-      aria-label={rotulo}
-      onClick={() => onAlternar(!ligado)}
-      className={`sem-toque-minimo relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-        ligado ? "bg-[#16a34a]" : "bg-[#d4d4d8]"
-      }`}
-    >
-      <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left] ${
-          ligado ? "left-[22px]" : "left-0.5"
-        }`}
-      />
-    </button>
   );
 }
 

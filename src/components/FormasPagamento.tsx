@@ -13,6 +13,7 @@ import {
   salvarFormaPagamento,
   type StatusCompletoStripe,
 } from "../lib/stripeCustomApi";
+import Interruptor from "./Interruptor";
 
 /**
  * Quais formas de pagamento a loja oferece.
@@ -71,28 +72,13 @@ function Linha({
         </div>
 
         {/* Interruptor */}
-        <button
-          role="switch"
-          aria-checked={ligado}
-          aria-label={titulo}
-          disabled={!liberado || salvando}
-          onClick={() => onAlternar(!aceita)}
-          className={`sem-toque-minimo relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-            ligado ? "bg-[#16a34a]" : "bg-[#d4d4d8]"
-          } ${!liberado || salvando ? "opacity-50 cursor-not-allowed" : ""}`}
-        >
-          <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left] ${
-              ligado ? "left-[22px]" : "left-0.5"
-            }`}
-          />
-          {salvando && (
-            <Loader2
-              size={12}
-              className="absolute inset-0 m-auto animate-spin text-white"
-            />
-          )}
-        </button>
+        <Interruptor
+          ligado={ligado}
+          onAlternar={() => onAlternar(!aceita)}
+          rotulo={titulo}
+          desabilitado={!liberado || salvando}
+          carregando={salvando}
+        />
       </div>
 
       {!liberado && motivoTravado && (

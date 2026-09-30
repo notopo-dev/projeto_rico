@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import Portal from "./Portal";
 
 /**
  * Folha: o modal do painel.
@@ -86,7 +86,8 @@ export default function Folha({
 
   if (!aberta) return null;
 
-  return createPortal(
+  return (
+    <Portal>
     <div
       className="folha-fundo bg-black/45"
       role="dialog"
@@ -125,7 +126,7 @@ export default function Folha({
           {rodape}
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
+    </Portal>
   );
 }

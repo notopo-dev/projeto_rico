@@ -560,7 +560,13 @@ textarea {
      esticar dentro de uma linha. */
   .sem-toque-minimo,
   summary,
-  nav button {
+  nav button,
+  /* Interruptor liga/desliga: o trilho tem 44x24px, e esticar a
+     altura para 44 transformava a pílula num círculo. O alvo de toque
+     de 44px continua garantido — quem o fornece é o botão em volta,
+     no componente Interruptor, não o esticamento do trilho. */
+  [role="switch"],
+  [role="switch"] * {
     min-height: 0;
   }
 }

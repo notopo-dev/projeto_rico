@@ -18,6 +18,7 @@ import {
 import type { Store } from "../types/database";
 import EnderecoOrigemSection from "../components/EnderecoOrigemSection";
 import DominioProprio from "../components/DominioProprio";
+import Interruptor from "../components/Interruptor";
 
 export default function Loja() {
   const [loading, setLoading] = useState(true);
@@ -223,27 +224,11 @@ export default function Loja() {
           </p>
         </div>
 
-        <button
-          type="button"
-          aria-pressed={val}
-          onClick={() =>
-            setForm((f) => ({
-              ...f,
-              [name]: !val,
-            }))
-          }
-          className={`relative flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-            val
-              ? "bg-[#16a34a] focus-visible:ring-[#16a34a]"
-              : "bg-[#d1d5db] focus-visible:ring-[#9ca3af]"
-          }`}
-        >
-          <span
-            className={`absolute left-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200 ${
-              val ? "translate-x-5" : "translate-x-0"
-            }`}
-          />
-        </button>
+        <Interruptor
+          ligado={val}
+          onAlternar={(novo) => setForm((f) => ({ ...f, [name]: novo }))}
+          rotulo={label}
+        />
       </div>
     );
   }
