@@ -25,6 +25,18 @@ interface StripeCardPaymentProps {
   totalReais: number;
   metodo: "pix" | "card";
   /**
+   * Dados que o cliente JÁ preencheu no passo 1 do checkout.
+   *
+   * O Pix exige o e-mail do pagador. Sem receber esse dado aqui, o
+   * formulário da Stripe pedia o e-mail de novo na tela de
+   * pagamento — a pessoa digitava duas vezes a mesma coisa.
+   * https://docs.stripe.com/payments/payment-element/control-billing-details-collection
+   */
+  emailCliente?: string;
+  nomeCliente?: string;
+  /** Endereço absoluto de volta, caso a Stripe precise redirecionar. */
+  returnUrl: string;
+  /**
    * Chamado quando a confirmação volta sem erro.
    *
    * Recebe o status real do pagamento — "succeeded" ou "processing".
@@ -37,9 +49,15 @@ interface StripeCardPaymentProps {
 }
 
 function FormularioCartao({
+  emailCliente,
+  nomeCliente,
+  returnUrl,
   onSuccess,
   onError,
 }: {
+  emailCliente?: string;
+  nomeCliente?: string;
+  returnUrl: string;
   onSuccess: (status: string | null) => void;
   onError: (mensagem: string) => void;
 }) {
@@ -47,18 +65,49 @@ function FormularioCartao({
   const elements = useElements();
   const [processando, setProcessando] = useState(false);
 
+  const email = emailCliente?.trim() || "";
+  const nome = nomeCliente?.trim() || "";
+
+  /**
+   * Só esconde o campo de e-mail quando REALMENTE temos um.
+   *
+   * A regra da Stripe é dura: "If you disable collecting certain
+   * fields with the fields option, you must pass that same data to
+   * stripe.confirmPayment or we'll reject the payment." Esconder sem
+   * ter o dado derrubaria o pagamento — por isso, se o cliente
+   * deixou o e-mail em branco no passo 1, o formulário continua
+   * pedindo, exatamente como antes.
+   */
+  const escondeEmail = email !== "";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!stripe || !elements) return;
 
     setProcessando(true);
 
-    // confirmPayment SEM redirect: o pagamento é confirmado direto
-    // aqui na tela, sem sair da loja.
+    // confirmPayment com redirect "if_required": cartão sem 3-D
+    // Secure resolve aqui mesmo, sem sair da loja. O return_url fica
+    // declarado porque alguns fluxos (3-D Secure, e o Pix em teste)
+    // precisam de um endereço de volta — sem ele a Stripe recusa com
+    // payment_intent_redirect_confirmation_without_return_url.
     // https://docs.stripe.com/js/payment_intents/confirm_payment
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       redirect: "if_required",
+      confirmParams: {
+        return_url: returnUrl,
+        ...(escondeEmail
+          ? {
+              payment_method_data: {
+                billing_details: {
+                  email,
+                  ...(nome ? { name: nome } : {}),
+                },
+              },
+            }
+          : {}),
+      },
     });
 
     if (error) {
@@ -76,7 +125,21 @@ function FormularioCartao({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement />
+      <PaymentElement
+        options={{
+          // Pré-preenche o que já sabemos. A Stripe usa isto nos
+          // campos que ela ainda mostrar.
+          defaultValues: {
+            billingDetails: {
+              ...(email ? { email } : {}),
+              ...(nome ? { name: nome } : {}),
+            },
+          },
+          ...(escondeEmail
+            ? { fields: { billingDetails: { email: "never" as const } } }
+            : {}),
+        }}
+      />
       <button
         type="submit"
         disabled={!stripe || processando}
@@ -95,6 +158,9 @@ export default function StripeCardPayment({
   orderId,
   totalReais,
   metodo,
+  emailCliente,
+  nomeCliente,
+  returnUrl,
   onSuccess,
   onError,
 }: StripeCardPaymentProps) {
@@ -162,7 +228,13 @@ export default function StripeCardPayment({
         locale: "pt-BR",
       }}
     >
-      <FormularioCartao onSuccess={onSuccess} onError={onError} />
+      <FormularioCartao
+        emailCliente={emailCliente}
+        nomeCliente={nomeCliente}
+        returnUrl={returnUrl}
+        onSuccess={onSuccess}
+        onError={onError}
+      />
     </Elements>
   );
 }

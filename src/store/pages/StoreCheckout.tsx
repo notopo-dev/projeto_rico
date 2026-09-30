@@ -800,11 +800,16 @@ export default function StoreCheckout() {
     setErro(null);
   }
 
+  // Para onde a pessoa vai depois de pagar. Escrito uma vez porque
+  // dois donos usam isto: o navigate daqui e o return_url que a
+  // Stripe usa quando precisa redirecionar.
+  const caminhoConfirmado =
+    `/loja/${store.slug}/pedido-confirmado` +
+    `?numero=${orderNumero}&metodo=${metodo}`;
+
   function handlePagamentoConfirmado() {
     clear();
-    navigate(
-      `/loja/${store.slug}/pedido-confirmado?numero=${orderNumero}&metodo=${metodo}`,
-    );
+    navigate(caminhoConfirmado);
   }
 
   return (
@@ -1392,6 +1397,12 @@ export default function StoreCheckout() {
               orderId={orderId}
               totalReais={totalComFrete}
               metodo={metodo === "pix" ? "pix" : "card"}
+              /* O Pix exige o e-mail do pagador. Como ele já foi
+                 pedido no passo 1, vai daqui para a Stripe — sem
+                 isso, o formulário de pagamento pedia de novo. */
+              emailCliente={email}
+              nomeCliente={nome}
+              returnUrl={`${window.location.origin}${caminhoConfirmado}`}
               onSuccess={handlePagamentoConfirmado}
               onError={setErro}
             />
