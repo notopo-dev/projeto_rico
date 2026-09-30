@@ -1,4 +1,4 @@
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../../lib/supabaseClient";
 
 /**
  * Descobre se a página foi aberta por um domínio próprio de lojista.
