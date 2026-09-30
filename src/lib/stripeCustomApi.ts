@@ -321,3 +321,44 @@ export async function ativarCarteirasDigitais(): Promise<ResultadoCarteiras> {
 
   return corpo as ResultadoCarteiras;
 }
+
+export interface ResultadoPix {
+  sucesso: boolean;
+  via: "v1" | "v2" | "ja_estava_ativa";
+  status: string | null;
+}
+
+/**
+ * Pede a liberação do Pix para a conta de recebimento da loja.
+ *
+ * Confirmado em 30/09/2026 numa conta real: a capacidade existe e a
+ * liberação sai NA HORA, sem documento novo. O provedor recusa o
+ * pedido pela API nova ("did you mean fpx_payments...?") e aceita
+ * pela antiga — a função do servidor tenta as duas, nessa ordem.
+ *
+ * ATENÇÃO: não tem volta. A documentação do provedor diz que algumas
+ * capacidades, uma vez pedidas, ficam permanentes. Por isso a tela
+ * pergunta antes, e esta função nunca é chamada sozinha.
+ */
+export async function ativarPix(): Promise<ResultadoPix> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error("Sessão expirada. Entre novamente.");
+
+  const url = import.meta.env.VITE_SUPABASE_URL;
+
+  const res = await fetch(`${url}/functions/v1/stripe-pix-ativar`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+
+  const corpo = await res.json().catch(() => null);
+  if (!res.ok || corpo?.error) {
+    throw new Error(corpo?.error ?? "Não foi possível liberar o Pix.");
+  }
+  return corpo as ResultadoPix;
+}

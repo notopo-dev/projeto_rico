@@ -5,11 +5,11 @@ import {
   Wallet,
   AlertTriangle,
   Loader2,
-  ExternalLink,
   Check,
 } from "lucide-react";
 import {
   ativarCarteirasDigitais,
+  ativarPix,
   salvarFormaPagamento,
   type StatusCompletoStripe,
 } from "../lib/stripeCustomApi";
@@ -96,6 +96,8 @@ function Linha({
 export default function FormasPagamento({ status, aoSalvar }: Props) {
   const [salvando, setSalvando] = useState<"pix" | "cartao" | null>(null);
   const [ativandoCarteiras, setAtivandoCarteiras] = useState(false);
+  const [liberandoPix, setLiberandoPix] = useState(false);
+  const [avisoPix, setAvisoPix] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [avisoCarteiras, setAvisoCarteiras] = useState<string | null>(null);
 
@@ -104,6 +106,42 @@ export default function FormasPagamento({ status, aoSalvar }: Props) {
     cartao: { liberado: Boolean(status.charges_enabled), aceita: true },
     pix: { liberado: false, aceita: false },
   };
+
+  /**
+   * Libera o Pix na conta de recebimento.
+   *
+   * Confirmado numa conta real em 30/09/2026: sai na hora, sem
+   * documento. Mas NÃO tem volta — por isso a confirmação antes.
+   */
+  async function liberarPix() {
+    const certeza = window.confirm(
+      "Liberar o Pix nesta conta de recebimento?\n\n" +
+        "A liberação é permanente: depois de feita, não é possível " +
+        "desfazer. Você continua podendo ligar e desligar o Pix na " +
+        "sua loja quando quiser — o que não volta atrás é a liberação " +
+        "junto ao provedor de pagamento.",
+    );
+    if (!certeza) return;
+
+    setLiberandoPix(true);
+    setErro(null);
+    setAvisoPix(null);
+    try {
+      const r = await ativarPix();
+      setAvisoPix(
+        r.status === "active"
+          ? "Pix liberado. Ligue o interruptor acima para oferecer na sua loja."
+          : "Pedido enviado. O provedor está analisando — volte aqui em alguns minutos.",
+      );
+      aoSalvar();
+    } catch (e) {
+      setErro(
+        e instanceof Error ? e.message : "Não foi possível liberar o Pix.",
+      );
+    } finally {
+      setLiberandoPix(false);
+    }
+  }
 
   async function alternar(forma: "pix" | "cartao", novo: boolean) {
     setSalvando(forma);
@@ -188,19 +226,39 @@ export default function FormasPagamento({ status, aoSalvar }: Props) {
           aceita={metodos.pix.aceita}
           salvando={salvando === "pix"}
           motivoTravado={
+            /*
+             * A mensagem anterior mandava o lojista ativar o Pix no
+             * painel da conta dele. Não funcionava: estas contas são
+             * criadas sem painel próprio, então ele não tinha onde
+             * clicar — e o link entregava o nome do provedor.
+             *
+             * Quem pede a liberação é a PLATAFORMA, pela API. É o que
+             * este botão faz.
+             */
             <>
-              O Pix precisa ser ativado à parte na sua conta de recebimento —
-              não vem ligado por padrão. Peça a ativação por{" "}
-              <a
-                href="https://dashboard.stripe.com/settings/payment_methods"
-                target="_blank"
-                rel="noreferrer"
-                className="font-semibold underline inline-flex items-center gap-0.5"
+              <span className="block">
+                O Pix precisa ser liberado na sua conta de recebimento — não
+                vem ligado por padrão. A liberação é feita por aqui mesmo, e
+                costuma sair na hora.
+              </span>
+
+              <button
+                type="button"
+                onClick={liberarPix}
+                disabled={liberandoPix}
+                className="btn-app-pequeno mt-2 bg-[#0f1117] text-white disabled:opacity-60"
               >
-                aqui
-                <ExternalLink size={10} />
-              </a>
-              . Assim que for liberado, este interruptor destrava sozinho.
+                {liberandoPix && (
+                  <Loader2 size={13} className="animate-spin" />
+                )}
+                {liberandoPix ? "Liberando..." : "Liberar o Pix"}
+              </button>
+
+              {avisoPix && (
+                <span className="block t-apoio text-[#15803d] mt-1.5">
+                  {avisoPix}
+                </span>
+              )}
             </>
           }
           onAlternar={(novo) => alternar("pix", novo)}
