@@ -88,9 +88,28 @@ Deno.serve(async (req) => {
     // Cartão vem junto com a liberação de cobrança; Pix, no Brasil,
     // exige ativação à parte e por isso costuma vir desligado.
     const capacidades = conta.configuration?.merchant?.capabilities ?? {};
-    const pixLiberado =
+    let pixLiberado =
       capacidades.pix_payments?.status === "active" ||
       capacidades.pix?.status === "active";
+
+    // A capacidade de Pix não existe no schema da v2 — ela só pode ser
+    // lida e ativada pela v1. A leitura da v2 acima fica como reserva,
+    // caso o campo passe a existir lá. Se a v1 falhar, o Pix apenas
+    // aparece desligado: nada aqui pode derrubar o cartão.
+    if (!pixLiberado) {
+      try {
+        const pixRes = await fetch(
+          `https://api.stripe.com/v1/accounts/${store.stripe_account_id}/capabilities/pix_payments`,
+          { headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` } }
+        );
+        const pixData = await pixRes.json();
+        if (pixRes.ok && pixData?.status === "active") {
+          pixLiberado = true;
+        }
+      } catch {
+        // Conta ainda sem a capacidade — não é erro.
+      }
+    }
 
     const requisitos =
       conta.requirements?.entries?.map((r: any) => ({
