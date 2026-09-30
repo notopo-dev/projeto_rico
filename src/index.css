@@ -580,7 +580,10 @@ textarea {
 .folha-fundo {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  /* 60 e não 50: a barra inferior é z-40 e o menu "Mais" dela é
+     z-50. Empatar com o menu deixaria a ordem do DOM decidir, e a
+     barra é renderizada DEPOIS do <main> no App.tsx — ela venceria. */
+  z-index: 60;
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -611,9 +614,25 @@ textarea {
   }
 }
 
+/* flex-shrink: 0 é o que mantém o rodapé fora da rolagem. Sem
+   isto o flex encolheria o rodapé até sumir quando o corpo fosse
+   alto — o botão de salvar iria embora justamente no formulário
+   longo, que é onde ele mais importa. */
 .folha-topo,
 .folha-rodape {
   flex-shrink: 0;
+}
+
+/* No celular a folha vai até a borda de baixo, onde fica a faixa
+   de gestos do iPhone. Sem este respiro o botão de salvar encosta
+   nela e o toque é interpretado como gesto do sistema. */
+.folha-rodape {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 640px) {
+  .folha-rodape {
+    padding-bottom: 12px;
+  }
 }
 
 /* overscroll-behavior impede que o "puxão" no fim da lista role a

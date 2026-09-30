@@ -27,6 +27,7 @@ import {
 import { supabase } from "../lib/supabase";
 import { validarImagem } from "../lib/imagemSegura";
 import { getCurrentStoreId } from "../lib/currentStore";
+import Folha from "../components/Folha";
 import {
   uploadProductImages,
   deleteProductImage,
@@ -923,34 +924,40 @@ export default function Products() {
       </div>
 
       {/* MODAL NOVO/EDITAR PRODUTO */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/45 flex items-end lg:items-center justify-center">
-          <div className="w-full bg-white rounded-t-[24px] lg:rounded-lg lg:max-w-lg border border-[#e4e4e7] overflow-hidden max-h-[92dvh] flex flex-col shadow-2xl">
-            {/* Cabeçalho */}
-            <div className="px-4 pt-4 pb-3 border-b border-[#f0f0f1]">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="t-secao font-semibold text-[#111827]">
-                    {editTarget ? "Editar produto" : "Novo produto"}
-                  </h2>
-                  <p className="t-apoio mt-0.5 text-[#9ca3af]">
-                    {editTarget
-                      ? "Atualize os dados do produto"
-                      : "Cadastre um produto na sua loja"}
-                  </p>
-                </div>
-                <button
-                  onClick={closeModal}
-                  className="w-9 h-9 rounded-lg bg-[#f4f4f5] flex items-center justify-center text-[#6b7280] active:bg-[#e4e4e7]"
-                  aria-label="Fechar"
-                >
-                  <X size={17} />
-                </button>
-              </div>
-            </div>
-
-            {/* Formulário */}
-            <div className="flex-1 overflow-y-auto px-4 py-4">
+      <Folha
+        aberta={showModal}
+        onFechar={closeModal}
+        titulo={editTarget ? "Editar produto" : "Novo produto"}
+        descricao={
+          editTarget
+            ? "Atualize os dados do produto"
+            : "Cadastre um produto na sua loja"
+        }
+        rodape={
+          <>
+            <button
+              onClick={closeModal}
+              disabled={saving}
+              className="t-corpo flex-1 h-11 rounded-lg border border-[#e4e4e7] bg-white font-medium text-[#374151] active:bg-[#f4f4f5] disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSaveProduct}
+              disabled={saving || loadingEditData}
+              className="t-corpo flex-[1.3] h-11 rounded-lg bg-[#16a34a] text-white font-semibold active:bg-[#15803d] disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {saving && <Loader2 size={15} className="animate-spin" />}
+              {saving
+                ? "Salvando..."
+                : editTarget
+                ? "Salvar alterações"
+                : "Salvar produto"}
+            </button>
+          </>
+        }
+      >
+        <div>
               {loadingEditData ? (
                 <div className="t-corpo flex items-center justify-center py-16 gap-2 text-[#6b7280]">
                   <Loader2 size={16} className="animate-spin" />
@@ -1368,68 +1375,42 @@ export default function Products() {
                   )}
                 </div>
               )}
-            </div>
-
-            {/* Rodapé */}
-            <div className="px-4 py-3 border-t border-[#f0f0f1] bg-white flex gap-2">
-              <button
-                onClick={closeModal}
-                disabled={saving}
-                className="t-corpo flex-1 h-11 rounded-lg border border-[#e4e4e7] bg-white font-medium text-[#374151] active:bg-[#f4f4f5] disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSaveProduct}
-                disabled={saving || loadingEditData}
-                className="t-corpo flex-[1.3] h-11 rounded-lg bg-[#16a34a] text-white font-semibold active:bg-[#15803d] disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {saving && <Loader2 size={15} className="animate-spin" />}
-                {saving
-                  ? "Salvando..."
-                  : editTarget
-                  ? "Salvar alterações"
-                  : "Salvar produto"}
-              </button>
-            </div>
-          </div>
         </div>
-      )}
+      </Folha>
 
       {/* CONFIRMAR EXCLUSÃO */}
-      {deleteTarget && (
-        <div className="fixed inset-0 bg-black/45 z-50 flex items-end lg:items-center justify-center">
-          <div className="bg-white w-full rounded-t-[24px] lg:rounded-lg lg:max-w-sm overflow-hidden shadow-2xl">
-            <div className="px-4 pt-5 pb-4">
-              <div className="mx-auto mb-4 w-11 h-11 rounded-full bg-[#fef2f2] flex items-center justify-center">
-                <Trash2 size={20} className="text-[#b91c1c]" strokeWidth={1.8} />
-              </div>
-              <h2 className="t-secao font-semibold text-[#111827] text-center">
-                Excluir produto?
-              </h2>
-              <p className="t-corpo mt-2 leading-5 text-[#6b7280] text-center">
-                O produto{" "}
-                <strong className="text-[#374151]">{deleteTarget.nome}</strong>{" "}
-                será removido permanentemente.
-              </p>
-            </div>
-            <div className="px-4 py-3 border-t border-[#f0f0f1] flex gap-2">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="t-corpo flex-1 h-11 rounded-lg border border-[#e4e4e7] bg-white font-medium text-[#374151]"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="t-corpo flex-1 h-11 rounded-lg bg-[#b91c1c] text-white font-semibold"
-              >
-                Excluir
-              </button>
-            </div>
+      <Folha
+        aberta={Boolean(deleteTarget)}
+        onFechar={() => setDeleteTarget(null)}
+        titulo="Excluir produto?"
+        rodape={
+          <>
+            <button
+              onClick={() => setDeleteTarget(null)}
+              className="t-corpo flex-1 h-11 rounded-lg border border-[#e4e4e7] bg-white font-medium text-[#374151]"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="t-corpo flex-1 h-11 rounded-lg bg-[#b91c1c] text-white font-semibold"
+            >
+              Excluir
+            </button>
+          </>
+        }
+      >
+        <div className="py-2">
+          <div className="mx-auto mb-4 w-11 h-11 rounded-full bg-[#fef2f2] flex items-center justify-center">
+            <Trash2 size={20} className="text-[#b91c1c]" strokeWidth={1.8} />
           </div>
+          <p className="t-corpo leading-5 text-[#6b7280] text-center">
+            O produto{" "}
+            <strong className="text-[#374151]">{deleteTarget?.nome}</strong> será
+            removido permanentemente.
+          </p>
         </div>
-      )}
+      </Folha>
     </div>
   );
 }

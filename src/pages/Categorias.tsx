@@ -18,6 +18,7 @@ import {
   toggleCategory,
   type Category,
 } from "../lib/categoriesApi";
+import Folha from "../components/Folha";
 
 export default function Categorias() {
   const [categorias, setCategorias] = useState<Category[]>([]);
@@ -492,139 +493,105 @@ export default function Categorias() {
       )}
 
       {/* MODAL CRIAR / EDITAR */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 lg:items-center lg:p-4">
-          <div className="max-h-[92dvh] w-full overflow-y-auto rounded-t-[14px] border border-[#e4e4e7] bg-white lg:max-w-sm lg:rounded-[8px]">
-            <div className="flex items-center justify-between border-b border-[#e4e4e7] px-5 py-4">
-              <h2 className="t-corpo font-semibold text-[#0f1117]">
-                {editTarget ? "Editar categoria" : "Nova categoria"}
-              </h2>
-
-              <button
-                type="button"
-                onClick={closeModal}
-                disabled={saving}
-                className="p-1 text-[#9ca3af] hover:text-[#0f1117] disabled:opacity-50"
-              >
-                <X size={16} strokeWidth={2} />
-              </button>
-            </div>
-
-            <div className="space-y-4 px-5 py-4">
-              <div>
-                <label className="t-corpo mb-1 block font-medium text-[#374151]">
-                  Nome
-                </label>
-
-                <input
-                  type="text"
-                  value={formNome}
-                  onChange={(e) => handleNomeChange(e.target.value)}
-                  placeholder="Ex: Camisetas"
-                  disabled={saving}
-                  className="t-corpo w-full min-h-11 rounded-[6px] border border-[#e4e4e7] bg-white px-3 py-2 text-base placeholder:text-[#9ca3af] focus:border-[#16a34a] focus:outline-none focus:ring-1 focus:ring-[#16a34a] disabled:bg-[#f4f4f5] lg:min-h-0 lg:py-1.5"
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="t-corpo mb-1 block font-medium text-[#374151]">
-                  Slug
-                </label>
-
-                <input
-                  type="text"
-                  value={formSlug}
-                  onChange={(e) => setFormSlug(e.target.value)}
-                  placeholder="camisetas"
-                  disabled={saving}
-                  className="t-corpo w-full min-h-11 rounded-[6px] border border-[#e4e4e7] bg-white px-3 py-2 text-base placeholder:text-[#9ca3af] focus:border-[#16a34a] focus:outline-none focus:ring-1 focus:ring-[#16a34a] disabled:bg-[#f4f4f5] lg:min-h-0 lg:py-1.5"
-                />
-
-                <p className="t-apoio mt-1 text-[#9ca3af]">
-                  O slug é usado internamente para identificar a categoria.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 border-t border-[#e4e4e7] px-5 py-3 lg:flex lg:justify-end">
-              <button
-                type="button"
-                onClick={closeModal}
-                disabled={saving}
-                className="t-corpo min-h-11 rounded-[6px] border border-[#e4e4e7] bg-white px-3 py-2 text-[#374151] transition-colors hover:bg-[#f4f4f5] disabled:opacity-50 lg:min-h-0 lg:py-1.5"
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving || !formNome.trim()}
-                className="t-corpo flex min-h-11 items-center justify-center gap-2 rounded-[6px] bg-[#16a34a] px-3 py-2 font-medium text-white transition-colors hover:bg-[#15803d] disabled:cursor-not-allowed disabled:opacity-50 lg:min-h-0 lg:py-1.5"
-              >
-                {saving && (
-                  <Loader2 size={14} className="animate-spin" />
-                )}
-
-                {editTarget ? "Salvar" : "Criar categoria"}
-              </button>
-            </div>
+      <Folha
+        aberta={showModal}
+        onFechar={closeModal}
+        titulo={editTarget ? "Editar categoria" : "Nova categoria"}
+        rodape={
+          <>
+            <button
+              type="button"
+              onClick={closeModal}
+              disabled={saving}
+              className="t-corpo flex-1 min-h-11 rounded-[6px] border border-[#e4e4e7] bg-white px-3 py-2 text-[#374151] hover:bg-[#f4f4f5] disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !formNome.trim()}
+              className="t-corpo flex flex-[1.3] min-h-11 items-center justify-center gap-2 rounded-[6px] bg-[#16a34a] px-3 py-2 font-medium text-white hover:bg-[#15803d] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving && <Loader2 size={14} className="animate-spin" />}
+              {editTarget ? "Salvar" : "Criar categoria"}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="t-corpo mb-1 block font-medium text-[#374151]">
+              Nome
+            </label>
+            <input
+              type="text"
+              value={formNome}
+              onChange={(e) => handleNomeChange(e.target.value)}
+              placeholder="Ex: Camisetas"
+              disabled={saving}
+              className="t-corpo w-full min-h-11 rounded-[6px] border border-[#e4e4e7] bg-white px-3 py-2 placeholder:text-[#9ca3af] focus:border-[#16a34a] focus:outline-none focus:ring-1 focus:ring-[#16a34a] disabled:bg-[#f4f4f5]"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="t-corpo mb-1 block font-medium text-[#374151]">
+              Slug
+            </label>
+            <input
+              type="text"
+              value={formSlug}
+              onChange={(e) => setFormSlug(e.target.value)}
+              placeholder="camisetas"
+              disabled={saving}
+              className="t-corpo w-full min-h-11 rounded-[6px] border border-[#e4e4e7] bg-white px-3 py-2 placeholder:text-[#9ca3af] focus:border-[#16a34a] focus:outline-none focus:ring-1 focus:ring-[#16a34a] disabled:bg-[#f4f4f5]"
+            />
+            <p className="t-apoio mt-1 text-[#9ca3af]">
+              O slug é usado internamente para identificar a categoria.
+            </p>
           </div>
         </div>
-      )}
+      </Folha>
 
       {/* MODAL EXCLUSÃO */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 lg:items-center lg:p-4">
-          <div className="w-full rounded-t-[14px] border border-[#e4e4e7] bg-white lg:max-w-sm lg:rounded-[8px]">
-            <div className="border-b border-[#e4e4e7] px-5 py-4">
-              <h2 className="t-corpo font-semibold text-[#0f1117]">
-                Excluir categoria?
-              </h2>
-            </div>
-
-            <div className="px-5 py-4">
-              <p className="t-corpo leading-5 text-[#374151]">
-                A categoria{" "}
-                <strong className="font-semibold text-[#0f1117]">
-                  {deleteTarget.nome}
-                </strong>{" "}
-                será removida do banco de dados.
-              </p>
-
-              <p className="t-corpo mt-2 leading-5 text-[#6b7280]">
-                Se houver produtos vinculados a essa categoria, a exclusão
-                poderá ser impedida pelo banco de dados.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 border-t border-[#e4e4e7] px-5 py-3 lg:flex lg:justify-end">
-              <button
-                type="button"
-                onClick={cancelDelete}
-                disabled={saving}
-                className="t-corpo min-h-11 rounded-[6px] border border-[#e4e4e7] bg-white px-3 py-2 text-[#374151] transition-colors hover:bg-[#f4f4f5] disabled:opacity-50 lg:min-h-0 lg:py-1.5"
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="button"
-                onClick={confirmDelete}
-                disabled={saving}
-                className="t-corpo flex min-h-11 items-center justify-center gap-2 rounded-[6px] bg-[#b91c1c] px-3 py-2 font-medium text-white transition-colors hover:bg-[#991b1b] disabled:cursor-not-allowed disabled:opacity-50 lg:min-h-0 lg:py-1.5"
-              >
-                {saving && (
-                  <Loader2 size={14} className="animate-spin" />
-                )}
-
-                Excluir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Folha
+        aberta={Boolean(deleteTarget)}
+        onFechar={cancelDelete}
+        titulo="Excluir categoria?"
+        rodape={
+          <>
+            <button
+              type="button"
+              onClick={cancelDelete}
+              disabled={saving}
+              className="t-corpo flex-1 min-h-11 rounded-[6px] border border-[#e4e4e7] bg-white px-3 py-2 text-[#374151] hover:bg-[#f4f4f5] disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              disabled={saving}
+              className="t-corpo flex flex-1 min-h-11 items-center justify-center gap-2 rounded-[6px] bg-[#b91c1c] px-3 py-2 font-medium text-white hover:bg-[#991b1b] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving && <Loader2 size={14} className="animate-spin" />}
+              Excluir
+            </button>
+          </>
+        }
+      >
+        <p className="t-corpo leading-5 text-[#374151]">
+          A categoria{" "}
+          <strong className="font-semibold text-[#0f1117]">
+            {deleteTarget?.nome}
+          </strong>{" "}
+          será removida do banco de dados.
+        </p>
+        <p className="t-corpo mt-2 leading-5 text-[#6b7280]">
+          Se houver produtos vinculados a essa categoria, a exclusão poderá ser
+          impedida pelo banco de dados.
+        </p>
+      </Folha>
     </div>
   );
 }

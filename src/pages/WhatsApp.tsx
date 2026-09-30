@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MessageCircle, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X } from "lucide-react";
+import Folha from "../components/Folha";
 
 interface Regra {
   id: string;
@@ -133,70 +134,72 @@ export default function WhatsApp() {
       </div>
 
       {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center p-0 lg:items-center lg:p-4">
-          <div className="bg-white rounded-t-[18px] border border-[#e4e4e7] w-full max-h-[92dvh] overflow-y-auto lg:max-w-lg lg:rounded-[8px]">
-            <div className="px-5 py-4 border-b border-[#e4e4e7] flex items-center justify-between">
-              <h2 className="t-corpo font-semibold text-[#0f1117]">{editTarget ? "Editar regra" : "Nova regra"}</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 text-[#9ca3af] hover:text-[#0f1117]">
-                <X size={16} strokeWidth={2} />
-              </button>
-            </div>
-            <div className="px-5 py-4 space-y-4">
-              <div>
-                <label className="t-corpo block font-medium text-[#374151] mb-1">Nome da regra</label>
-                <input
-                  type="text"
-                  value={formNome}
-                  onChange={(e) => setFormNome(e.target.value)}
-                  placeholder="Ex: Confirmação de pedido"
-                  className="t-corpo w-full min-h-11 px-3 py-2 text-base border border-[#e4e4e7] rounded-lg bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a] lg:min-h-0 lg:py-1.5 lg:rounded-[6px]"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="t-corpo block font-medium text-[#374151] mb-1">Gatilho</label>
-                <select
-                  value={formGatilho}
-                  onChange={(e) => setFormGatilho(e.target.value)}
-                  className="t-corpo w-full min-h-11 px-3 py-2 text-base border border-[#e4e4e7] rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a] lg:min-h-0 lg:py-1.5 lg:rounded-[6px]"
+      <Folha
+        aberta={showModal}
+        onFechar={() => setShowModal(false)}
+        titulo={editTarget ? "Editar regra" : "Nova regra"}
+        rodape={
+          <>
+            <button
+              onClick={() => setShowModal(false)}
+              className="t-corpo flex-1 min-h-11 px-3 py-2 text-[#374151] border border-[#e4e4e7] rounded-lg bg-white hover:bg-[#f4f4f5] transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              className="t-corpo flex-[1.3] min-h-11 px-3 py-2 text-white bg-[#16a34a] rounded-lg hover:bg-[#15803d] transition-colors font-medium"
+            >
+              {editTarget ? "Salvar" : "Criar regra"}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="t-corpo block font-medium text-[#374151] mb-1">Nome da regra</label>
+            <input
+              type="text"
+              value={formNome}
+              onChange={(e) => setFormNome(e.target.value)}
+              placeholder="Ex: Confirmação de pedido"
+              className="t-corpo w-full min-h-11 px-3 py-2 border border-[#e4e4e7] rounded-lg bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a]"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="t-corpo block font-medium text-[#374151] mb-1">Gatilho</label>
+            <select
+              value={formGatilho}
+              onChange={(e) => setFormGatilho(e.target.value)}
+              className="t-corpo w-full min-h-11 px-3 py-2 border border-[#e4e4e7] rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a]"
+            >
+              {gatilhos.map((g) => <option key={g}>{g}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="t-corpo block font-medium text-[#374151] mb-1">Mensagem</label>
+            <textarea
+              rows={4}
+              value={formMensagem}
+              onChange={(e) => setFormMensagem(e.target.value)}
+              placeholder="Digite a mensagem..."
+              className="t-corpo w-full px-3 py-2 border border-[#e4e4e7] rounded-lg bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a] resize-none"
+            />
+            <div className="flex flex-wrap gap-1 mt-2">
+              {vars.map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setFormMensagem((m) => m + v)}
+                  className="t-apoio px-1.5 py-0.5 font-mono text-[#15803d] bg-[#f0fdf4] border border-[#bbf7d0] rounded-[3px] hover:bg-[#dcfce7] transition-colors"
                 >
-                  {gatilhos.map((g) => <option key={g}>{g}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="t-corpo block font-medium text-[#374151] mb-1">Mensagem</label>
-                <textarea
-                  rows={4}
-                  value={formMensagem}
-                  onChange={(e) => setFormMensagem(e.target.value)}
-                  placeholder="Digite a mensagem..."
-                  className="t-corpo w-full px-3 py-2 text-base border border-[#e4e4e7] rounded-lg bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a] resize-none lg:rounded-[6px]"
-                />
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {vars.map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setFormMensagem((m) => m + v)}
-                      className="t-apoio px-1.5 py-0.5 font-mono text-[#15803d] bg-[#f0fdf4] border border-[#bbf7d0] rounded-[3px] hover:bg-[#dcfce7] transition-colors"
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 border-t border-[#e4e4e7] px-5 py-3 lg:flex lg:justify-end">
-              <button onClick={() => setShowModal(false)} className="t-corpo min-h-11 px-3 py-2 text-[#374151] border border-[#e4e4e7] rounded-lg bg-white hover:bg-[#f4f4f5] transition-colors lg:min-h-0 lg:py-1.5 lg:rounded-[6px]">
-                Cancelar
-              </button>
-              <button onClick={handleSave} className="t-corpo min-h-11 px-3 py-2 text-white bg-[#16a34a] rounded-lg hover:bg-[#15803d] transition-colors font-medium lg:min-h-0 lg:py-1.5 lg:rounded-[6px]">
-                {editTarget ? "Salvar" : "Criar regra"}
-              </button>
+                  {v}
+                </button>
+              ))}
             </div>
           </div>
         </div>
-      )}
+      </Folha>
     </div>
   );
 }
