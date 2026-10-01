@@ -25,6 +25,7 @@ import {
   limparComprador,
   salvarComprador,
 } from "../lib/compradorLocal";
+import { salvarUltimoPedido } from "../lib/pedidoLocal";
 
 function formatBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -800,16 +801,70 @@ export default function StoreCheckout() {
     setErro(null);
   }
 
-  // Para onde a pessoa vai depois de pagar. Escrito uma vez porque
-  // dois donos usam isto: o navigate daqui e o return_url que a
-  // Stripe usa quando precisa redirecionar.
-  const caminhoConfirmado =
-    `/loja/${store.slug}/pedido-confirmado` +
-    `?numero=${orderNumero}&metodo=${metodo}`;
+  /**
+   * Para onde a pessoa vai depois de pagar. Escrito uma vez porque
+   * dois donos usam isto: o navigate daqui e o return_url que a
+   * Stripe usa quando precisa redirecionar.
+   *
+   * O `status` viaja na URL de propósito. Ele já era lido na tela de
+   * confirmação desde o início — e nunca chegava lá, porque ninguém
+   * o passava: o texto "Pagamento aprovado" era código inalcançável,
+   * e quem pagava lia "estamos confirmando" mesmo com a cobrança já
+   * aprovada.
+   */
+  function caminhoConfirmado(status?: string | null) {
+    const q = new URLSearchParams({
+      numero: orderNumero ?? "",
+      metodo,
+    });
+    if (status) q.set("status", status);
+    return `/loja/${store.slug}/pedido-confirmado?${q.toString()}`;
+  }
 
-  function handlePagamentoConfirmado() {
+  function handlePagamentoConfirmado(status: string | null) {
+    /**
+     * Guarda o resumo ANTES do clear(): é do carrinho que ele sai, e
+     * depois de limpo não há mais o que copiar.
+     *
+     * Vai para o aparelho da pessoa porque não existe — nem deve
+     * existir — consulta de pedido por número no servidor: os
+     * números são sequenciais. Ver pedidoLocal.ts.
+     */
+    salvarUltimoPedido(store.id, {
+      numero: orderNumero ?? "",
+      criadoEm: new Date().toISOString(),
+      metodo,
+      subtotal: total,
+      frete: valorFrete,
+      total: totalComFrete,
+      freteACombinar,
+      entrega,
+      freteNome: freteSelecionado?.nome ?? "",
+      freteTransportadora: freteSelecionado?.transportadora ?? "",
+      fretePrazoDias: freteSelecionado?.prazoDias ?? null,
+      endereco:
+        entrega === "retirada"
+          ? null
+          : {
+              logradouro: endereco.logradouro,
+              numero: endereco.numero,
+              complemento: endereco.complemento ?? "",
+              bairro: endereco.bairro,
+              cidade: endereco.cidade,
+              uf: endereco.uf,
+              cep: endereco.cep,
+            },
+      itens: items.map((i) => ({
+        nome: i.nome,
+        quantidade: i.quantidade,
+        preco: i.preco,
+        imagemUrl: i.imagemUrl ?? null,
+        variacao: descricaoVariacao(i.corSelecionada, i.tamanhoSelecionado),
+      })),
+    });
+
     clear();
-    navigate(caminhoConfirmado);
+    navigate(caminhoConfirmado(status));
   }
 
   return (
@@ -1402,7 +1457,7 @@ export default function StoreCheckout() {
                  isso, o formulário de pagamento pedia de novo. */
               emailCliente={email}
               nomeCliente={nome}
-              returnUrl={`${window.location.origin}${caminhoConfirmado}`}
+              returnUrl={`${window.location.origin}${caminhoConfirmado()}`}
               onSuccess={handlePagamentoConfirmado}
               onError={setErro}
             />
