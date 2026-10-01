@@ -12,6 +12,7 @@ import {
   MapPin,
   CalendarClock,
   ReceiptText,
+  Banknote,
 } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import { lerUltimoPedido } from "../lib/pedidoLocal";
@@ -111,6 +112,8 @@ const NOME_METODO: Record<string, string> = {
   credito: "Cartão de crédito",
   debito: "Cartão de débito",
   cartao: "Cartão",
+  dinheiro: "Dinheiro, na retirada",
+  maquininha: "Cartão na loja, na retirada",
 };
 
 function Cartao({
@@ -195,8 +198,29 @@ export default function StoreOrderConfirmed() {
   const pago = status === "succeeded";
   const processando = status === "processing";
   const ehPix = metodo === "pix";
+  /** Acerta no balcão: não houve cobrança, e não vai haver aqui. */
+  const noBalcao = metodo === "dinheiro" || metodo === "maquininha";
 
-  const visual = pago
+  const visual = noBalcao
+    ? {
+        /*
+         * Estado próprio, e não um "aguardando pagamento".
+         *
+         * Para esta pessoa nada está pendente: ela não ia pagar
+         * agora, combinou pagar no balcão. Mostrar "confirmando seu
+         * pagamento" aqui faria parecer que algo deu errado numa
+         * cobrança que nunca existiu.
+         */
+        icone: <CheckCircle2 size={30} className="text-white" strokeWidth={2} />,
+        titulo: "Pedido reservado!",
+        texto:
+          metodo === "dinheiro"
+            ? "A loja separa o seu pedido. Você paga em dinheiro na hora de buscar."
+            : "A loja separa o seu pedido. Você paga no cartão, na maquininha da loja, na hora de buscar.",
+        etiqueta: "Pagar ao retirar",
+        corEtiqueta: "bg-[#eff6ff] border-[#bfdbfe] text-[#1d4ed8]",
+      }
+    : pago
     ? {
         icone: <CheckCircle2 size={30} className="text-white" strokeWidth={2} />,
         titulo: "Pagamento aprovado!",
@@ -470,16 +494,28 @@ export default function StoreOrderConfirmed() {
                 </span>
               </div>
 
-              {foiOnline && (
+              {(foiOnline || noBalcao) && (
                 <div className="flex items-center gap-2 pt-2 text-[12px] text-[#6b7280]">
                   {ehPix ? (
                     <QrCode size={14} className="shrink-0 text-[#9ca3af]" />
+                  ) : metodo === "dinheiro" ? (
+                    <Banknote size={14} className="shrink-0 text-[#9ca3af]" />
                   ) : (
                     <CreditCard size={14} className="shrink-0 text-[#9ca3af]" />
                   )}
                   <span>{NOME_METODO[metodo] ?? "Pagamento online"}</span>
                 </div>
               )}
+
+              {/* O troco combinado, para a pessoa levar o valor certo. */}
+              {noBalcao && pedido?.trocoPara ? (
+                <div className="flex items-center justify-between pt-1 text-[12px] text-[#6b7280]">
+                  <span>Você vai levar</span>
+                  <span className="tabular-nums font-semibold text-[#374151]">
+                    {formatBRL(pedido.trocoPara)}
+                  </span>
+                </div>
+              ) : null}
             </div>
           </Cartao>
         )}
@@ -493,6 +529,13 @@ export default function StoreOrderConfirmed() {
           </TituloBloco>
 
           <div className="px-4 pb-4">
+            {noBalcao && (
+              <p className="text-[12.5px] text-[#374151] bg-[#eff6ff] border border-[#bfdbfe] rounded-xl px-3 py-2.5 leading-snug mb-2.5">
+                Leve o número do pedido ao balcão. O pagamento é feito
+                lá, direto com a loja.
+              </p>
+            )}
+
             <p className="text-[12.5px] text-[#6b7280] leading-snug">
               Guarde o número <strong className="text-[#374151]">
                 #{numero ?? pedido?.numero ?? ""}

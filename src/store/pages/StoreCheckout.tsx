@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Banknote,
   ChevronLeft,
   MessageCircle,
   CreditCard,
@@ -101,7 +102,19 @@ async function buscarCep(cep: string) {
 }
 
 /** O que o cliente escolhe na tela. */
-type Metodo = "whatsapp" | "pix" | "credito" | "debito";
+type Metodo =
+  | "whatsapp"
+  | "pix"
+  | "credito"
+  | "debito"
+  /** Pagos no balcão, na hora de buscar. Só existem na retirada. */
+  | "dinheiro"
+  | "maquininha";
+
+/** Acerta com a loja na hora de buscar, sem cobrança online. */
+function ehNoBalcao(m: Metodo) {
+  return m === "dinheiro" || m === "maquininha";
+}
 
 /** Crédito e débito seguem o mesmo caminho de cobrança. */
 function ehCartao(m: Metodo) {
@@ -115,12 +128,22 @@ function ehCartao(m: Metodo) {
  */
 const METODO_NO_BANCO: Record<
   Metodo,
-  "pix" | "cartao_credito" | "cartao_debito" | null
+  | "pix"
+  | "cartao_credito"
+  | "cartao_debito"
+  | "dinheiro"
+  | "maquininha"
+  | null
 > = {
   whatsapp: null,
   pix: "pix",
   credito: "cartao_credito",
   debito: "cartao_debito",
+  // Pagos no balcão. Vão para o banco com o próprio nome porque o
+  // lojista precisa distinguir: um ele confere na maquininha, no
+  // outro ele separa troco.
+  dinheiro: "dinheiro",
+  maquininha: "maquininha",
 };
 
 /**
@@ -274,6 +297,8 @@ export default function StoreCheckout() {
   });
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  /** "Preciso de troco para R$ ___". Vazio = não precisa. */
+  const [trocoPara, setTrocoPara] = useState("");
 
   /**
    * Veio preenchido do aparelho (segunda compra). Serve só para avisar
@@ -329,10 +354,49 @@ export default function StoreCheckout() {
   const oferecePix = permitePagamento && store?.aceita_pix === true;
   const ofereceAlgumPagamento = ofereceCartao || oferecePix;
 
+  /**
+   * Pagar no balcão.
+   *
+   * Depende de `entrega`, e não só da loja: só existe para quem vai
+   * buscar. Numa entrega não há ninguém da loja na porta para
+   * receber — e o servidor recusa esse pedido, então oferecer aqui
+   * seria levar a pessoa a um caminho que termina em erro.
+   *
+   * Não depende de modo_compra: isto não é cobrança online. Uma loja
+   * que só vende pelo WhatsApp também pode receber no balcão.
+   */
+  const ofereceDinheiro =
+    entrega === "retirada" && store?.retirada_aceita_dinheiro === true;
+  const ofereceMaquininha =
+    entrega === "retirada" && store?.retirada_aceita_maquininha === true;
+  const ofereceNoBalcao = ofereceDinheiro || ofereceMaquininha;
+
   // Se o meio escolhido não for um dos oferecidos, corrige.
   useEffect(() => {
     if (!store) return;
-    if (metodo === "pix" && !oferecePix) {
+
+    /**
+     * Esta primeira regra é a que não pode faltar.
+     *
+     * `entrega` muda DEPOIS de o meio ter sido escolhido: dá para
+     * escolher "dinheiro" no passo 3, voltar ao passo 2 e trocar para
+     * receber em casa. Sem isto, o pedido seguiria como dinheiro numa
+     * entrega — e só morreria no servidor, que recusa, com a pessoa
+     * levando a culpa por um erro da tela.
+     */
+    if (ehNoBalcao(metodo) && !ofereceNoBalcao) {
+      setMetodo(
+        oferecePix
+          ? "pix"
+          : ofereceCartao
+            ? "credito"
+            : "whatsapp",
+      );
+    } else if (metodo === "dinheiro" && !ofereceDinheiro) {
+      setMetodo("maquininha");
+    } else if (metodo === "maquininha" && !ofereceMaquininha) {
+      setMetodo("dinheiro");
+    } else if (metodo === "pix" && !oferecePix) {
       setMetodo(ofereceCartao ? "credito" : "whatsapp");
     } else if (ehCartao(metodo) && !ofereceCartao) {
       setMetodo(oferecePix ? "pix" : "whatsapp");
@@ -350,7 +414,16 @@ export default function StoreCheckout() {
     ofereceCartao,
     permiteWhatsapp,
     ofereceAlgumPagamento,
+    ofereceDinheiro,
+    ofereceMaquininha,
+    ofereceNoBalcao,
   ]);
+
+  /* O troco só existe no dinheiro. Deixar o valor guardado faria ele
+     voltar sozinho se a pessoa trocasse de meio e voltasse. */
+  useEffect(() => {
+    if (metodo !== "dinheiro" && trocoPara !== "") setTrocoPara("");
+  }, [metodo, trocoPara]);
 
   /**
    * Segunda compra: traz o que ficou guardado no aparelho.
@@ -572,6 +645,37 @@ export default function StoreCheckout() {
     });
   }
 
+  /**
+   * O troco digitado, em número. Null quando vazio ou sem sentido.
+   *
+   * Aceita "150", "150,00" e "1.500,00" — é assim que se escreve
+   * dinheiro aqui, e exigir ponto decimal seria exigir que a pessoa
+   * digitasse errado de propósito.
+   */
+  function valorTroco(): number | null {
+    const bruto = trocoPara.replace(/[^\d,.]/g, "").replace(/\./g, "").replace(",", ".");
+    const n = Number(bruto);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  /**
+   * O que há de errado com o troco, ou null.
+   *
+   * Troco menor que o total é um pedido impossível de atender, e o
+   * servidor recusa. Melhor dizer aqui, enquanto a pessoa está
+   * olhando o campo, do que deixá-la apertar "finalizar" e levar um
+   * erro genérico.
+   */
+  function erroTroco(): string | null {
+    if (metodo !== "dinheiro" || trocoPara.trim() === "") return null;
+    const v = valorTroco();
+    if (v === null) return "Informe um valor válido, como 100 ou 150,00.";
+    if (v < totalComFrete) {
+      return `O valor precisa ser pelo menos o total do pedido (${formatBRL(totalComFrete)}).`;
+    }
+    return null;
+  }
+
   /** O que falta no passo de dados, ou null se está tudo certo. */
   function erroDados(): string | null {
     if (!nome.trim() || !telefone.trim()) {
@@ -646,7 +750,7 @@ export default function StoreCheckout() {
 
     // Confere TUDO de novo, e não só o passo atual: o cliente pode ter
     // voltado e mexido num campo de um passo anterior.
-    const falta = erroDados() ?? erroEntrega();
+    const falta = erroDados() ?? erroEntrega() ?? erroTroco();
     if (falta) {
       setErro(falta);
       return;
@@ -678,6 +782,12 @@ export default function StoreCheckout() {
           tamanho_selecionado: i.tamanhoSelecionado,
         })),
         metodoPagamento: METODO_NO_BANCO[metodo],
+        // Só no dinheiro, e só se a pessoa escreveu algo. O servidor
+        // recusa troco menor que o total — a tela já avisa antes.
+        trocoPara:
+          metodo === "dinheiro" && trocoPara.trim() !== ""
+            ? valorTroco()
+            : null,
         cliente: { nome, telefone, cpf: cpfDigits, email: email || undefined },
         enderecoEntrega:
           entrega === "retirada" ? null : { ...endereco, cep: cepDigits },
@@ -721,6 +831,22 @@ export default function StoreCheckout() {
         cidade: endereco.cidade,
         uf: endereco.uf,
       });
+
+      /**
+       * Pagar no balcão: o pedido está feito e não há o que cobrar
+       * aqui. Vai direto para a confirmação, sem passar pela etapa de
+       * pagamento — não existe cobrança online nenhuma para fazer.
+       *
+       * O pedido nasce "pendente", como todos os outros, e só o
+       * lojista pode marcá-lo como pago. O sistema não tem como saber
+       * que o dinheiro trocou de mão no balcão, e fingir que sabe
+       * seria pior do que não saber.
+       */
+      if (ehNoBalcao(metodo)) {
+        setOrderNumero(order.numero);
+        finalizarNoBalcao(order.numero);
+        return;
+      }
 
       if (metodo === "whatsapp") {
         const baseUrl = window.location.origin;
@@ -812,26 +938,33 @@ export default function StoreCheckout() {
    * e quem pagava lia "estamos confirmando" mesmo com a cobrança já
    * aprovada.
    */
-  function caminhoConfirmado(status?: string | null) {
+  function caminhoConfirmado(status?: string | null, numeroDireto?: string) {
     const q = new URLSearchParams({
-      numero: orderNumero ?? "",
+      // O número pode vir direto porque setOrderNumero é assíncrono:
+      // no pagamento no balcão, a navegação acontece no mesmo passo em
+      // que o pedido nasce, e o estado ainda não mudou.
+      numero: numeroDireto ?? orderNumero ?? "",
       metodo,
     });
     if (status) q.set("status", status);
     return `/loja/${store.slug}/pedido-confirmado?${q.toString()}`;
   }
 
-  function handlePagamentoConfirmado(status: string | null) {
-    /**
-     * Guarda o resumo ANTES do clear(): é do carrinho que ele sai, e
-     * depois de limpo não há mais o que copiar.
-     *
-     * Vai para o aparelho da pessoa porque não existe — nem deve
-     * existir — consulta de pedido por número no servidor: os
-     * números são sequenciais. Ver pedidoLocal.ts.
-     */
+  /**
+   * Guarda o resumo do pedido no aparelho de quem comprou.
+   *
+   * Escrito uma vez porque dois caminhos chegam aqui — pagamento
+   * online confirmado e pagamento no balcão — e duas cópias
+   * divergiriam no primeiro campo novo.
+   *
+   * Sempre ANTES do clear(): é do carrinho que o resumo sai, e depois
+   * de limpo não há mais o que copiar. Vai para o aparelho porque não
+   * existe — nem deve existir — consulta de pedido por número no
+   * servidor: os números são sequenciais. Ver pedidoLocal.ts.
+   */
+  function guardarResumo(numeroPedido: string) {
     salvarUltimoPedido(store.id, {
-      numero: orderNumero ?? "",
+      numero: numeroPedido,
       criadoEm: new Date().toISOString(),
       metodo,
       subtotal: total,
@@ -839,6 +972,7 @@ export default function StoreCheckout() {
       total: totalComFrete,
       freteACombinar,
       entrega,
+      trocoPara: metodo === "dinheiro" ? valorTroco() : null,
       freteNome: freteSelecionado?.nome ?? "",
       freteTransportadora: freteSelecionado?.transportadora ?? "",
       fretePrazoDias: freteSelecionado?.prazoDias ?? null,
@@ -862,9 +996,19 @@ export default function StoreCheckout() {
         variacao: descricaoVariacao(i.corSelecionada, i.tamanhoSelecionado),
       })),
     });
+  }
 
+  function handlePagamentoConfirmado(status: string | null) {
+    guardarResumo(orderNumero ?? "");
     clear();
     navigate(caminhoConfirmado(status));
+  }
+
+  /** Acertou com a loja: não há cobrança a fazer, só confirmar. */
+  function finalizarNoBalcao(numeroPedido: string) {
+    guardarResumo(numeroPedido);
+    clear();
+    navigate(caminhoConfirmado(null, numeroPedido));
   }
 
   return (
@@ -1248,7 +1392,7 @@ export default function StoreCheckout() {
           {passo === 3 && (
           <>
           {/* Forma de recebimento do pedido */}
-          {(permiteWhatsapp || ofereceAlgumPagamento) && (
+          {(permiteWhatsapp || ofereceAlgumPagamento || ofereceNoBalcao) && (
             <div className="bg-white rounded-2xl border border-black/5 p-4">
               <h2 className="text-[13px] font-bold text-[#111827] mb-3">
                 Como você quer finalizar?
@@ -1325,7 +1469,91 @@ export default function StoreCheckout() {
                     </button>
                   </>
                 )}
+
+                {/* ------------------------------------------------
+                    Pagar quando buscar
+
+                    Só aparece na retirada, e só se a loja ligou. Vem
+                    por último de propósito: quem paga agora resolve
+                    tudo numa tela só, e essa é a opção melhor para os
+                    dois lados.
+                    ------------------------------------------------ */}
+                {ofereceDinheiro && (
+                  <button
+                    onClick={() => setMetodo("dinheiro")}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                      metodo === "dinheiro"
+                        ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
+                        : "border-[#e4e4e7]"
+                    }`}
+                  >
+                    <Banknote size={20} className="text-[#374151]" />
+                    <div className="text-left">
+                      <p className="text-[13px] font-semibold text-[#111827]">
+                        Dinheiro, ao retirar
+                      </p>
+                      <p className="text-[11px] text-[#9ca3af]">
+                        Você paga na loja, na hora de buscar
+                      </p>
+                    </div>
+                  </button>
+                )}
+
+                {ofereceMaquininha && (
+                  <button
+                    onClick={() => setMetodo("maquininha")}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                      metodo === "maquininha"
+                        ? "border-[var(--store-primary)] bg-[var(--store-primary)]/5"
+                        : "border-[#e4e4e7]"
+                    }`}
+                  >
+                    <CreditCard size={20} className="text-[#374151]" />
+                    <div className="text-left">
+                      <p className="text-[13px] font-semibold text-[#111827]">
+                        Cartão na loja, ao retirar
+                      </p>
+                      <p className="text-[11px] text-[#9ca3af]">
+                        Na maquininha da loja, na hora de buscar
+                      </p>
+                    </div>
+                  </button>
+                )}
               </div>
+
+              {/* Troco: só no dinheiro. */}
+              {metodo === "dinheiro" && (
+                <div className="mt-3 pt-3 border-t border-[#f0f0f1]">
+                  <label className="block text-[12px] font-medium text-[#6b7280] mb-1">
+                    Precisa de troco para quanto? (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={trocoPara}
+                    onChange={(e) => setTrocoPara(e.target.value)}
+                    placeholder={`Ex.: ${formatBRL(Math.ceil(totalComFrete / 50) * 50)}`}
+                    className="w-full h-12 px-3.5 rounded-xl border border-[#e4e4e7] bg-white text-[15px] outline-none focus:border-[var(--store-primary)]"
+                  />
+                  <p className="mt-1 text-[11px] text-[#9ca3af] leading-snug">
+                    {erroTroco()
+                      ? ""
+                      : "Deixe vazio se for levar o valor certo. A loja já separa o seu troco."}
+                  </p>
+                  {erroTroco() && (
+                    <p className="mt-1 text-[11px] text-[#b91c1c] leading-snug">
+                      {erroTroco()}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {ehNoBalcao(metodo) && (
+                <p className="mt-3 text-[12px] text-[#6b7280] bg-[#fafafa] border border-[#f0f0f1] rounded-xl px-3 py-2.5 leading-snug">
+                  Você não paga nada agora. O pedido fica reservado e o
+                  acerto é no balcão, quando você for buscar.
+                </p>
+              )}
             </div>
           )}
 

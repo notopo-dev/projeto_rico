@@ -30,6 +30,7 @@ import {
   corrigirStatusPedido,
   descreverPagamento,
   divergenciaCartao,
+  pagaNaRetirada,
   listarPedidos,
   reembolsarPedido,
   salvarCodigoRastreio,
@@ -787,8 +788,34 @@ function Detalhe({
                     tipo, bandeira e final vêm do BIN do cartão, lidos
                     no momento da cobrança. */}
                 <p className="t-apoio text-[#9ca3af] pt-1">
-                  Pago com {descreverPagamento(pedido)}
+                  {pagaNaRetirada(pedido.metodo_pagamento)
+                    ? descreverPagamento(pedido)
+                    : `Pago com ${descreverPagamento(pedido)}`}
                 </p>
+
+                {/* ------------------------------------------------
+                    Pagamento no balcão
+
+                    "Pago com" seria mentira aqui: ninguém pagou nada
+                    ainda. Este dinheiro não passa pelo sistema, então
+                    o pedido fica pendente até você mesmo dizer que
+                    recebeu — e o troco aparece para você já separar.
+                    ------------------------------------------------ */}
+                {pagaNaRetirada(pedido.metodo_pagamento) && (
+                  <div className="mt-2 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-3 py-2.5">
+                    <p className="t-apoio text-[#1d4ed8] leading-snug">
+                      O cliente acerta no balcão, na hora de retirar. O
+                      valor não passa pelo sistema — marque como pago
+                      quando receber.
+                    </p>
+                    {pedido.troco_para !== null && (
+                      <p className="t-corpo font-semibold text-[#1e3a8a] mt-1.5 numeros">
+                        Vai levar {brl(pedido.troco_para)} · troco de{" "}
+                        {brl(Math.max(pedido.troco_para - pedido.total, 0))}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {/* Cartão múltiplo é crédito e débito no mesmo
                     plástico: o cliente escolhe um e a Stripe processa
                     pelo BIN. Avisar evita o lojista achar que o

@@ -30,6 +30,9 @@ export interface PublicStore {
   frete_gratis_acima: number | null;
   retirada_na_loja: boolean;
   retirada_instrucoes: string | null;
+  /** Pagar no balcão, na hora de buscar. Só valem na retirada. */
+  retirada_aceita_dinheiro: boolean;
+  retirada_aceita_maquininha: boolean;
 }
 
 export interface PublicCategory {
@@ -88,7 +91,7 @@ export async function getStoreBySlug(slug: string): Promise<PublicStore | null> 
   const { data, error } = await supabase
     .from("stores")
     .select(
-      "id, nome, slug, descricao, logo_url, banner_url, cor_primaria, cor_secundaria, whatsapp, email, politica_troca, politica_frete, modo_compra, ativo, aceita_cartao, aceita_pix, frete_modo, frete_fixo, frete_fixo_prazo_dias, frete_fixo_nome, frete_gratis_acima, retirada_na_loja, retirada_instrucoes"
+      "id, nome, slug, descricao, logo_url, banner_url, cor_primaria, cor_secundaria, whatsapp, email, politica_troca, politica_frete, modo_compra, ativo, aceita_cartao, aceita_pix, frete_modo, frete_fixo, frete_fixo_prazo_dias, frete_fixo_nome, frete_gratis_acima, retirada_na_loja, retirada_instrucoes, retirada_aceita_dinheiro, retirada_aceita_maquininha"
     )
     .eq("slug", slug)
     .eq("ativo", true)
@@ -106,6 +109,8 @@ export async function getStoreBySlug(slug: string): Promise<PublicStore | null> 
     frete_fixo: numeroOuNulo((data as any).frete_fixo),
     frete_gratis_acima: numeroOuNulo((data as any).frete_gratis_acima),
     retirada_na_loja: Boolean((data as any).retirada_na_loja),
+    retirada_aceita_dinheiro: Boolean((data as any).retirada_aceita_dinheiro),
+    retirada_aceita_maquininha: Boolean((data as any).retirada_aceita_maquininha),
   } as PublicStore;
 }
 
@@ -215,7 +220,16 @@ export interface CheckoutInput {
     | "pix"
     | "cartao_credito"
     | "cartao_debito"
+    /**
+     * Pagos no balcão, na hora da retirada. Não passam por cobrança
+     * online nenhuma: o pedido nasce pendente e só o lojista pode
+     * marcá-lo como pago.
+     */
+    | "dinheiro"
+    | "maquininha"
     | null;
+  /** Para quanto o cliente precisa de troco. Só com "dinheiro". */
+  trocoPara?: number | null;
   cliente: {
     nome: string;
     telefone: string;
@@ -247,6 +261,7 @@ export interface CheckoutInput {
  */
 export async function createPublicOrder(input: CheckoutInput) {
   const { data, error } = await supabase.rpc("criar_pedido_publico", {
+    p_troco_para: input.trocoPara ?? null,
     p_store_id: input.storeId,
     p_cliente: {
       nome: input.cliente.nome,

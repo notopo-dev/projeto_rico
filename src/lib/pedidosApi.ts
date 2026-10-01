@@ -52,6 +52,8 @@ export interface Pedido {
   total: number;
   frete: number;
   metodo_pagamento: string | null;
+  /** Quanto o cliente vai entregar em dinheiro, para separar o troco. */
+  troco_para: number | null;
   created_at: string;
 
   cliente_nome: string | null;
@@ -197,8 +199,17 @@ export const ROTULO_PAGAMENTO: Record<string, string> = {
   card: "Cartão",
   boleto: "Boleto",
   whatsapp: "Combinado no WhatsApp",
-  dinheiro: "Dinheiro",
+  // Acertados no balcão, na hora da retirada. Nenhum dos dois passa
+  // pela cobrança online: o pedido fica pendente até o lojista dizer
+  // que recebeu.
+  dinheiro: "Dinheiro, na retirada",
+  maquininha: "Cartão na maquininha, na retirada",
 };
+
+/** Pagos no balcão — o sistema não consegue confirmar sozinho. */
+export function pagaNaRetirada(metodo: string | null): boolean {
+  return metodo === "dinheiro" || metodo === "maquininha";
+}
 
 /**
  * O que pode virar o quê.
@@ -224,7 +235,7 @@ export const MOTIVOS_DEVOLUCAO: { valor: string; rotulo: string }[] = [
 ];
 
 const CAMPOS = `
-  id, numero, status, total, frete, metodo_pagamento, created_at,
+  id, numero, status, total, frete, metodo_pagamento, troco_para, created_at,
   endereco_entrega, cep_entrega,
   frete_transportadora, frete_prazo_dias, frete_servico,
   codigo_rastreio, etiqueta_url, etiqueta_status, melhor_envio_order_id,
@@ -246,6 +257,9 @@ function montar(o: any): Pedido {
     total: Number(o.total ?? 0),
     frete: Number(o.frete ?? 0),
     metodo_pagamento: o.metodo_pagamento ?? null,
+    troco_para: o.troco_para === null || o.troco_para === undefined
+      ? null
+      : Number(o.troco_para),
     created_at: o.created_at,
 
     cliente_nome: o.customers?.nome ?? null,

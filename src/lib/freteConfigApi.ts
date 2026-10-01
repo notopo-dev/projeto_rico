@@ -31,6 +31,14 @@ export interface RegrasFrete {
   frete_gratis_acima: number | null;
   retirada_na_loja: boolean;
   retirada_instrucoes: string | null;
+  /**
+   * Pagar no balcão, na hora de buscar.
+   *
+   * Só valem na retirada: na entrega não há ninguém da loja para
+   * receber. Nascem desligadas — a loja escolhe se quer.
+   */
+  retirada_aceita_dinheiro: boolean;
+  retirada_aceita_maquininha: boolean;
 }
 
 export interface ConfigFrete extends RegrasFrete {
@@ -51,7 +59,7 @@ export interface ConfigFrete extends RegrasFrete {
 }
 
 const CAMPOS_REGRAS =
-  "frete_modo, frete_fixo, frete_fixo_prazo_dias, frete_fixo_nome, frete_gratis_acima, retirada_na_loja, retirada_instrucoes";
+  "frete_modo, frete_fixo, frete_fixo_prazo_dias, frete_fixo_nome, frete_gratis_acima, retirada_na_loja, retirada_instrucoes, retirada_aceita_dinheiro, retirada_aceita_maquininha";
 
 function semMedidas(p: {
   peso_gramas: number | null;
@@ -106,6 +114,8 @@ export async function getConfigFrete(): Promise<ConfigFrete> {
       s.frete_gratis_acima === null ? null : Number(s.frete_gratis_acima),
     retirada_na_loja: Boolean(s.retirada_na_loja),
     retirada_instrucoes: s.retirada_instrucoes ?? null,
+    retirada_aceita_dinheiro: Boolean(s.retirada_aceita_dinheiro),
+    retirada_aceita_maquininha: Boolean(s.retirada_aceita_maquininha),
     cep_origem: s.cep_origem ?? null,
     conectado: conectado.data === true,
     conta: settings.data?.melhor_envio_conta ?? null,
@@ -147,6 +157,14 @@ export async function salvarRegrasFrete(regras: RegrasFrete): Promise<void> {
       retirada_instrucoes: regras.retirada_na_loja
         ? regras.retirada_instrucoes?.trim() || null
         : null,
+      // Desligar a retirada desliga as formas junto. Senão ficariam
+      // ligadas e invisíveis, e voltariam sozinhas no dia em que a
+      // loja religasse a retirada — oferecendo pagamento no balcão
+      // sem ninguém ter pedido.
+      retirada_aceita_dinheiro:
+        regras.retirada_na_loja && regras.retirada_aceita_dinheiro,
+      retirada_aceita_maquininha:
+        regras.retirada_na_loja && regras.retirada_aceita_maquininha,
     })
     .eq("id", storeId);
 

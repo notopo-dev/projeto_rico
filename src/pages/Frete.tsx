@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Truck,
   Store as StoreIcon,
+  Banknote,
+  CreditCard,
   Handshake,
   Gift,
   MapPin,
@@ -150,6 +152,9 @@ export default function Frete() {
   const [gratisAcima, setGratisAcima] = useState("");
   const [retirada, setRetirada] = useState(false);
   const [instrucoes, setInstrucoes] = useState("");
+  /** Pagar no balcão, na hora de buscar. */
+  const [aceitaDinheiro, setAceitaDinheiro] = useState(false);
+  const [aceitaMaquininha, setAceitaMaquininha] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
 
@@ -174,6 +179,8 @@ export default function Frete() {
       setGratisAcima(paraCampo(c.frete_gratis_acima));
       setRetirada(c.retirada_na_loja);
       setInstrucoes(c.retirada_instrucoes ?? "");
+      setAceitaDinheiro(c.retirada_aceita_dinheiro);
+      setAceitaMaquininha(c.retirada_aceita_maquininha);
     } catch (e) {
       setErro(
         e instanceof Error ? e.message : "Não foi possível carregar o frete.",
@@ -256,6 +263,8 @@ export default function Frete() {
         frete_gratis_acima: gratisLigado ? paraNumero(gratisAcima) : null,
         retirada_na_loja: retirada,
         retirada_instrucoes: instrucoes,
+        retirada_aceita_dinheiro: aceitaDinheiro,
+        retirada_aceita_maquininha: aceitaMaquininha,
       });
       setSalvo(true);
       await carregar();
@@ -472,7 +481,75 @@ export default function Frete() {
         </div>
 
         {retirada && (
-          <div className="mt-3">
+          <div className="mt-3 space-y-3">
+            {/* ----------------------------------------------------
+                Pagar na hora de buscar
+
+                Fica aqui dentro, e não na tela de Recebimentos, por
+                um motivo: Recebimentos trata do dinheiro que entra
+                PELO sistema — cartão e Pix, que passam pela cobrança
+                online e caem na conta. Este dinheiro não passa por
+                lugar nenhum: vai da mão do cliente para o caixa da
+                loja. Misturar os dois faria o lojista procurar no
+                relatório um valor que nunca vai estar lá.
+                ---------------------------------------------------- */}
+            <div className="rounded-lg border border-[#e4e4e7]">
+              <div className="px-3 py-2.5 border-b border-[#e4e4e7]">
+                <p className="t-corpo font-semibold text-[#0f1117]">
+                  Pagar na hora de buscar
+                </p>
+                <p className="t-apoio text-[#6b7280] mt-0.5 leading-snug">
+                  O cliente fecha o pedido sem pagar agora e acerta no
+                  balcão. O valor não passa pelo sistema: quem recebe é
+                  você, direto.
+                </p>
+              </div>
+
+              <div className="divide-y divide-[#f0f0f1]">
+                <div className="flex items-start gap-3 px-3 py-2.5">
+                  <Banknote size={16} className="mt-0.5 shrink-0 text-[#6b7280]" />
+                  <div className="min-w-0 flex-1">
+                    <p className="t-corpo text-[#374151]">Dinheiro</p>
+                    <p className="t-apoio text-[#6b7280] leading-snug mt-0.5">
+                      O cliente informa para quanto precisa de troco.
+                    </p>
+                  </div>
+                  <Interruptor
+                    ligado={aceitaDinheiro}
+                    onAlternar={setAceitaDinheiro}
+                    rotulo="Receber em dinheiro na retirada"
+                  />
+                </div>
+
+                <div className="flex items-start gap-3 px-3 py-2.5">
+                  <CreditCard size={16} className="mt-0.5 shrink-0 text-[#6b7280]" />
+                  <div className="min-w-0 flex-1">
+                    <p className="t-corpo text-[#374151]">
+                      Cartão na sua maquininha
+                    </p>
+                    <p className="t-apoio text-[#6b7280] leading-snug mt-0.5">
+                      Você passa o cartão no balcão, na sua própria
+                      maquininha.
+                    </p>
+                  </div>
+                  <Interruptor
+                    ligado={aceitaMaquininha}
+                    onAlternar={setAceitaMaquininha}
+                    rotulo="Passar cartão na retirada"
+                  />
+                </div>
+              </div>
+
+              {(aceitaDinheiro || aceitaMaquininha) && (
+                <p className="t-apoio text-[#92400e] bg-[#fffbeb] border-t border-[#fde68a] px-3 py-2 leading-snug">
+                  O pedido chega como <strong>pendente</strong> e continua
+                  assim até você marcar como pago no painel — o sistema
+                  não tem como saber que você recebeu.
+                </p>
+              )}
+            </div>
+
+            <div>
             <label className="t-apoio block font-medium text-[#6b7280] mb-1">
               Onde e quando retirar
             </label>
@@ -486,6 +563,7 @@ export default function Frete() {
             <p className="t-apoio mt-1 text-[#9ca3af] leading-snug">
               Aparece para o cliente assim que ele escolher retirar.
             </p>
+            </div>
           </div>
         )}
       </Cartao>

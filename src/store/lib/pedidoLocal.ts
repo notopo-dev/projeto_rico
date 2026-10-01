@@ -57,6 +57,8 @@ export interface PedidoSalvo {
   /** Fechou sem frete definido, para a loja acertar depois. */
   freteACombinar: boolean;
   entrega: "entrega" | "retirada";
+  /** "Vou levar R$ X" — só em pedido pago em dinheiro no balcão. */
+  trocoPara: number | null;
   freteNome: string;
   freteTransportadora: string;
   fretePrazoDias: number | null;
@@ -134,6 +136,9 @@ export function lerUltimoPedido(
       total: numero(obj.total),
       freteACombinar: obj.freteACombinar === true,
       entrega: obj.entrega === "retirada" ? "retirada" : "entrega",
+      trocoPara: Number.isFinite(Number(obj.trocoPara)) && obj.trocoPara !== null
+        ? Number(obj.trocoPara)
+        : null,
       freteNome: texto(obj.freteNome),
       freteTransportadora: texto(obj.freteTransportadora),
       fretePrazoDias: Number.isFinite(Number(obj.fretePrazoDias))
