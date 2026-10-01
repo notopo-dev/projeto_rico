@@ -9,6 +9,18 @@ import { getCurrentStoreId } from "./currentStore";
  * não proteção: quem recusa um pedido adulterado é o banco.
  */
 
+/**
+ * O status antigo, de campo único.
+ *
+ * Continua existindo, e continua certo: um gatilho no banco o mantém
+ * em dia a partir dos três eixos abaixo. Quem ainda lê por aqui — a
+ * tela de clientes, a consulta pública de pedidos — não precisou
+ * mudar nada.
+ *
+ * Para código novo, prefira os eixos. Este campo não consegue
+ * distinguir "vai pagar no balcão" de "abandonou o carrinho", que é
+ * exatamente o problema que os eixos vieram resolver.
+ */
 export type StatusPedido =
   | "pendente"
   | "pago"
@@ -16,6 +28,31 @@ export type StatusPedido =
   | "entregue"
   | "cancelado"
   | "devolvido";
+
+/**
+ * Os três eixos, que é como Nuvemshop e Shopify modelam pedido.
+ *
+ * Pagar e entregar são coisas independentes: um pedido pode estar
+ * pago e não entregue, ou entregue e pago só na hora (o do balcão).
+ * Espremer os dois numa coluna só foi o que fez "pendente" significar
+ * duas coisas opostas ao mesmo tempo.
+ */
+export type StatusPagamento =
+  | "pendente"
+  /** Reservado: o cliente acerta no balcão, ao retirar. */
+  | "na_retirada"
+  | "pago"
+  | "estornado";
+
+export type StatusEntrega =
+  | "a_separar"
+  | "separando"
+  /** Só em pedido de retirada: separado e esperando o cliente. */
+  | "pronto_retirada"
+  | "enviado"
+  | "entregue";
+
+export type Situacao = "ativa" | "cancelada";
 
 export type StatusEtiqueta =
   | "pendente"
@@ -49,6 +86,11 @@ export interface Pedido {
   id: string;
   numero: string;
   status: StatusPedido;
+  status_pagamento: StatusPagamento;
+  status_entrega: StatusEntrega;
+  situacao: Situacao;
+  /** Quando o lojista abriu este pedido. Nulo = novo, não lido. */
+  visto_em: string | null;
   total: number;
   frete: number;
   metodo_pagamento: string | null;
@@ -96,6 +138,21 @@ export const ROTULO_STATUS: Record<StatusPedido, string> = {
   entregue: "Entregue",
   cancelado: "Cancelado",
   devolvido: "Devolvido",
+};
+
+export const ROTULO_PAGAMENTO_STATUS: Record<StatusPagamento, string> = {
+  pendente: "Aguardando pagamento",
+  na_retirada: "Paga ao retirar",
+  pago: "Pago",
+  estornado: "Estornado",
+};
+
+export const ROTULO_ENTREGA: Record<StatusEntrega, string> = {
+  a_separar: "A separar",
+  separando: "Separando",
+  pronto_retirada: "Pronto para retirada",
+  enviado: "Enviado",
+  entregue: "Entregue",
 };
 
 /** Versão curta, para caber na etiqueta colorida da lista. */
@@ -219,14 +276,73 @@ export function pagaNaRetirada(metodo: string | null): boolean {
  * "devolvido" não está em nenhuma lista de destino: ele é escrito
  * pela Edge Function de reembolso, quando o dinheiro realmente volta.
  */
-export const PROXIMOS_STATUS: Record<StatusPedido, StatusPedido[]> = {
-  pendente: ["pago", "cancelado"],
-  pago: ["enviado", "cancelado"],
-  enviado: ["entregue"],
-  entregue: [],
-  cancelado: [],
-  devolvido: [],
-};
+/** Vai buscar no balcão: não tem endereço de entrega. */
+export function ehRetirada(p: { endereco_entrega: unknown | null }): boolean {
+  return p.endereco_entrega === null;
+}
+
+/**
+ * A esteira da entrega, que é diferente para quem retira.
+ *
+ * Quem busca na loja nunca passa por "enviado" — não há o que enviar.
+ * E quem recebe em casa nunca passa por "pronto para retirada". Eram
+ * esses dois passos que faltavam: antes o pedido pulava de pago
+ * direto para enviado, e o lojista não tinha onde dizer que estava
+ * separando.
+ */
+export function fluxoEntrega(p: { endereco_entrega: unknown | null }): StatusEntrega[] {
+  return ehRetirada(p)
+    ? ["a_separar", "separando", "pronto_retirada", "entregue"]
+    : ["a_separar", "separando", "enviado", "entregue"];
+}
+
+/**
+ * Para onde este pedido pode ir a partir de onde está.
+ *
+ * Só para a frente. Voltar atrás existe, mas é correção — passa por
+ * corrigirEntrega, que é um caminho separado de propósito: avançar é
+ * rotina, voltar é conserto.
+ */
+export function proximasEntregas(p: {
+  endereco_entrega: unknown | null;
+  status_entrega: StatusEntrega;
+  situacao: Situacao;
+}): StatusEntrega[] {
+  if (p.situacao === "cancelada") return [];
+  const fluxo = fluxoEntrega(p);
+  const i = fluxo.indexOf(p.status_entrega);
+  return i < 0 ? [] : fluxo.slice(i + 1);
+}
+
+/** Está esperando o lojista fazer alguma coisa. */
+export function esperandoALoja(p: {
+  situacao: Situacao;
+  status_pagamento: StatusPagamento;
+  status_entrega: StatusEntrega;
+}): boolean {
+  return (
+    p.situacao === "ativa" &&
+    p.status_entrega !== "entregue" &&
+    (p.status_pagamento === "pago" || p.status_pagamento === "na_retirada")
+  );
+}
+
+/**
+ * Carrinho abandonado: nunca pagou e não vai pagar no balcão.
+ *
+ * O prazo existe porque um Pix recém-criado também está "pendente" —
+ * e esse ainda pode ser pago nos próximos minutos. Um dia depois,
+ * não é mais espera: é carrinho largado.
+ */
+export function ehAbandonado(p: {
+  situacao: Situacao;
+  status_pagamento: StatusPagamento;
+  created_at: string;
+}): boolean {
+  if (p.situacao !== "ativa" || p.status_pagamento !== "pendente") return false;
+  const umDia = 24 * 60 * 60 * 1000;
+  return Date.now() - new Date(p.created_at).getTime() > umDia;
+}
 
 export const MOTIVOS_DEVOLUCAO: { valor: string; rotulo: string }[] = [
   { valor: "requested_by_customer", rotulo: "Cliente pediu / desistiu" },
@@ -235,7 +351,8 @@ export const MOTIVOS_DEVOLUCAO: { valor: string; rotulo: string }[] = [
 ];
 
 const CAMPOS = `
-  id, numero, status, total, frete, metodo_pagamento, troco_para, created_at,
+  id, numero, status, status_pagamento, status_entrega, situacao, visto_em,
+  total, frete, metodo_pagamento, troco_para, created_at,
   endereco_entrega, cep_entrega,
   frete_transportadora, frete_prazo_dias, frete_servico,
   codigo_rastreio, etiqueta_url, etiqueta_status, melhor_envio_order_id,
@@ -254,6 +371,10 @@ function montar(o: any): Pedido {
     id: o.id,
     numero: String(o.numero ?? ""),
     status: (o.status ?? "pendente") as StatusPedido,
+    status_pagamento: (o.status_pagamento ?? "pendente") as StatusPagamento,
+    status_entrega: (o.status_entrega ?? "a_separar") as StatusEntrega,
+    situacao: (o.situacao ?? "ativa") as Situacao,
+    visto_em: o.visto_em ?? null,
     total: Number(o.total ?? 0),
     frete: Number(o.frete ?? 0),
     metodo_pagamento: o.metodo_pagamento ?? null,
@@ -373,22 +494,54 @@ export async function buscarPedido(pedidoId: string): Promise<Pedido | null> {
  * da loja de quem está pedindo — um `update` em pedido de outra loja
  * não encontra a linha e não altera nada.
  */
-export async function atualizarStatusPedido(
-  pedidoId: string,
-  novo: StatusPedido,
-  atual: StatusPedido,
+/**
+ * Avança a entrega para o próximo passo.
+ *
+ * Substituiu a antiga atualizarStatusPedido, que escrevia no campo
+ * único. A conferência de caminho válido continua aqui, e não só na
+ * tela: a tela esconde o que não cabe, mas quem chama a API não é
+ * obrigado a passar por ela.
+ */
+export async function avancarEntrega(
+  pedido: {
+    id: string;
+    endereco_entrega: unknown | null;
+    status_entrega: StatusEntrega;
+    situacao: Situacao;
+  },
+  novo: StatusEntrega,
 ): Promise<void> {
-  if (!PROXIMOS_STATUS[atual]?.includes(novo)) {
+  if (!proximasEntregas(pedido).includes(novo)) {
     throw new Error(
-      `Não dá para mudar de "${ROTULO_STATUS[atual]}" para "${ROTULO_STATUS[novo]}".`,
+      `Não dá para ir de "${ROTULO_ENTREGA[pedido.status_entrega]}" para "${ROTULO_ENTREGA[novo]}".`,
     );
   }
 
   const storeId = await getCurrentStoreId();
-
   const { error } = await supabase
     .from("orders")
-    .update({ status: novo })
+    .update({ status_entrega: novo })
+    .eq("id", pedido.id)
+    .eq("store_id", storeId);
+
+  if (error) throw error;
+}
+
+/**
+ * Conserta a etapa de entrega, inclusive para trás.
+ *
+ * Separado de avancarEntrega de propósito: avançar é rotina e segue a
+ * esteira; voltar é conserto de engano, e merece um caminho próprio
+ * para não acontecer sem querer num toque errado.
+ */
+export async function corrigirEntrega(
+  pedidoId: string,
+  etapa: StatusEntrega,
+): Promise<void> {
+  const storeId = await getCurrentStoreId();
+  const { error } = await supabase
+    .from("orders")
+    .update({ status_entrega: etapa })
     .eq("id", pedidoId)
     .eq("store_id", storeId);
 
@@ -396,37 +549,91 @@ export async function atualizarStatusPedido(
 }
 
 /**
- * Corrige o status de um pedido, sem seguir o fluxo normal.
+ * Registra que o dinheiro entrou.
  *
- * Existe porque o fluxo é de mão única — "enviado" não volta para
- * "pago" — e um toque errado num celular deixava o pedido preso no
- * lugar errado para sempre. Isto é conserto, não atalho: continua
- * proibido marcar "devolvido" à mão, porque esse status significa
- * que o dinheiro voltou de verdade, e quem escreve ele é a função
- * de reembolso, depois de a Stripe confirmar.
+ * É o que fecha o pedido do balcão: o sistema não tem como saber que
+ * a nota trocou de mão, então quem diz é o lojista. Vale também para
+ * acertar um Pix que caiu e o aviso automático não chegou.
  */
-export async function corrigirStatusPedido(
-  pedidoId: string,
-  novo: StatusPedido,
-): Promise<void> {
-  if (novo === "devolvido") {
-    throw new Error(
-      'Só a devolução do dinheiro marca um pedido como "devolvido".',
-    );
-  }
-
+export async function marcarPagamentoRecebido(pedidoId: string): Promise<void> {
   const storeId = await getCurrentStoreId();
-
   const { error } = await supabase
     .from("orders")
-    .update({ status: novo })
+    .update({ status_pagamento: "pago" })
     .eq("id", pedidoId)
     .eq("store_id", storeId);
 
   if (error) throw error;
 }
 
-/** Anotações que só o lojista vê. */
+/** Cancela o pedido. Não mexe no dinheiro — devolução é à parte. */
+export async function cancelarPedido(pedidoId: string): Promise<void> {
+  const storeId = await getCurrentStoreId();
+  const { error } = await supabase
+    .from("orders")
+    .update({ situacao: "cancelada" })
+    .eq("id", pedidoId)
+    .eq("store_id", storeId);
+
+  if (error) throw error;
+}
+
+/** Desfaz o cancelamento. */
+export async function reativarPedido(pedidoId: string): Promise<void> {
+  const storeId = await getCurrentStoreId();
+  const { error } = await supabase
+    .from("orders")
+    .update({ situacao: "ativa" })
+    .eq("id", pedidoId)
+    .eq("store_id", storeId);
+
+  if (error) throw error;
+}
+
+/**
+ * Marca o pedido como lido.
+ *
+ * Só escreve na primeira vez: sem o filtro, reabrir um pedido antigo
+ * atualizaria a data e o "visto em" deixaria de significar quando o
+ * lojista tomou conhecimento dele.
+ */
+export async function marcarComoVisto(pedidoId: string): Promise<void> {
+  const storeId = await getCurrentStoreId();
+  const { error } = await supabase
+    .from("orders")
+    .update({ visto_em: new Date().toISOString() })
+    .eq("id", pedidoId)
+    .eq("store_id", storeId)
+    .is("visto_em", null);
+
+  if (error) throw error;
+}
+
+/** Quantos pedidos o lojista ainda não abriu. Alimenta o contador. */
+export async function contarNaoLidos(): Promise<number> {
+  const storeId = await getCurrentStoreId();
+  const { count, error } = await supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("store_id", storeId)
+    .is("visto_em", null);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Marca todos como lidos de uma vez. */
+export async function marcarTodosComoVistos(): Promise<void> {
+  const storeId = await getCurrentStoreId();
+  const { error } = await supabase
+    .from("orders")
+    .update({ visto_em: new Date().toISOString() })
+    .eq("store_id", storeId)
+    .is("visto_em", null);
+
+  if (error) throw error;
+}
+
 export async function salvarObservacoes(
   pedidoId: string,
   texto: string,

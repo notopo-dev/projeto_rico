@@ -55,7 +55,14 @@ const statusMap: Record<string, string> = {
 };
 
 /** Status que não contam como venda realizada. */
-const STATUS_IGNORADOS = ["cancelado", "devolvido"];
+/**
+ * O que conta como venda. Mesma regra do relatório, de propósito:
+ * dois lugares com contas diferentes para o mesmo número é como o
+ * lojista perde a confiança nos dois.
+ */
+function contaComoVenda(o: { status_pagamento?: string | null }): boolean {
+  return o.status_pagamento === "pago";
+}
 
 /**
  * Receita de um pedido já descontado o que voltou para o cliente.
@@ -88,13 +95,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   ] = await Promise.all([
     supabase
       .from("orders")
-      .select("total, valor_reembolsado, status")
+      .select("total, valor_reembolsado, status, status_pagamento")
       .eq("store_id", storeId)
       .gte("created_at", hoje.toISOString())
       .lt("created_at", amanha.toISOString()),
     supabase
       .from("orders")
-      .select("total, valor_reembolsado, status")
+      .select("total, valor_reembolsado, status, status_pagamento")
       .eq("store_id", storeId)
       .gte("created_at", ontem.toISOString())
       .lt("created_at", hoje.toISOString()),
@@ -120,10 +127,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const pedidosOntem = pedidosOntemRes.data ?? [];
 
   const vendasHoje = pedidosHoje
-    .filter((p) => !STATUS_IGNORADOS.includes(p.status))
+    .filter((p) => contaComoVenda(p))
     .reduce((sum, p) => sum + liquido(p), 0);
   const vendasOntem = pedidosOntem
-    .filter((p) => !STATUS_IGNORADOS.includes(p.status))
+    .filter((p) => contaComoVenda(p))
     .reduce((sum, p) => sum + liquido(p), 0);
 
   return {
@@ -146,9 +153,9 @@ export async function getVendasUltimos7Dias(): Promise<VendaPorDia[]> {
 
   const { data, error } = await supabase
     .from("orders")
-    .select("total, valor_reembolsado, created_at, status")
+    .select("total, valor_reembolsado, created_at, status, status_pagamento")
     .eq("store_id", storeId)
-    .not("status", "in", "(cancelado,devolvido)")
+    .eq("status_pagamento", "pago")
     .gte("created_at", seteDiasAtras.toISOString())
     .order("created_at");
 
@@ -180,7 +187,7 @@ export async function getPedidosRecentes(limite = 5): Promise<PedidoRecente[]> {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "numero, total, status, created_at, customers(nome), order_items(nome_produto)"
+      "numero, total, status, status_pagamento, created_at, customers(nome), order_items(nome_produto)"
     )
     .eq("store_id", storeId)
     .order("created_at", { ascending: false })
@@ -211,10 +218,13 @@ export async function getProdutosMaisVendidos(
   const { data, error } = await supabase
     .from("order_items")
     .select(
-      "quantidade, subtotal, product_id, nome_produto, orders!inner(store_id, status), products(sku, estoque)"
+      "quantidade, subtotal, product_id, nome_produto, orders!inner(store_id, status_pagamento), products(sku, estoque)"
     )
     .eq("orders.store_id", storeId)
-    .not("orders.status", "in", "(cancelado,devolvido)");
+    // Produto mais vendido também passa a contar só venda paga: senão
+    // um produto que ninguém comprou de verdade lideraria a lista por
+    // ter sido muito colocado em carrinhos abandonados.
+    .eq("orders.status_pagamento", "pago");
 
   if (error) throw error;
 

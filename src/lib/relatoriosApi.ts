@@ -92,8 +92,21 @@ const DIAS_POR_PERIODO: Record<Periodo, number> = {
   "12m": 365,
 };
 
-/** Status que não contam como venda realizada. */
-const STATUS_IGNORADOS = ["cancelado", "devolvido"];
+/**
+ * O que conta como venda.
+ *
+ * Antes era "tudo que não está cancelado nem devolvido" — e isso
+ * incluía o carrinho abandonado. Numa base real de testes, 21 dos 24
+ * pedidos contados como receita eram pessoas que fecharam a aba sem
+ * pagar: o faturamento aparecia quase vinte vezes maior do que era.
+ *
+ * Agora conta só o que foi pago de verdade. Pedido de balcão entra
+ * quando o lojista registra que recebeu, que é quando o dinheiro
+ * existe — nem antes, nem nunca.
+ */
+function contaComoVenda(o: { status_pagamento?: string | null }): boolean {
+  return o.status_pagamento === "pago";
+}
 
 /**
  * Receita de um pedido, já descontado o que foi devolvido ao cliente.
@@ -131,14 +144,14 @@ export async function getResumoVendas(
 
   const { data, error } = await supabase
     .from("orders")
-    .select("total, valor_reembolsado, created_at, status, order_items(quantidade)")
+    .select("total, valor_reembolsado, created_at, status, status_pagamento, order_items(quantidade)")
     .eq("store_id", storeId)
     .gte("created_at", inicioAnterior.toISOString());
 
   if (error) throw error;
 
   const validos = (data ?? []).filter(
-    (o: any) => !STATUS_IGNORADOS.includes(o.status)
+    (o: any) => contaComoVenda(o)
   );
 
   const atuais = validos.filter(
@@ -192,7 +205,7 @@ export async function getReceitaPorPeriodo(
 
   const { data, error } = await supabase
     .from("orders")
-    .select("total, valor_reembolsado, created_at, status")
+    .select("total, valor_reembolsado, created_at, status, status_pagamento")
     .eq("store_id", storeId)
     .gte("created_at", inicio.toISOString())
     .order("created_at");
@@ -225,7 +238,7 @@ export async function getReceitaPorPeriodo(
   }
 
   (data ?? [])
-    .filter((o: any) => !STATUS_IGNORADOS.includes(o.status))
+    .filter((o: any) => contaComoVenda(o))
     .forEach((o: any) => {
       const d = new Date(o.created_at);
       const chave = porMes
@@ -256,7 +269,7 @@ export async function getProdutosVendidos(
   const { data, error } = await supabase
     .from("order_items")
     .select(
-      "quantidade, subtotal, nome_produto, product_id, orders!inner(store_id, status, created_at), products(sku)"
+      "quantidade, subtotal, nome_produto, product_id, orders!inner(store_id, status, status_pagamento, created_at), products(sku)"
     )
     .eq("orders.store_id", storeId)
     .gte("orders.created_at", inicio.toISOString());
@@ -266,7 +279,7 @@ export async function getProdutosVendidos(
   const mapa = new Map<string, LinhaProduto>();
 
   (data ?? [])
-    .filter((i: any) => !STATUS_IGNORADOS.includes(i.orders?.status))
+    .filter((i: any) => contaComoVenda(i.orders ?? {}))
     .forEach((item: any) => {
       const chave = item.product_id ?? item.nome_produto;
       const atual = mapa.get(chave) ?? {
@@ -295,7 +308,7 @@ export async function getVendasPorPagamento(
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "total, valor_reembolsado, metodo_pagamento, status, payments(cartao_tipo, status)"
+      "total, valor_reembolsado, metodo_pagamento, status, status_pagamento, payments(cartao_tipo, status)"
     )
     .eq("store_id", storeId)
     .gte("created_at", inicio.toISOString());
@@ -305,7 +318,7 @@ export async function getVendasPorPagamento(
   const mapa = new Map<string, LinhaPagamento>();
 
   (data ?? [])
-    .filter((o: any) => !STATUS_IGNORADOS.includes(o.status))
+    .filter((o: any) => contaComoVenda(o))
     .forEach((o: any) => {
       const bruto = o.metodo_pagamento ?? "outro";
 
@@ -339,7 +352,7 @@ export async function getMelhoresClientes(
 
   const { data, error } = await supabase
     .from("orders")
-    .select("total, valor_reembolsado, created_at, status, customer_id, customers(nome)")
+    .select("total, valor_reembolsado, created_at, status, status_pagamento, customer_id, customers(nome)")
     .eq("store_id", storeId)
     .gte("created_at", inicio.toISOString());
 
@@ -348,7 +361,7 @@ export async function getMelhoresClientes(
   const mapa = new Map<string, LinhaCliente>();
 
   (data ?? [])
-    .filter((o: any) => !STATUS_IGNORADOS.includes(o.status))
+    .filter((o: any) => contaComoVenda(o))
     .forEach((o: any) => {
       const chave = o.customer_id ?? "sem-cadastro";
       const atual = mapa.get(chave) ?? {
@@ -383,9 +396,9 @@ export async function getMelhoresClientes(
 // consultas de antes.
 //
 // Todas as consultas reaproveitam intervalo(), liquido() e
-// STATUS_IGNORADOS, para que um pedido cancelado ou devolvido saia
-// destes relatórios pelo mesmo critério dos outros. Relatório que
-// conta diferente do vizinho é pior do que relatório que falta.
+// contaComoVenda(), para que o que entra no faturamento seja o mesmo
+// em todo relatório. Relatório que conta diferente do vizinho é pior
+// do que relatório que falta.
 // ==================================================================
 
 export interface LinhaRegiao {
@@ -410,7 +423,7 @@ export async function getVendasPorRegiao(
 
   const { data, error } = await supabase
     .from("orders")
-    .select("total, valor_reembolsado, status, endereco_entrega")
+    .select("total, valor_reembolsado, status, status_pagamento, endereco_entrega")
     .eq("store_id", storeId)
     .gte("created_at", inicio.toISOString());
 
@@ -419,7 +432,7 @@ export async function getVendasPorRegiao(
   const mapa = new Map<string, LinhaRegiao>();
 
   (data ?? [])
-    .filter((o: any) => !STATUS_IGNORADOS.includes(o.status))
+    .filter((o: any) => contaComoVenda(o))
     .forEach((o: any) => {
       const bruta = o.endereco_entrega?.uf;
       // Pedido sem UF entra como "Não informado" em vez de ser
@@ -467,14 +480,14 @@ export async function getClientesNovosRecorrentes(
 
   const { data: doPeriodo, error } = await supabase
     .from("orders")
-    .select("total, valor_reembolsado, status, customer_id")
+    .select("total, valor_reembolsado, status, status_pagamento, customer_id")
     .eq("store_id", storeId)
     .gte("created_at", inicio.toISOString());
 
   if (error) throw error;
 
   const validos = (doPeriodo ?? []).filter(
-    (o: any) => !STATUS_IGNORADOS.includes(o.status),
+    (o: any) => contaComoVenda(o),
   );
 
   const ids = Array.from(
@@ -563,14 +576,14 @@ export async function getResumoFrete(periodo: Periodo): Promise<ResumoFrete> {
 
   const { data, error } = await supabase
     .from("orders")
-    .select("frete, status, frete_transportadora, frete_servico")
+    .select("frete, status, status_pagamento, frete_transportadora, frete_servico")
     .eq("store_id", storeId)
     .gte("created_at", inicio.toISOString());
 
   if (error) throw error;
 
   const validos = (data ?? []).filter(
-    (o: any) => !STATUS_IGNORADOS.includes(o.status),
+    (o: any) => contaComoVenda(o),
   );
 
   const mapa = new Map<string, { nome: string; pedidos: number; total: number }>();

@@ -1,4 +1,6 @@
 import {
+  Banknote,
+  Store as StoreIcon,
   useCallback,
   useEffect,
   useMemo,
@@ -25,21 +27,32 @@ import {
   MessageCircle,
 } from "lucide-react";
 import {
-  atualizarStatusPedido,
+  avancarEntrega,
   buscarPedido,
-  corrigirStatusPedido,
+  cancelarPedido,
+  corrigirEntrega,
   descreverPagamento,
   divergenciaCartao,
-  pagaNaRetirada,
+  ehAbandonado,
+  ehRetirada,
+  esperandoALoja,
+  fluxoEntrega,
   listarPedidos,
+  marcarComoVisto,
+  marcarPagamentoRecebido,
+  marcarTodosComoVistos,
+  pagaNaRetirada,
+  proximasEntregas,
+  reativarPedido,
   reembolsarPedido,
   salvarCodigoRastreio,
   salvarObservacoes,
   MOTIVOS_DEVOLUCAO,
-  PROXIMOS_STATUS,
-  ROTULO_CURTO,
+  ROTULO_ENTREGA,
+  ROTULO_PAGAMENTO_STATUS,
   ROTULO_STATUS,
   type Pedido,
+  type StatusEntrega,
   type StatusPedido,
 } from "../lib/pedidosApi";
 import { gerarEtiqueta, rastrearPedidoAdmin } from "../lib/freteAdminApi";
@@ -58,38 +71,63 @@ import Portal from "../components/Portal";
 const TODOS = "todos";
 
 /**
- * Status que o lojista pode corrigir à mão.
+ * As abas, na ordem do trabalho do dia.
  *
- * "devolvido" fica de fora de propósito: ele significa que o
- * dinheiro voltou de verdade, e quem escreve isso é a devolução,
- * depois da confirmação da Stripe.
+ * Antes elas espelhavam os status do banco, um para um — e por isso
+ * "Pendentes" juntava o carrinho abandonado com o pedido que vai ser
+ * pago no balcão. São coisas opostas: uma é lixo, a outra é venda
+ * esperando ser separada.
+ *
+ * Agora cada aba responde a uma pergunta do lojista:
+ *   Novos        · chegou e eu ainda não vi
+ *   A fazer      · é venda e está parada esperando mim
+ *   Separando    · já comecei
+ *   A caminho    · saiu, ou está no balcão esperando o cliente
+ *   Concluídos   · acabou
+ *   Sem pagamento· ninguém pagou e ninguém vai; fica fora do caminho
  */
-const STATUS_CORRIGIVEIS: StatusPedido[] = [
-  "pendente",
-  "pago",
-  "enviado",
-  "entregue",
-  "cancelado",
-];
+type FiltroAba = (p: Pedido) => boolean;
 
-const ABAS: { id: string; rotulo: string }[] = [
-  { id: TODOS, rotulo: "Todos" },
-  { id: "pendente", rotulo: "Pendentes" },
-  { id: "pago", rotulo: "Pagos" },
-  { id: "enviado", rotulo: "Enviados" },
-  { id: "entregue", rotulo: "Entregues" },
-  { id: "cancelado", rotulo: "Cancelados" },
-  { id: "devolvido", rotulo: "Devolvidos" },
+const ABAS: { id: string; rotulo: string; filtro: FiltroAba }[] = [
+  { id: TODOS, rotulo: "Todos", filtro: () => true },
+  {
+    id: "novos",
+    rotulo: "Novos",
+    filtro: (p) => p.visto_em === null && p.situacao === "ativa",
+  },
+  {
+    id: "a_fazer",
+    rotulo: "A fazer",
+    filtro: (p) => esperandoALoja(p) && p.status_entrega === "a_separar",
+  },
+  {
+    id: "separando",
+    rotulo: "Separando",
+    filtro: (p) => p.situacao === "ativa" && p.status_entrega === "separando",
+  },
+  {
+    id: "a_caminho",
+    rotulo: "A caminho",
+    filtro: (p) =>
+      p.situacao === "ativa" &&
+      (p.status_entrega === "enviado" || p.status_entrega === "pronto_retirada"),
+  },
+  {
+    id: "concluidos",
+    rotulo: "Concluídos",
+    filtro: (p) => p.situacao === "ativa" && p.status_entrega === "entregue",
+  },
+  {
+    id: "sem_pagamento",
+    rotulo: "Sem pagamento",
+    filtro: (p) => ehAbandonado(p),
+  },
+  {
+    id: "cancelados",
+    rotulo: "Cancelados",
+    filtro: (p) => p.situacao === "cancelada",
+  },
 ];
-
-const CORES_STATUS: Record<StatusPedido, string> = {
-  pendente: "bg-[#fffbeb] text-[#b45309] border-[#fde68a]",
-  pago: "bg-[#f0fdf4] text-[#15803d] border-[#bbf7d0]",
-  enviado: "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]",
-  entregue: "bg-[#f4f4f5] text-[#3f3f46] border-[#e4e4e7]",
-  cancelado: "bg-[#fef2f2] text-[#b91c1c] border-[#fecaca]",
-  devolvido: "bg-[#faf5ff] text-[#7e22ce] border-[#e9d5ff]",
-};
 
 function brl(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -158,12 +196,44 @@ async function copiar(texto: string): Promise<boolean> {
   }
 }
 
-function Etiqueta({ status }: { status: StatusPedido }) {
+/**
+ * Onde o pedido está, nos dois eixos.
+ *
+ * Duas etiquetas em vez de uma porque são duas perguntas diferentes,
+ * e a resposta de uma não se deduz da outra: o pedido do balcão está
+ * "aguardando" no dinheiro e pode estar "pronto" na entrega ao mesmo
+ * tempo. Era isso que uma etiqueta só não conseguia dizer.
+ */
+function EtiquetasEixos({ pedido }: { pedido: Pedido }) {
+  if (pedido.situacao === "cancelada") {
+    return (
+      <span className="t-apoio inline-flex items-center px-2 py-0.5 rounded-full font-semibold border bg-[#f4f4f5] text-[#3f3f46] border-[#e4e4e7]">
+        Cancelado
+      </span>
+    );
+  }
+
+  const corPagamento =
+    pedido.status_pagamento === "pago"
+      ? "bg-[#f0fdf4] text-[#15803d] border-[#bbf7d0]"
+      : pedido.status_pagamento === "na_retirada"
+        ? "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]"
+        : pedido.status_pagamento === "estornado"
+          ? "bg-[#fef2f2] text-[#b91c1c] border-[#fecaca]"
+          : "bg-[#fffbeb] text-[#b45309] border-[#fde68a]";
+
   return (
-    <span
-      className={`t-apoio inline-flex items-center px-2 py-0.5 rounded-full font-semibold border ${CORES_STATUS[status]}`}
-    >
-      {ROTULO_CURTO[status]}
+    <span className="inline-flex flex-wrap items-center gap-1">
+      <span
+        className={`t-apoio inline-flex items-center px-2 py-0.5 rounded-full font-semibold border ${corPagamento}`}
+      >
+        {ROTULO_PAGAMENTO_STATUS[pedido.status_pagamento]}
+      </span>
+      {pedido.status_entrega !== "a_separar" && (
+        <span className="t-apoio inline-flex items-center px-2 py-0.5 rounded-full font-semibold border bg-white text-[#374151] border-[#e4e4e7]">
+          {ROTULO_ENTREGA[pedido.status_entrega]}
+        </span>
+      )}
     </span>
   );
 }
@@ -319,16 +389,26 @@ function Detalhe({
 
   const corpoRef = useRef<HTMLDivElement>(null);
 
-  const proximos = PROXIMOS_STATUS[pedido.status] ?? [];
-  /** O passo natural — tudo menos cancelar, que não é "avançar". */
-  const avancoPrincipal = proximos.find((s) => s !== "cancelado") ?? null;
-  const podeCancelar = proximos.includes("cancelado");
+  const proximos = proximasEntregas(pedido);
+  /** O passo natural: o degrau seguinte da esteira, nada além. */
+  const avancoPrincipal = proximos[0] ?? null;
+  const podeCancelar = pedido.situacao === "ativa";
+  /**
+   * Falta receber, e o sistema não vai receber sozinho.
+   *
+   * No balcão isso é a regra: ninguém cobra pelo site. Em Pix e
+   * cartão serve para o caso de o aviso automático não ter chegado.
+   */
+  const faltaReceber =
+    pedido.situacao === "ativa" &&
+    (pedido.status_pagamento === "na_retirada" ||
+      pedido.status_pagamento === "pendente");
   const subtotal = pedido.total - pedido.frete;
   const devolvivel = pedido.total - pedido.valor_reembolsado;
   const podeDevolver =
     devolvivel > 0 &&
-    pedido.status !== "pendente" &&
-    pedido.status !== "cancelado";
+    pedido.status_pagamento === "pago" &&
+    pedido.situacao === "ativa";
 
   /* Trava a rolagem do fundo e fecha no Esc. Sem isso o conteúdo de
      trás rola junto no celular — era metade da sensação de "bugado". */
@@ -379,19 +459,40 @@ function Detalhe({
     }
   }
 
-  const mudarStatus = (novo: StatusPedido) =>
+  const mudarEntrega = (novo: StatusEntrega) =>
     executar(`status-${novo}`, async () => {
-      await atualizarStatusPedido(pedido.id, novo, pedido.status);
+      await avancarEntrega(pedido, novo);
       await recarregar();
-      setAviso(`Pedido marcado como ${ROTULO_STATUS[novo].toLowerCase()}.`);
+      setAviso(`Pedido marcado como ${ROTULO_ENTREGA[novo].toLowerCase()}.`);
     });
 
-  const corrigirStatus = (novo: StatusPedido) =>
+  const corrigirStatus = (novo: StatusEntrega) =>
     executar(`corrigir-${novo}`, async () => {
-      await corrigirStatusPedido(pedido.id, novo);
+      await corrigirEntrega(pedido.id, novo);
       await recarregar();
       setCorrigindoStatus(false);
-      setAviso(`Status corrigido para ${ROTULO_STATUS[novo].toLowerCase()}.`);
+      setAviso(`Etapa corrigida para ${ROTULO_ENTREGA[novo].toLowerCase()}.`);
+    });
+
+  const receberPagamento = () =>
+    executar("receber", async () => {
+      await marcarPagamentoRecebido(pedido.id);
+      await recarregar();
+      setAviso("Pagamento registrado.");
+    });
+
+  const cancelar = () =>
+    executar("cancelar", async () => {
+      await cancelarPedido(pedido.id);
+      await recarregar();
+      setAviso("Pedido cancelado.");
+    });
+
+  const reativar = () =>
+    executar("reativar", async () => {
+      await reativarPedido(pedido.id);
+      await recarregar();
+      setAviso("Pedido reaberto.");
     });
 
   const criarEtiqueta = () =>
@@ -504,7 +605,7 @@ function Detalhe({
                 <h2 className="t-secao font-bold text-[#0f1117]">
                   Pedido #{pedido.numero}
                 </h2>
-                <Etiqueta status={pedido.status} />
+                <EtiquetasEixos pedido={pedido} />
               </div>
               <p className="t-corpo text-[#9ca3af] mt-0.5">
                 {dataHora(pedido.created_at)}
@@ -1013,36 +1114,68 @@ function Detalhe({
                 fora do lugar mandava o pedido adiante sem volta. O
                 cancelamento virou link, e existe um conserto para
                 quando o erro acontece mesmo assim. */}
-            {avancoPrincipal ? (
+            {/* ----------------------------------------------------
+                Receber o dinheiro vem ANTES de avançar a entrega.
+
+                No pedido de balcão é literalmente a ordem das coisas:
+                o cliente chega, paga, e só então leva. Deixar o botão
+                de receber embaixo do de entregar convidaria a marcar
+                entregue sem registrar o pagamento — e o pedido sairia
+                do radar sem nunca ter entrado no faturamento.
+                ---------------------------------------------------- */}
+            {faltaReceber && (
               <button
-                onClick={() => mudarStatus(avancoPrincipal)}
+                onClick={receberPagamento}
                 disabled={ocupado !== null}
-                className="btn-app"
+                className="btn-app mb-2"
+              >
+                {ocupado === "receber" ? (
+                  <RefreshCw size={15} className="animate-spin" />
+                ) : (
+                  <Banknote size={15} />
+                )}
+                {pedido.status_pagamento === "na_retirada"
+                  ? "Recebi o pagamento"
+                  : "Marcar como pago"}
+              </button>
+            )}
+
+            {pedido.situacao === "cancelada" ? (
+              <button
+                onClick={reativar}
+                disabled={ocupado !== null}
+                className="btn-app-claro"
+              >
+                {ocupado === "reativar" ? "Reabrindo…" : "Reabrir pedido"}
+              </button>
+            ) : avancoPrincipal ? (
+              <button
+                onClick={() => mudarEntrega(avancoPrincipal)}
+                disabled={ocupado !== null}
+                className={faltaReceber ? "btn-app-claro" : "btn-app"}
               >
                 {ocupado === `status-${avancoPrincipal}` ? (
                   <RefreshCw size={15} className="animate-spin" />
                 ) : (
                   <Check size={15} />
                 )}
-                Marcar como {ROTULO_STATUS[avancoPrincipal].toLowerCase()}
+                Marcar como {ROTULO_ENTREGA[avancoPrincipal].toLowerCase()}
               </button>
             ) : (
               <p className="t-corpo text-[#9ca3af] text-center py-1.5">
-                Pedido {ROTULO_STATUS[pedido.status].toLowerCase()} — nada a
-                fazer aqui.
+                Pedido {ROTULO_ENTREGA[pedido.status_entrega].toLowerCase()} —
+                nada a fazer aqui.
               </p>
             )}
 
             <div className="mt-2 flex items-center justify-center gap-4">
               {podeCancelar && (
                 <button
-                  onClick={() => mudarStatus("cancelado")}
+                  onClick={cancelar}
                   disabled={ocupado !== null}
                   className="t-corpo sem-toque-minimo font-semibold text-[#b91c1c] underline"
                 >
-                  {ocupado === "status-cancelado"
-                    ? "Cancelando…"
-                    : "Cancelar pedido"}
+                  {ocupado === "cancelar" ? "Cancelando…" : "Cancelar pedido"}
                 </button>
               )}
               <button
@@ -1057,11 +1190,12 @@ function Detalhe({
               <div className="mt-2.5 rounded-lg border border-[#e7e7ea] p-2.5">
                 <p className="t-apoio text-[#6b7280] leading-snug mb-2">
                   Marcou sem querer? Escolha onde o pedido realmente está. Isto
-                  não mexe em dinheiro — só arruma a etiqueta.
+                  não mexe em dinheiro — só arruma a etapa.
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {STATUS_CORRIGIVEIS.filter((s) => s !== pedido.status).map(
-                    (s) => (
+                  {fluxoEntrega(pedido)
+                    .filter((s) => s !== pedido.status_entrega)
+                    .map((s) => (
                       <button
                         key={s}
                         onClick={() => corrigirStatus(s)}
@@ -1071,10 +1205,9 @@ function Detalhe({
                         {ocupado === `corrigir-${s}` ? (
                           <RefreshCw size={13} className="animate-spin" />
                         ) : null}
-                        {ROTULO_STATUS[s]}
+                        {ROTULO_ENTREGA[s]}
                       </button>
-                    ),
-                  )}
+                    ))}
                 </div>
               </div>
             )}
@@ -1121,8 +1254,8 @@ export default function Orders() {
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return pedidos.filter((p) => {
-      const porAba = aba === TODOS || p.status === aba;
-      if (!porAba) return false;
+      const filtro = ABAS.find((a) => a.id === aba)?.filtro;
+      if (filtro && !filtro(p)) return false;
       if (!termo) return true;
 
       return (
@@ -1136,12 +1269,47 @@ export default function Orders() {
   }, [pedidos, busca, aba]);
 
   const contagem = useMemo(() => {
-    const c: Record<string, number> = { [TODOS]: pedidos.length };
-    pedidos.forEach((p) => {
-      c[p.status] = (c[p.status] ?? 0) + 1;
+    const c: Record<string, number> = {};
+    ABAS.forEach(({ id, filtro }) => {
+      c[id] = pedidos.filter(filtro).length;
     });
     return c;
   }, [pedidos]);
+
+  const naoLidos = contagem["novos"] ?? 0;
+
+  /**
+   * Abre o pedido e, de passagem, marca como lido.
+   *
+   * A tela não espera o servidor responder para tirar o "Novo": o
+   * lojista já está vendo o pedido, e deixar o aviso piscando
+   * enquanto a requisição vai e volta faria parecer que o toque não
+   * funcionou. Se a gravação falhar, o pedido volta a aparecer como
+   * novo no próximo carregamento — o que é o certo, porque aí ele
+   * realmente não foi marcado.
+   */
+  function abrirPedido(p: Pedido) {
+    setAbertoId(p.id);
+    if (p.visto_em === null) {
+      setPedidos((lista) =>
+        lista.map((x) =>
+          x.id === p.id ? { ...x, visto_em: new Date().toISOString() } : x,
+        ),
+      );
+      marcarComoVisto(p.id).catch(() => {
+        /* fica para a próxima: o estado real vem do servidor */
+      });
+    }
+  }
+
+  const lerTodos = async () => {
+    try {
+      await marcarTodosComoVistos();
+      await carregar();
+    } catch {
+      setErro("Não foi possível marcar os pedidos como lidos.");
+    }
+  };
 
   /* O detalhe lê do array vivo: depois de recarregar, a folha aberta
      mostra o estado novo sem precisar fechar e abrir de novo. */
@@ -1179,6 +1347,21 @@ export default function Orders() {
             />
           </button>
         </div>
+
+        {naoLidos > 0 && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-[#e7e7ea] bg-white px-3 py-2">
+            <p className="t-corpo text-[#374151]">
+              <strong>{naoLidos}</strong>{" "}
+              {naoLidos === 1 ? "pedido novo" : "pedidos novos"}
+            </p>
+            <button
+              onClick={lerTodos}
+              className="t-corpo sem-toque-minimo text-[#6b7280] underline shrink-0"
+            >
+              Marcar como lidos
+            </button>
+          </div>
+        )}
 
         {/* Abas */}
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1">
@@ -1246,15 +1429,30 @@ export default function Orders() {
               return (
                 <button
                   key={p.id}
-                  onClick={() => setAbertoId(p.id)}
-                  className="cartao-app cartao-toque w-full p-3.5 text-left flex items-center gap-3"
+                  onClick={() => abrirPedido(p)}
+                  className={`cartao-app cartao-toque w-full p-3.5 text-left flex items-center gap-3 ${
+                    p.visto_em === null && p.situacao === "ativa"
+                      ? "border-l-4 border-l-[#0f1117]"
+                      : ""
+                  }`}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="t-corpo font-bold text-[#0f1117]">
                         #{p.numero}
                       </span>
-                      <Etiqueta status={p.status} />
+                      {p.visto_em === null && p.situacao === "ativa" && (
+                        <span className="t-apoio inline-flex items-center px-2 py-0.5 rounded-full font-semibold bg-[#0f1117] text-white">
+                          Novo
+                        </span>
+                      )}
+                      <EtiquetasEixos pedido={p} />
+                      {ehRetirada(p) && (
+                        <span className="t-apoio inline-flex items-center gap-1 text-[#6b7280]">
+                          <StoreIcon size={11} />
+                          retirada
+                        </span>
+                      )}
                       {p.etiqueta_url && (
                         <span className="t-apoio inline-flex items-center gap-1 text-[#6b7280]">
                           <Tag size={11} />
