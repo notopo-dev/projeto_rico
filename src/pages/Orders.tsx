@@ -1,6 +1,4 @@
 import {
-  Banknote,
-  Store as StoreIcon,
   useCallback,
   useEffect,
   useMemo,
@@ -9,6 +7,8 @@ import {
   type ReactNode,
 } from "react";
 import {
+  Banknote,
+  Store as StoreIcon,
   Search,
   ShoppingBag,
   RefreshCw,
