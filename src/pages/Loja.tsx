@@ -20,6 +20,95 @@ import EnderecoOrigemSection from "../components/EnderecoOrigemSection";
 import DominioProprio from "../components/DominioProprio";
 import Interruptor from "../components/Interruptor";
 
+/**
+ * Campo de texto da tela de Lojas.
+ *
+ * Mora AQUI, no nível do módulo, e não dentro de `Loja` — e essa é a
+ * única coisa que de fato importa neste componente.
+ *
+ * Declarado lá dentro, ele virava uma função NOVA a cada render. O
+ * React compara tipos de componente por identidade: tipo novo não é
+ * atualizado, é desmontado e montado de novo. Na prática, a cada
+ * tecla o <input> era destruído e recriado; o novo nascia sem foco, e
+ * a tecla seguinte caía fora do campo. O efeito para quem usa era
+ * exatamente "não dá para digitar".
+ *
+ * O valor entra por `value` e a mudança sai por `onChange`, em vez de
+ * o componente alcançar o estado da tela por fora. É isso que permite
+ * ele viver aqui, estável, sem precisar enxergar `form`.
+ */
+function Campo({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder = "",
+  rows = 0,
+}: {
+  label: string;
+  value: string;
+  onChange: (valor: string) => void;
+  type?: string;
+  placeholder?: string;
+  rows?: number;
+}) {
+  const cls =
+    "t-corpo w-full px-3 py-1.5 border border-[#e4e4e7] rounded-[6px] bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a]";
+
+  return (
+    <div>
+      <label className="t-corpo block font-medium text-[#374151] mb-1">
+        {label}
+      </label>
+
+      {rows > 0 ? (
+        <textarea
+          rows={rows}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          /* O espaço antes de resize-none faltava: as duas classes
+             saíam grudadas, o que estragava a última classe de foco e
+             nunca aplicava o resize-none. */
+          className={cls + " resize-none"}
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className={cls}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Mesma história do Campo: nível de módulo, valor e ação por fora. */
+function Chave({
+  label,
+  description,
+  ligado,
+  onAlternar,
+}: {
+  label: string;
+  description: string;
+  ligado: boolean;
+  onAlternar: (novo: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-3 border-b border-[#f4f4f5] last:border-0">
+      <div className="min-w-0">
+        <p className="t-corpo font-medium text-[#0f1117]">{label}</p>
+        <p className="t-corpo text-[#6b7280]">{description}</p>
+      </div>
+
+      <Interruptor ligado={ligado} onAlternar={onAlternar} rotulo={label} />
+    </div>
+  );
+}
+
 export default function Loja() {
   const [loading, setLoading] = useState(true);
 
@@ -142,95 +231,6 @@ export default function Loja() {
     } finally {
       setSaving(false);
     }
-  }
-
-  function Field({
-    label,
-    name,
-    type = "text",
-    placeholder = "",
-    rows = 0,
-  }: {
-    label: string;
-    name: keyof LojaFormData;
-    type?: string;
-    placeholder?: string;
-    rows?: number;
-  }) {
-    const value = form[name] as string;
-
-    const cls =
-      "t-corpo w-full px-3 py-1.5 border border-[#e4e4e7] rounded-[6px] bg-white placeholder:text-[#9ca3af] focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:border-[#16a34a]";
-
-    return (
-      <div>
-        <label className="t-corpo block font-medium text-[#374151] mb-1">
-          {label}
-        </label>
-
-        {rows > 0 ? (
-          <textarea
-            rows={rows}
-            value={value}
-            placeholder={placeholder}
-            onChange={(e) =>
-              setForm((f) => ({
-                ...f,
-                [name]: e.target.value,
-              }))
-            }
-            className={
-              cls + "resize-none"
-            }
-          />
-        ) : (
-          <input
-            type={type}
-            value={value}
-            placeholder={placeholder}
-            onChange={(e) =>
-              setForm((f) => ({
-                ...f,
-                [name]: e.target.value,
-              }))
-            }
-            className={cls}
-          />
-        )}
-      </div>
-    );
-  }
-
-  function Toggle({
-    label,
-    description,
-    name,
-  }: {
-    label: string;
-    description: string;
-    name: keyof LojaFormData;
-  }) {
-    const val = form[name] as boolean;
-
-    return (
-      <div className="flex items-center justify-between gap-4 py-3 border-b border-[#f4f4f5] last:border-0">
-        <div className="min-w-0">
-          <p className="t-corpo font-medium text-[#0f1117]">
-            {label}
-          </p>
-
-          <p className="t-corpo text-[#6b7280]">
-            {description}
-          </p>
-        </div>
-
-        <Interruptor
-          ligado={val}
-          onAlternar={(novo) => setForm((f) => ({ ...f, [name]: novo }))}
-          rotulo={label}
-        />
-      </div>
-    );
   }
 
   if (loading) {
@@ -396,9 +396,10 @@ export default function Loja() {
             </div>
 
             <div className="px-4 py-4 space-y-4">
-              <Field
+              <Campo
                 label="Nome da loja"
-                name="nome"
+                value={form.nome}
+                onChange={(v) => setForm((f) => ({ ...f, nome: v }))}
                 placeholder="Nome da loja"
               />
 
@@ -426,9 +427,10 @@ export default function Loja() {
                 </div>
               </div>
 
-              <Field
+              <Campo
                 label="Descrição"
-                name="descricao"
+                value={form.descricao}
+                onChange={(v) => setForm((f) => ({ ...f, descricao: v }))}
                 rows={3}
                 placeholder="Descreva sua loja..."
               />
@@ -444,15 +446,17 @@ export default function Loja() {
             </div>
 
             <div className="px-4 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field
+              <Campo
                 label="WhatsApp"
-                name="whatsapp"
+                value={form.whatsapp}
+                onChange={(v) => setForm((f) => ({ ...f, whatsapp: v }))}
                 placeholder="(00) 00000-0000"
               />
 
-              <Field
+              <Campo
                 label="E-mail de contato"
-                name="email"
+                value={form.email}
+                onChange={(v) => setForm((f) => ({ ...f, email: v }))}
                 type="email"
                 placeholder="contato@loja.com"
               />
@@ -475,15 +479,17 @@ export default function Loja() {
             </div>
 
             <div className="px-4 py-4 space-y-4">
-              <Field
+              <Campo
                 label="Política de trocas e devoluções"
-                name="politica_troca"
+                value={form.politica_troca}
+                onChange={(v) => setForm((f) => ({ ...f, politica_troca: v }))}
                 rows={3}
               />
 
-              <Field
+              <Campo
                 label="Política de frete"
-                name="politica_frete"
+                value={form.politica_frete}
+                onChange={(v) => setForm((f) => ({ ...f, politica_frete: v }))}
                 rows={3}
               />
             </div>
@@ -506,22 +512,25 @@ export default function Loja() {
             </div>
 
             <div className="px-4 py-2">
-              <Toggle
+              <Chave
                 label="Loja ativa"
                 description="Exibir loja para visitantes"
-                name="ativo"
+                ligado={form.ativo}
+                onAlternar={(v) => setForm((f) => ({ ...f, ativo: v }))}
               />
 
-              <Toggle
+              <Chave
                 label="Controle de estoque"
                 description="Bloquear compra sem estoque"
-                name="manter_estoque"
+                ligado={form.manter_estoque}
+                onAlternar={(v) => setForm((f) => ({ ...f, manter_estoque: v }))}
               />
 
-              <Toggle
+              <Chave
                 label="Exibir sem estoque"
                 description="Mostrar produtos esgotados"
-                name="exibir_sem_estoque"
+                ligado={form.exibir_sem_estoque}
+                onAlternar={(v) => setForm((f) => ({ ...f, exibir_sem_estoque: v }))}
               />
             </div>
           </section>
