@@ -1,93 +1,19 @@
 import { supabase } from "./supabaseClient";
 import { getCurrentStoreId } from "./currentStore";
 
-export interface NotificacoesSettings {
-  notif_novo_pedido: boolean;
-  notif_pedido_cancelado: boolean;
-  notif_estoque_minimo: boolean;
-  notif_novo_cliente: boolean;
-  notif_relatorio_semanal: boolean;
-  notif_marketing: boolean;
-}
-
 /**
- * As integrações saíram daqui.
+ * Configurações da conta do lojista.
  *
- * O Melhor Envio virou tela própria (Frete), junto com as regras de
- * frete e o botão de testar a conexão — token sem ambiente e sem teste
- * era exatamente o que fazia o lojista achar que estava configurado
- * quando não estava.
+ * As notificações por e-mail moravam aqui e saíram: elas gravavam a
+ * preferência no banco e nada no projeto lia esse valor nem enviava
+ * e-mail nenhum. Um interruptor que promete aviso de venda e não
+ * avisa é pior do que a ausência dele — o lojista confia e perde a
+ * venda em silêncio.
  *
- * Correios (SIGEP), chave Pix e token do Mercado Pago foram embora
- * porque nenhuma linha do sistema lia esses campos: eram três caixas
- * de texto que gravavam no banco e não faziam nada. A chave Pix ainda
- * dava a entender que o Pix da loja saía dali, quando o Pix é da
- * Stripe, configurado em Recebimentos.
+ * As colunas notif_* continuam no banco, intactas. Quando existir um
+ * remetente de verdade, a tela volta — com os eventos que de fato
+ * disparam, e só eles.
  */
-export type StoreSettings = NotificacoesSettings;
-
-/**
- * Busca as configurações da loja. A linha em store_settings é
- * criada automaticamente por trigger quando a loja é criada,
- * mas garantimos a criação aqui caso ela não exista.
- */
-export async function getStoreSettings(): Promise<StoreSettings> {
-  const storeId = await getCurrentStoreId();
-
-  const { data, error } = await supabase
-    .from("store_settings")
-    .select(
-      "notif_novo_pedido, notif_pedido_cancelado, notif_estoque_minimo, notif_novo_cliente, notif_relatorio_semanal, notif_marketing"
-    )
-    .eq("store_id", storeId)
-    .maybeSingle();
-
-  if (error) throw error;
-
-  // Se ainda não existe linha de configurações, cria uma com os padrões
-  if (!data) {
-    const { data: criado, error: erroCriar } = await supabase
-      .from("store_settings")
-      .insert({ store_id: storeId })
-      .select(
-        "notif_novo_pedido, notif_pedido_cancelado, notif_estoque_minimo, notif_novo_cliente, notif_relatorio_semanal, notif_marketing"
-      )
-      .single();
-
-    if (erroCriar) throw erroCriar;
-    return criado as StoreSettings;
-  }
-
-  return data as StoreSettings;
-}
-
-/**
- * Salva as notificações.
- *
- * Copia campo a campo: `.update(input)` com o objeto do chamador
- * deixava escrever qualquer coluna de store_settings a partir do
- * console do navegador — e é lá que moram o token do Melhor Envio e a
- * chave da Stripe.
- */
-export async function updateNotificacoes(
-  input: NotificacoesSettings
-): Promise<void> {
-  const storeId = await getCurrentStoreId();
-
-  const { error } = await supabase
-    .from("store_settings")
-    .update({
-      notif_novo_pedido: Boolean(input.notif_novo_pedido),
-      notif_pedido_cancelado: Boolean(input.notif_pedido_cancelado),
-      notif_estoque_minimo: Boolean(input.notif_estoque_minimo),
-      notif_novo_cliente: Boolean(input.notif_novo_cliente),
-      notif_relatorio_semanal: Boolean(input.notif_relatorio_semanal),
-      notif_marketing: Boolean(input.notif_marketing),
-    })
-    .eq("store_id", storeId);
-
-  if (error) throw error;
-}
 
 export interface DadosConta {
   nome: string;

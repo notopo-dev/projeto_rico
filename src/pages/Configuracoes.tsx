@@ -17,20 +17,17 @@ import {
   uploadStoreAsset,
 } from "../lib/storeCustomizationApi";
 import {
-  getStoreSettings,
-  updateNotificacoes,
   getDadosConta,
   updateNomeConta,
   alterarSenha,
   alterarEmail,
 } from "../lib/settingsApi";
 
-type Tab = "conta" | "loja" | "notificacoes";
+type Tab = "conta" | "loja";
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "conta", label: "Conta" },
   { id: "loja", label: "Aparência" },
-  { id: "notificacoes", label: "Notificações" },
 ];
 
 function SaveButton({
@@ -106,23 +103,6 @@ function Field({ label, value, onChange, type = "text", placeholder = "", hint }
         )}
       </div>
       {hint && <p className="t-apoio mt-1 text-[#9ca3af]">{hint}</p>}
-    </div>
-  );
-}
-
-function Toggle({ label, description, value, onChange }: { label: string; description: string; value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-3 border-b border-[#f4f4f5] last:border-0">
-      <div className="min-w-0">
-        <p className="t-corpo font-medium text-[#0f1117]">{label}</p>
-        <p className="t-corpo text-[#6b7280]">{description}</p>
-      </div>
-      <button
-        onClick={() => onChange(!value)}
-        className={`relative w-10 h-[22px] shrink-0 rounded-full transition-colors ${value ? "bg-[#16a34a]" : "bg-[#d1d5db]"}`}
-      >
-        <span className={`absolute top-[3px] w-4 h-4 bg-white rounded-full shadow transition-transform ${value ? "translate-x-[21px]" : "translate-x-[3px]"}`} />
-      </button>
     </div>
   );
 }
@@ -297,65 +277,6 @@ export default function Configuracoes() {
       setSaveErrorAparencia(err instanceof Error ? err.message : "Erro ao salvar.");
     } finally {
       setSavingAparencia(false);
-    }
-  }
-
-  // ============================================================
-  // ABAS NOTIFICAÇÕES + INTEGRAÇÕES (store_settings)
-  // ============================================================
-  const [notif, setNotif] = useState({
-    notif_novo_pedido: false,
-    notif_pedido_cancelado: false,
-    notif_estoque_minimo: false,
-    notif_novo_cliente: false,
-    notif_relatorio_semanal: false,
-    notif_marketing: false,
-  });
-  const [loadingSettings, setLoadingSettings] = useState(true);
-  const [erroSettings, setErroSettings] = useState<string | null>(null);
-
-  const [savingNotif, setSavingNotif] = useState(false);
-  const [savedNotif, setSavedNotif] = useState(false);
-
-  useEffect(() => {
-    if (tab !== "notificacoes") return;
-    let mounted = true;
-    setLoadingSettings(true);
-    setErroSettings(null);
-    getStoreSettings()
-      .then((s) => {
-        if (!mounted) return;
-        setNotif({
-          notif_novo_pedido: s.notif_novo_pedido,
-          notif_pedido_cancelado: s.notif_pedido_cancelado,
-          notif_estoque_minimo: s.notif_estoque_minimo,
-          notif_novo_cliente: s.notif_novo_cliente,
-          notif_relatorio_semanal: s.notif_relatorio_semanal,
-          notif_marketing: s.notif_marketing,
-        });
-      })
-      .catch((err) => {
-        if (mounted) {
-          setErroSettings(err instanceof Error ? err.message : "Erro ao carregar configurações.");
-        }
-      })
-      .finally(() => {
-        if (mounted) setLoadingSettings(false);
-      });
-    return () => { mounted = false; };
-  }, [tab]);
-
-  async function handleSaveNotif() {
-    setErroSettings(null);
-    setSavingNotif(true);
-    try {
-      await updateNotificacoes(notif);
-      setSavedNotif(true);
-      setTimeout(() => setSavedNotif(false), 2500);
-    } catch (err) {
-      setErroSettings(err instanceof Error ? err.message : "Erro ao salvar notificações.");
-    } finally {
-      setSavingNotif(false);
     }
   }
 
@@ -656,70 +577,6 @@ export default function Configuracoes() {
       )}
 
       {/* ======================= NOTIFICAÇÕES ======================= */}
-      {tab === "notificacoes" && (
-        <div className="space-y-4">
-          {loadingSettings ? (
-            <div className="t-corpo flex items-center gap-2 text-[#6b7280] py-8 justify-center">
-              <Loader2 size={16} className="animate-spin" />
-              Carregando...
-            </div>
-          ) : (
-            <>
-              <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
-                <SectionHeader
-                  title="Notificações por e-mail"
-                  description="Escolha quais eventos geram notificações."
-                />
-                <div className="px-4 py-1">
-                  <Toggle
-                    label="Novo pedido"
-                    description="Receber ao confirmar um pedido"
-                    value={notif.notif_novo_pedido}
-                    onChange={(v) => setNotif((n) => ({ ...n, notif_novo_pedido: v }))}
-                  />
-                  <Toggle
-                    label="Pedido cancelado"
-                    description="Receber ao cancelar um pedido"
-                    value={notif.notif_pedido_cancelado}
-                    onChange={(v) => setNotif((n) => ({ ...n, notif_pedido_cancelado: v }))}
-                  />
-                  <Toggle
-                    label="Alerta de estoque mínimo"
-                    description="Receber quando produto atingir o mínimo"
-                    value={notif.notif_estoque_minimo}
-                    onChange={(v) => setNotif((n) => ({ ...n, notif_estoque_minimo: v }))}
-                  />
-                  <Toggle
-                    label="Novo cliente cadastrado"
-                    description="Receber ao registrar um novo cliente"
-                    value={notif.notif_novo_cliente}
-                    onChange={(v) => setNotif((n) => ({ ...n, notif_novo_cliente: v }))}
-                  />
-                  <Toggle
-                    label="Relatório semanal"
-                    description="Resumo de vendas toda segunda-feira"
-                    value={notif.notif_relatorio_semanal}
-                    onChange={(v) => setNotif((n) => ({ ...n, notif_relatorio_semanal: v }))}
-                  />
-                  <Toggle
-                    label="E-mails de marketing"
-                    description="Dicas, novidades e promoções da plataforma"
-                    value={notif.notif_marketing}
-                    onChange={(v) => setNotif((n) => ({ ...n, notif_marketing: v }))}
-                  />
-                </div>
-              </div>
-
-              {erroSettings && <Mensagem tipo="erro" texto={erroSettings} />}
-
-              <div className="flex justify-end">
-                <SaveButton onSave={handleSaveNotif} saving={savingNotif} saved={savedNotif} />
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
     </div>
   );
 }
