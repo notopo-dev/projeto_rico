@@ -17,7 +17,6 @@ export interface StoreCustomization {
   cor_secundaria: string;
   logo_url: string | null;
   banner_url: string | null;
-  modo_compra: "whatsapp" | "pagamento" | "ambos";
 }
 
 export async function getStoreCustomization(): Promise<StoreCustomization> {
@@ -26,7 +25,7 @@ export async function getStoreCustomization(): Promise<StoreCustomization> {
   const { data, error } = await supabase
     .from("stores")
     .select(
-      "nome, slug, cor_primaria, cor_secundaria, logo_url, banner_url, modo_compra",
+      "nome, slug, cor_primaria, cor_secundaria, logo_url, banner_url",
     )
     .eq("id", storeId)
     .single();
@@ -40,6 +39,12 @@ export async function updateStoreCustomization(
 ) {
   const storeId = await getCurrentStoreId();
 
+  // modo_compra saiu daqui: ele passou para a tela Loja, que é onde o
+  // WhatsApp é cadastrado. Esta função é chamada pelo Header e pela
+  // Sidebar em toda troca de tela, e buscar uma coluna que ninguém mais
+  // lê é peso em cada carregamento. Dois caminhos de escrita para o
+  // mesmo campo também é como ele volta a divergir.
+  //
   // nome e slug ficam de fora de propósito. Eles entraram na
   // interface para LEITURA; quem os grava é a tela Loja, que valida
   // obrigatoriedade e slug repetido. Deixar passar por aqui abriria

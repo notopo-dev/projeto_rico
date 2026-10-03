@@ -6,9 +6,6 @@ import {
   EyeOff,
   Loader2,
   Upload,
-  MessageCircle,
-  CreditCard,
-  Shuffle,
   Info,
 } from "lucide-react";
 import {
@@ -193,7 +190,6 @@ export default function Configuracoes() {
     corSecundaria: "#0f1117",
     logoUrl: null as string | null,
     bannerUrl: null as string | null,
-    modoCompra: "whatsapp" as "whatsapp" | "pagamento" | "ambos",
   });
   const [loadingAparencia, setLoadingAparencia] = useState(true);
   const [loadErrorAparencia, setLoadErrorAparencia] = useState<string | null>(null);
@@ -218,7 +214,6 @@ export default function Configuracoes() {
           corSecundaria: data.cor_secundaria,
           logoUrl: data.logo_url,
           bannerUrl: data.banner_url,
-          modoCompra: data.modo_compra,
         });
       })
       .catch((err) => {
@@ -269,7 +264,6 @@ export default function Configuracoes() {
         cor_secundaria: aparencia.corSecundaria,
         logo_url: aparencia.logoUrl,
         banner_url: aparencia.bannerUrl,
-        modo_compra: aparencia.modoCompra,
       });
       setSavedAparencia(true);
       setTimeout(() => setSavedAparencia(false), 2500);
@@ -375,9 +369,9 @@ export default function Configuracoes() {
               <div className="t-corpo flex items-start gap-2.5 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-3.5 py-3 text-[#1e40af]">
                 <Info size={15} className="shrink-0 mt-0.5" />
                 <span>
-                  Nome, descrição, WhatsApp e políticas da loja ficam na aba{" "}
-                  <strong>Loja</strong>, no menu lateral. Aqui você personaliza só a
-                  aparência e como o cliente finaliza a compra.
+                  Nome, descrição, WhatsApp, políticas e como o cliente
+                  finaliza a compra ficam na aba <strong>Loja</strong>, no menu
+                  lateral. Aqui você personaliza só a aparência.
                 </span>
               </div>
 
@@ -495,70 +489,6 @@ export default function Configuracoes() {
                       />
                     </div>
                   </div>
-                </div>
-              </div>
-
-              <div className="bg-white border border-[#e4e4e7] rounded-[6px]">
-                <SectionHeader
-                  title="Como o cliente vai comprar"
-                  description='Define o que acontece quando o cliente toca em "Finalizar pedido" na sua loja.'
-                />
-                <div className="px-4 py-3 space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => setAparencia((a) => ({ ...a, modoCompra: "whatsapp" }))}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg border-2 text-left transition-colors ${
-                      aparencia.modoCompra === "whatsapp"
-                        ? "border-[#16a34a] bg-[#f0fdf4]"
-                        : "border-[#e4e4e7] bg-white"
-                    }`}
-                  >
-                    <MessageCircle size={19} className="text-[#16a34a] shrink-0" />
-                    <div>
-                      <p className="t-corpo font-medium text-[#111827]">Somente WhatsApp</p>
-                      <p className="t-apoio text-[#6b7280]">
-                        O pedido é enviado direto pro WhatsApp cadastrado em "Loja"
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setAparencia((a) => ({ ...a, modoCompra: "pagamento" }))}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg border-2 text-left transition-colors ${
-                      aparencia.modoCompra === "pagamento"
-                        ? "border-[#16a34a] bg-[#f0fdf4]"
-                        : "border-[#e4e4e7] bg-white"
-                    }`}
-                  >
-                    <CreditCard size={19} className="text-[#374151] shrink-0" />
-                    <div>
-                      <p className="t-corpo font-medium text-[#111827]">
-                        Somente pagamento na loja
-                      </p>
-                      <p className="t-apoio text-[#6b7280]">
-                        Cliente paga com Pix ou cartão direto no site
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setAparencia((a) => ({ ...a, modoCompra: "ambos" }))}
-                    className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg border-2 text-left transition-colors ${
-                      aparencia.modoCompra === "ambos"
-                        ? "border-[#16a34a] bg-[#f0fdf4]"
-                        : "border-[#e4e4e7] bg-white"
-                    }`}
-                  >
-                    <Shuffle size={19} className="text-[#374151] shrink-0" />
-                    <div>
-                      <p className="t-corpo font-medium text-[#111827]">Cliente escolhe</p>
-                      <p className="t-apoio text-[#6b7280]">
-                        Mostra WhatsApp e pagamento no checkout
-                      </p>
-                    </div>
-                  </button>
                 </div>
               </div>
 

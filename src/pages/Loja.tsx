@@ -6,6 +6,9 @@ import {
   ExternalLink,
   CheckCircle2,
   Loader2,
+  MessageCircle,
+  CreditCard,
+  Shuffle,
 } from "lucide-react";
 
 import {
@@ -109,6 +112,110 @@ function Chave({
   );
 }
 
+/**
+ * Escolha do que acontece no "Finalizar pedido".
+ *
+ * Nível de módulo pelo mesmo motivo do Campo e da Chave: declarado
+ * dentro de `Loja`, viraria um tipo novo a cada render e o React
+ * desmontaria o bloco inteiro a cada clique.
+ */
+function ModoCompra({
+  valor,
+  onEscolher,
+  temWhatsapp,
+}: {
+  valor: "whatsapp" | "pagamento" | "ambos";
+  onEscolher: (novo: "whatsapp" | "pagamento" | "ambos") => void;
+  temWhatsapp: boolean;
+}) {
+  const opcoes = [
+    {
+      id: "whatsapp" as const,
+      Icone: MessageCircle,
+      titulo: "Somente WhatsApp",
+      texto: "O pedido é enviado direto pro WhatsApp cadastrado acima",
+    },
+    {
+      id: "pagamento" as const,
+      Icone: CreditCard,
+      titulo: "Somente pagamento na loja",
+      texto: "Cliente paga com Pix ou cartão direto no site",
+    },
+    {
+      id: "ambos" as const,
+      Icone: Shuffle,
+      titulo: "Cliente escolhe",
+      texto: "Mostra WhatsApp e pagamento no checkout",
+    },
+  ];
+
+  /*
+   * O aviso só aparece quando a escolha realmente depende do número
+   * que não está lá. Alertar sempre treina o lojista a ignorar.
+   */
+  const faltaWhatsapp =
+    !temWhatsapp && (valor === "whatsapp" || valor === "ambos");
+
+  return (
+    <section className="bg-white border border-[#e4e4e7] rounded-[6px]">
+      <div className="px-4 py-3 border-b border-[#e4e4e7]">
+        <h2 className="t-corpo font-semibold text-[#0f1117]">
+          Como o cliente vai comprar
+        </h2>
+
+        <p className="t-apoio mt-0.5 text-[#6b7280] leading-snug">
+          Define o que acontece quando o cliente toca em "Finalizar pedido"
+          na sua loja.
+        </p>
+      </div>
+
+      <div className="px-4 py-4 space-y-2">
+        {opcoes.map(({ id, Icone, titulo, texto }) => {
+          const ativa = valor === id;
+
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={ativa}
+              onClick={() => onEscolher(id)}
+              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-lg border-2 text-left transition-colors ${
+                ativa
+                  ? "border-[#16a34a] bg-[#f0fdf4]"
+                  : "border-[#e4e4e7] bg-white hover:bg-[#fafafa]"
+              }`}
+            >
+              <Icone
+                size={19}
+                className={
+                  ativa
+                    ? "text-[#16a34a] shrink-0"
+                    : "text-[#374151] shrink-0"
+                }
+              />
+
+              <div className="min-w-0">
+                <p className="t-corpo font-medium text-[#111827]">
+                  {titulo}
+                </p>
+
+                <p className="t-apoio text-[#6b7280]">{texto}</p>
+              </div>
+            </button>
+          );
+        })}
+
+        {faltaWhatsapp && (
+          <p className="t-apoio rounded-[6px] border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[#92400e]">
+            Preencha o WhatsApp em <strong>Contato</strong>, acima. Sem ele o
+            pedido não chega a ninguém.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function Loja() {
   const [loading, setLoading] = useState(true);
 
@@ -134,6 +241,7 @@ export default function Loja() {
       email: "",
       politica_troca: "",
       politica_frete: "",
+      modo_compra: "whatsapp",
       ativo: true,
       manter_estoque: true,
       exibir_sem_estoque: false,
@@ -462,6 +570,15 @@ export default function Loja() {
               />
             </div>
           </section>
+
+          {/* Como o cliente vai comprar.
+              Fica colado em Contato de propósito: a opção "Somente
+              WhatsApp" depende do número cadastrado logo acima. */}
+          <ModoCompra
+            valor={form.modo_compra}
+            onEscolher={(m) => setForm((f) => ({ ...f, modo_compra: m }))}
+            temWhatsapp={form.whatsapp.trim() !== ""}
+          />
 
           {/* Endereço de envio (origem das encomendas) */}
           <EnderecoOrigemSection form={form} setForm={setForm} />

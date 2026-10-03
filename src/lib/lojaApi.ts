@@ -10,6 +10,16 @@ export interface LojaFormData {
   email: string;
   politica_troca: string;
   politica_frete: string;
+  /**
+   * O que acontece quando o cliente toca em "Finalizar pedido".
+   *
+   * Mora aqui, e não mais na tela de Aparência, porque a decisão
+   * depende do WhatsApp e das políticas — que são campos desta tela.
+   * Escolher "Somente WhatsApp" sem WhatsApp cadastrado é um pedido
+   * que não chega a ninguém, e ter as duas coisas lado a lado é o que
+   * deixa isso visível.
+   */
+  modo_compra: "whatsapp" | "pagamento" | "ambos";
   ativo: boolean;
   manter_estoque: boolean;
   exibir_sem_estoque: boolean;
@@ -31,6 +41,7 @@ export function toFormData(store: Store): LojaFormData {
     email: store.email ?? "",
     politica_troca: store.politica_troca ?? "",
     politica_frete: store.politica_frete ?? "",
+    modo_compra: store.modo_compra,
     ativo: store.ativo,
     manter_estoque: store.manter_estoque,
     exibir_sem_estoque: store.exibir_sem_estoque,
@@ -76,6 +87,7 @@ export async function updateMyStore(input: LojaFormData): Promise<Store> {
       email: input.email || null,
       politica_troca: input.politica_troca || null,
       politica_frete: input.politica_frete || null,
+      modo_compra: input.modo_compra,
       ativo: input.ativo,
       manter_estoque: input.manter_estoque,
       exibir_sem_estoque: input.exibir_sem_estoque,
