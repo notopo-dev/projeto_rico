@@ -342,8 +342,14 @@ export default function Categorias() {
                 key={categoria.id}
                 className="rounded-[8px] border border-[#e4e4e7] bg-white p-4"
               >
-                <div className="flex min-w-0 items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
+                {/* Uma linha só.
+                    Antes o cartão tinha uma segunda faixa, com traço
+                    separador, só para segurar os dois ícones: 314px de
+                    largura com 79px usados, e 71px de altura. Medido no
+                    aparelho, o cartão caía de 147px para 76px juntando
+                    tudo numa linha — de 4 para 9 categorias por tela. */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
                     <Tag
                       size={16}
                       strokeWidth={1.8}
@@ -361,30 +367,31 @@ export default function Categorias() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => toggleAtiva(categoria)}
-                    className={`t-apoio inline-flex min-h-8 shrink-0 items-center gap-1 rounded-[4px] border px-2 py-1 font-medium ${
-                      categoria.ativa
-                        ? "border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]"
-                        : "border-[#e4e4e7] bg-[#f4f4f5] text-[#52525b]"
-                    }`}
-                  >
-                    {categoria.ativa && (
-                      <Check size={11} strokeWidth={2.5} />
-                    )}
+                  {/* shrink-0 aqui e min-w-0 ali em cima são o par que
+                      faz o nome longo truncar em vez de empurrar os
+                      botões para fora da tela. */}
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleAtiva(categoria)}
+                      className={`t-apoio inline-flex min-h-8 shrink-0 items-center gap-1 rounded-[4px] border px-2 py-1 font-medium ${
+                        categoria.ativa
+                          ? "border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]"
+                          : "border-[#e4e4e7] bg-[#f4f4f5] text-[#52525b]"
+                      }`}
+                    >
+                      {categoria.ativa && (
+                        <Check size={11} strokeWidth={2.5} />
+                      )}
 
-                    {categoria.ativa ? "Ativa" : "Inativa"}
-                  </button>
-                </div>
+                      {categoria.ativa ? "Ativa" : "Inativa"}
+                    </button>
 
-                <div className="mt-4 flex items-center justify-end border-t border-[#f4f4f5] pt-3">
-                  <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => openEdit(categoria)}
                       aria-label={`Editar ${categoria.nome}`}
-                      className="flex h-10 w-10 items-center justify-center rounded-[6px] text-[#6b7280] hover:bg-[#f4f4f5] hover:text-[#0f1117]"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] text-[#6b7280] hover:bg-[#f4f4f5] hover:text-[#0f1117]"
                     >
                       <Pencil size={16} strokeWidth={1.8} />
                     </button>
@@ -393,7 +400,7 @@ export default function Categorias() {
                       type="button"
                       onClick={() => openDelete(categoria)}
                       aria-label={`Excluir ${categoria.nome}`}
-                      className="flex h-10 w-10 items-center justify-center rounded-[6px] text-[#6b7280] hover:bg-[#fef2f2] hover:text-[#b91c1c]"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] text-[#6b7280] hover:bg-[#fef2f2] hover:text-[#b91c1c]"
                     >
                       <Trash2 size={16} strokeWidth={1.8} />
                     </button>

@@ -20,10 +20,20 @@ import {
   updateProduct,
   deleteProduct,
   getProductById,
-  listCategoriesForSelect,
   type ProductWithCategoria,
   type ProductInput,
 } from "../lib/productsApi";
+/*
+ * listCategoriesForSelect vinha de productsApi, onde era uma segunda
+ * cópia da mesma consulta. Duas versões da mesma regra divergem na
+ * primeira vez que alguém mexe em uma só. Passa a vir de
+ * categoriesApi, junto de createCategory, que é quem já sabe gerar o
+ * slug e traduzir o erro de nome repetido.
+ */
+import {
+  listCategoriesForSelect,
+  createCategory,
+} from "../lib/categoriesApi";
 import { supabase } from "../lib/supabase";
 import { validarImagem } from "../lib/imagemSegura";
 import { getCurrentStoreId } from "../lib/currentStore";
@@ -197,6 +207,18 @@ export default function Products() {
   const [formEstoque, setFormEstoque] = useState("");
   const [formEstoqueMinimo, setFormEstoqueMinimo] = useState("");
   const [formCategoriaId, setFormCategoriaId] = useState("");
+
+  /*
+   * Cadastro de categoria sem sair do produto.
+   *
+   * Em linha, e não numa segunda folha por cima desta: folha sobre
+   * folha no celular rouba a tela inteira e o lojista perde de vista
+   * o produto que estava preenchendo.
+   */
+  const [criandoCategoria, setCriandoCategoria] = useState(false);
+  const [novaCategoriaNome, setNovaCategoriaNome] = useState("");
+  const [salvandoCategoria, setSalvandoCategoria] = useState(false);
+  const [erroCategoria, setErroCategoria] = useState<string | null>(null);
   const [formVendaSemEstoque, setFormVendaSemEstoque] = useState(false);
   const [formItemPromocao, setFormItemPromocao] = useState(false);
   const [formCores, setFormCores] = useState<any[]>([]);
@@ -247,6 +269,42 @@ export default function Products() {
       });
   }, []);
 
+  async function criarCategoriaEmLinha() {
+    const nome = novaCategoriaNome.trim();
+    if (!nome) return;
+
+    setSalvandoCategoria(true);
+    setErroCategoria(null);
+
+    try {
+      const nova = await createCategory({ nome });
+
+      /*
+       * Entra já na ordem alfabética: o select é alimentado por uma
+       * consulta ordenada por nome, e jogar a nova no fim faria a
+       * lista mudar de ordem sozinha no próximo carregamento.
+       */
+      setCategorias((lista) =>
+        [...lista, { id: nova.id, nome: nova.nome }].sort((a, b) =>
+          a.nome.localeCompare(b.nome, "pt-BR"),
+        ),
+      );
+
+      // Já deixa escolhida: criar e ter de selecionar depois é um
+      // passo que ninguém quer dar.
+      setFormCategoriaId(nova.id);
+
+      setCriandoCategoria(false);
+      setNovaCategoriaNome("");
+    } catch (err) {
+      setErroCategoria(
+        err instanceof Error ? err.message : "Erro ao criar categoria.",
+      );
+    } finally {
+      setSalvandoCategoria(false);
+    }
+  }
+
   function resetForm() {
     setFormNome("");
     setFormSku("");
@@ -273,6 +331,9 @@ export default function Products() {
     setImagensParaRemover([]);
     setNovasImagens([]);
     setSaveError(null);
+    setCriandoCategoria(false);
+    setNovaCategoriaNome("");
+    setErroCategoria(null);
   }
 
   function openNewProduct() {
@@ -1156,21 +1217,101 @@ export default function Products() {
 
                   {/* Categoria */}
                   <div>
-                    <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
-                      Categoria
-                    </label>
-                    <select
-                      value={formCategoriaId}
-                      onChange={(e) => setFormCategoriaId(e.target.value)}
-                      className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base text-[#374151] outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
-                    >
-                      <option value="">Sem categoria</option>
-                      {categorias.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nome}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <label className="t-corpo font-semibold text-[#374151]">
+                        Categoria
+                      </label>
+
+                      {!criandoCategoria && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCriandoCategoria(true);
+                            setErroCategoria(null);
+                          }}
+                          className="t-apoio inline-flex items-center gap-1 font-medium text-[#16a34a] hover:text-[#15803d]"
+                        >
+                          <Plus size={13} strokeWidth={2.5} />
+                          Nova categoria
+                        </button>
+                      )}
+                    </div>
+
+                    {criandoCategoria ? (
+                      <div className="space-y-2 rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] p-3">
+                        <input
+                          autoFocus
+                          value={novaCategoriaNome}
+                          onChange={(e) => setNovaCategoriaNome(e.target.value)}
+                          onKeyDown={(e) => {
+                            /* Enter cria. Esta folha não é um <form>,
+                               então nada é enviado por acidente — mas
+                               o lojista espera que Enter funcione. */
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              criarCategoriaEmLinha();
+                            }
+                            if (e.key === "Escape") {
+                              /* Para o Esc não fechar a folha inteira
+                                 do produto junto. */
+                              e.stopPropagation();
+                              setCriandoCategoria(false);
+                              setNovaCategoriaNome("");
+                              setErroCategoria(null);
+                            }
+                          }}
+                          placeholder="Nome da categoria. Ex: Camisetas"
+                          className="t-corpo h-11 w-full rounded-lg border border-[#e4e4e7] bg-white px-3 text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
+                        />
+
+                        {erroCategoria && (
+                          <p className="t-apoio leading-snug text-[#b91c1c]">
+                            {erroCategoria}
+                          </p>
+                        )}
+
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCriandoCategoria(false);
+                              setNovaCategoriaNome("");
+                              setErroCategoria(null);
+                            }}
+                            className="t-corpo h-11 flex-1 rounded-lg border border-[#e4e4e7] bg-white px-3 text-[#374151] hover:bg-[#f4f4f5]"
+                          >
+                            Cancelar
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={criarCategoriaEmLinha}
+                            disabled={
+                              salvandoCategoria || !novaCategoriaNome.trim()
+                            }
+                            className="t-corpo flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#16a34a] px-3 font-medium text-white hover:bg-[#15803d] disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {salvandoCategoria && (
+                              <Loader2 size={14} className="animate-spin" />
+                            )}
+                            {salvandoCategoria ? "Criando..." : "Criar e usar"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <select
+                        value={formCategoriaId}
+                        onChange={(e) => setFormCategoriaId(e.target.value)}
+                        className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base text-[#374151] outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
+                      >
+                        <option value="">Sem categoria</option>
+                        {categorias.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.nome}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
 
 

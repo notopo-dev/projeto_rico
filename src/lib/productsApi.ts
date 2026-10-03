@@ -533,29 +533,3 @@ if(error)
 throw error;
 
 }
-
-
-
-
-
-
-export async function listCategoriesForSelect(){
-
-const storeId =
-await getCurrentStoreId();
-
-
-const {data,error}=await supabase
-.from("categories")
-.select("id,nome")
-.eq("store_id",storeId)
-.order("nome");
-
-
-if(error)
-throw error;
-
-
-return data ?? [];
-
-}
