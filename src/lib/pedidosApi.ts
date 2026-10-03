@@ -609,19 +609,6 @@ export async function marcarComoVisto(pedidoId: string): Promise<void> {
   if (error) throw error;
 }
 
-/** Quantos pedidos o lojista ainda não abriu. Alimenta o contador. */
-export async function contarNaoLidos(): Promise<number> {
-  const storeId = await getCurrentStoreId();
-  const { count, error } = await supabase
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("store_id", storeId)
-    .is("visto_em", null);
-
-  if (error) throw error;
-  return count ?? 0;
-}
-
 /** Marca todos como lidos de uma vez. */
 export async function marcarTodosComoVistos(): Promise<void> {
   const storeId = await getCurrentStoreId();
