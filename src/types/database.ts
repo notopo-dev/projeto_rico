@@ -102,6 +102,13 @@ export interface Product {
   category_id: string | null;
   nome: string;
   slug: string;
+  /**
+   * Número do produto dentro da loja, do sistema e imutável.
+   *
+   * É o que o lojista fala em voz alta: "pega o 47". Diferente do
+   * SKU, que é dele e ele edita. Cada loja numera a partir de 1.
+   */
+  codigo: number;
   descricao: string | null;
   sku: string;
   preco: number;

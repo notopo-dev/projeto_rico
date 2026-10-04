@@ -174,8 +174,53 @@ return nome
 .normalize("NFD")
 .replace(/[\u0300-\u036f]/g,"")
 .replace(/\s+/g,"-")
-.replace(/[^a-z0-9-]/g,"");
+.replace(/[^a-z0-9-]/g,"")
+.replace(/-+/g,"-")
+.replace(/^-|-$/g,"");
 
+}
+
+
+/**
+ * Acha um endereço livre para o produto dentro da loja.
+ *
+ * Virou necessário quando o slug ganhou índice único por loja.
+ * Antes, dois produtos com o mesmo nome conviviam e um dos dois
+ * ficava inalcançável pelo link, em silêncio. Agora o banco recusa,
+ * e sem isto o lojista veria o cadastro falhar ao criar a segunda
+ * "Camiseta Branca" — uma coisa que hoje funciona.
+ *
+ * Acrescenta -2, -3... até achar livre. Não uso sufixo aleatório: o
+ * endereço é o que ele cola no Instagram, e "camiseta-branca-2" se
+ * lê em voz alta, "camiseta-branca-x7f3" não.
+ */
+async function slugDisponivel(
+  storeId: string,
+  base: string,
+  ignorarId?: string
+): Promise<string> {
+
+  const raiz = base || "produto";
+
+  for (let n = 1; n < 100; n++) {
+
+    const tentativa = n === 1 ? raiz : `${raiz}-${n}`;
+
+    let q = supabase
+      .from("products")
+      .select("id")
+      .eq("store_id", storeId)
+      .eq("slug", tentativa);
+
+    if (ignorarId) q = q.neq("id", ignorarId);
+
+    const { data, error } = await q.limit(1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) return tentativa;
+  }
+
+  return `${raiz}-${Date.now().toString(36)}`;
 }
 
 
@@ -194,7 +239,10 @@ await getCurrentStoreId();
 
 
 const slug =
-gerarSlug(input.nome);
+await slugDisponivel(
+storeId,
+gerarSlug(input.nome)
+);
 
 
 

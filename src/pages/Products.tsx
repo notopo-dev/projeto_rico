@@ -11,6 +11,9 @@ import {
   Loader2,
   ImagePlus,
   ImageOff,
+  Wand2,
+  Hash,
+  LayoutGrid,
 } from "lucide-react";
 import Badge from "../components/Badge";
 import DimensoesProdutoSection from "../components/DimensoesProdutoSection";
@@ -34,6 +37,16 @@ import {
   listCategoriesForSelect,
   createCategory,
 } from "../lib/categoriesApi";
+import {
+  listarVariacoes,
+  salvarVariacoes,
+  lerCusto,
+  salvarCusto,
+  sugerirSku,
+  margem,
+  traduzirErro,
+  type VariacaoInput,
+} from "../lib/variacoesApi";
 import { supabase } from "../lib/supabase";
 import { validarImagem } from "../lib/imagemSegura";
 import { getCurrentStoreId } from "../lib/currentStore";
@@ -52,6 +65,7 @@ interface Product {
   descricao: string;
   categoria: string;
   categoriaId: string | null;
+  codigo: number | null;
   preco: number;
   precoFormatado: string;
   precoPromocional: number | null;
@@ -83,6 +97,7 @@ function toViewProduct(p: ProductWithCategoria): Product {
     descricao: p.descricao ?? "",
     categoria: p.categoria_nome ?? "Sem categoria",
     categoriaId: p.category_id,
+    codigo: (p as any).codigo ?? null,
     preco: p.preco,
     precoFormatado: p.preco.toLocaleString("pt-BR", {
       style: "currency",
@@ -220,6 +235,19 @@ export default function Products() {
   const [salvandoCategoria, setSalvandoCategoria] = useState(false);
   const [erroCategoria, setErroCategoria] = useState<string | null>(null);
   const [formVendaSemEstoque, setFormVendaSemEstoque] = useState(false);
+
+  /*
+   * Custo e grade de variações.
+   *
+   * O custo mora em `product_costs`, tabela separada sem permissão
+   * para o visitante da loja: como coluna de `products` ele seria
+   * lido por qualquer pessoa com o endereço da loja aberto.
+   *
+   * A grade é OPCIONAL. Produto sem variação continua usando o
+   * estoque do produto, exatamente como antes desta tela mudar.
+   */
+  const [formCusto, setFormCusto] = useState("");
+  const [formVariacoes, setFormVariacoes] = useState<VariacaoInput[]>([]);
   const [formItemPromocao, setFormItemPromocao] = useState(false);
   const [formCores, setFormCores] = useState<any[]>([]);
   const [formTamanhos, setFormTamanhos] = useState<string[]>([]);
@@ -331,6 +359,8 @@ export default function Products() {
     setImagensParaRemover([]);
     setNovasImagens([]);
     setSaveError(null);
+    setFormCusto("");
+    setFormVariacoes([]);
     setCriandoCategoria(false);
     setNovaCategoriaNome("");
     setErroCategoria(null);
@@ -385,6 +415,44 @@ export default function Products() {
       setImagensExistentes(p.imagens);
       setImagensParaRemover([]);
       setNovasImagens([]);
+
+      /*
+       * Custo e grade vêm em consultas próprias: o custo porque está
+       * em outra tabela, e a grade porque é uma linha por combinação.
+       * Falha aqui não pode travar a edição do produto — o lojista
+       * ainda consegue corrigir preço e foto sem elas.
+       */
+      try {
+        const [custo, variacoes] = await Promise.all([
+          lerCusto(p.id),
+          listarVariacoes(p.id),
+        ]);
+
+        setFormCusto(
+          custo != null
+            ? custo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })
+            : ""
+        );
+
+        setFormVariacoes(
+          variacoes.map((v) => ({
+            id: v.id,
+            cor_nome: v.cor_nome,
+            cor_hex: v.cor_hex,
+            cor_imagem_url: v.cor_imagem_url,
+            tamanho: v.tamanho,
+            sku: v.sku,
+            codigo_barras: v.codigo_barras,
+            preco: v.preco,
+            estoque: v.estoque,
+            estoque_minimo: v.estoque_minimo,
+            ativa: v.ativa,
+          }))
+        );
+      } catch {
+        setFormCusto("");
+        setFormVariacoes([]);
+      }
     } catch (err) {
       setSaveError(
         err instanceof Error ? err.message : "Erro ao carregar produto."
@@ -515,6 +583,95 @@ export default function Products() {
     setFormCores((prev)=>prev.filter((_,i)=>i!==index));
   }
 
+  /** Soma do estoque das combinações. É o total real quando há grade. */
+  const estoqueDaGrade = formVariacoes.reduce(
+    (soma, v) => soma + (Number.isFinite(v.estoque) ? v.estoque : 0),
+    0,
+  );
+
+  const usaGrade = formVariacoes.length > 0;
+
+  function valorNumerico(texto: string): number | null {
+    const limpo = texto.replace(/[^0-9,.-]/g, "").replace(",", ".");
+    if (!limpo.trim()) return null;
+    const n = parseFloat(limpo);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /**
+   * Monta a grade cruzando as cores e os tamanhos já preenchidos.
+   *
+   * Nasce com estoque ZERO de propósito. Repetir o estoque do
+   * produto em cada combinação inventaria peças: um produto com 100
+   * e 4 combinações viraria 400. O lojista conta a arara e digita.
+   *
+   * O que já existe é preservado: remontar a grade depois de
+   * acrescentar uma cor não apaga as contagens das outras.
+   */
+  function montarGrade() {
+    const cores = formCores.length
+      ? formCores.map((c: any) => ({
+          nome: String(c.nome ?? "").trim(),
+          hex: c.codigo_hex ?? null,
+          img: c.imagem_url ?? null,
+        }))
+      : [{ nome: "", hex: null, img: null }];
+
+    const tamanhos = formTamanhos.length ? formTamanhos : [""];
+
+    const chave = (cor: string, tam: string) =>
+      `${cor.trim().toLowerCase()}|${tam.trim().toLowerCase()}`;
+
+    const jaExistem = new Map(
+      formVariacoes.map((v) => [
+        chave(v.cor_nome ?? "", v.tamanho ?? ""),
+        v,
+      ]),
+    );
+
+    const novas: VariacaoInput[] = [];
+
+    for (const cor of cores) {
+      for (const tam of tamanhos) {
+        const k = chave(cor.nome, tam);
+        const anterior = jaExistem.get(k);
+
+        novas.push(
+          anterior ?? {
+            cor_nome: cor.nome || null,
+            cor_hex: cor.hex,
+            cor_imagem_url: cor.img,
+            tamanho: tam || null,
+            sku: sugerirSku({
+              categoria: categorias.find((c) => c.id === formCategoriaId)?.nome,
+              nomeProduto: formNome,
+              codigo: editTarget?.codigo ?? null,
+              cor: cor.nome,
+              tamanho: tam,
+            }),
+            codigo_barras: null,
+            preco: null,
+            estoque: 0,
+            estoque_minimo: 0,
+            ativa: true,
+          },
+        );
+      }
+    }
+
+    setFormVariacoes(novas);
+  }
+
+  function alterarVariacao(i: number, campos: Partial<VariacaoInput>) {
+    setFormVariacoes((lista) =>
+      lista.map((v, idx) => (idx === i ? { ...v, ...campos } : v)),
+    );
+  }
+
+  function removerVariacao(i: number) {
+    setFormVariacoes((lista) => lista.filter((_, idx) => idx !== i));
+  }
+
   async function handleSaveProduct() {
     setSaveError(null);
 
@@ -556,7 +713,13 @@ export default function Products() {
       descricao: formDescricao.trim(),
       preco: precoNumerico,
       preco_promocional: precoPromocionalNumerico,
-      estoque: estoqueNumerico,
+      /*
+       * Com grade montada, o estoque do produto passa a ser a SOMA
+       * das combinações. Manter dois números editáveis para a mesma
+       * coisa é garantir que eles divirjam, e aí ninguém sabe qual
+       * vale. A vitrine e os relatórios continuam lendo este campo.
+       */
+      estoque: usaGrade ? estoqueDaGrade : estoqueNumerico,
       estoque_minimo: isNaN(estoqueMinimoNumerico) ? 0 : estoqueMinimoNumerico,
       category_id: formCategoriaId || null,
       permite_venda_sem_estoque: formVendaSemEstoque,
@@ -588,6 +751,16 @@ export default function Products() {
         }
       }
 
+      /*
+       * Grade e custo depois do produto: a variação precisa do
+       * product_id, e o custo também. Se qualquer um falhar, o erro
+       * sobe e o lojista vê a mensagem traduzida — o produto já foi
+       * gravado, então ele corrige e salva de novo sem recomeçar.
+       */
+      await salvarVariacoes(productId, formVariacoes);
+
+      await salvarCusto(productId, valorNumerico(formCusto));
+
       // Envia as novas imagens
       if (novasImagens.length > 0) {
         const posicaoInicial =
@@ -598,9 +771,13 @@ export default function Products() {
       closeModal();
       await loadProducts();
     } catch (err) {
-      setSaveError(
-        err instanceof Error ? err.message : "Erro ao salvar produto."
-      );
+      /*
+       * traduzirErro transforma "duplicate key value violates unique
+       * constraint products_sku_por_loja" numa frase que o lojista
+       * entende. Sem isto, SKU repetido vira texto cru do Postgres
+       * na cara de quem está cadastrando uma camiseta.
+       */
+      setSaveError(traduzirErro(err));
     } finally {
       setSaving(false);
     }
@@ -1143,18 +1320,62 @@ export default function Products() {
                     />
                   </div>
 
+                  {/* Código do produto · só aparece depois de salvo,
+                      porque é o banco que atribui. Não é editável: se
+                      mudasse, a etiqueta impressa e o pedido antigo
+                      passariam a apontar para outro produto. */}
+                  {editTarget?.codigo != null && (
+                    <div className="flex items-center gap-2 rounded-lg border border-[#e4e4e7] bg-[#fafafa] px-3 py-2.5">
+                      <Hash size={15} className="shrink-0 text-[#6b7280]" />
+                      <span className="t-corpo text-[#6b7280]">
+                        Código do produto
+                      </span>
+                      <span className="t-corpo ml-auto font-mono font-semibold text-[#0f1117]">
+                        {editTarget.codigo}
+                      </span>
+                    </div>
+                  )}
+
                   {/* SKU */}
                   <div>
-                    <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
-                      SKU
-                    </label>
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <label className="t-corpo font-semibold text-[#374151]">
+                        SKU
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormSku(
+                            sugerirSku({
+                              categoria: categorias.find(
+                                (c) => c.id === formCategoriaId,
+                              )?.nome,
+                              nomeProduto: formNome,
+                              codigo: editTarget?.codigo ?? null,
+                            }),
+                          )
+                        }
+                        className="t-apoio inline-flex items-center gap-1 font-medium text-[#16a34a] hover:text-[#15803d]"
+                      >
+                        <Wand2 size={13} strokeWidth={2.2} />
+                        Gerar
+                      </button>
+                    </div>
+
                     <input
                       type="text"
                       placeholder="Ex: CAM001"
                       value={formSku}
                       onChange={(e) => setFormSku(e.target.value)}
-                      className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
+                      className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base font-mono outline-none placeholder:font-sans placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
                     />
+
+                    <p className="t-apoio mt-1 leading-snug text-[#6b7280]">
+                      É o seu código, e é único na loja. Deixei editável de
+                      propósito: se você já usa o código do fornecedor ou
+                      vende em outro canal, ele precisa bater.
+                    </p>
                   </div>
 
                   {/* Preço + Preço promocional */}
@@ -1185,20 +1406,95 @@ export default function Products() {
                     </div>
                   </div>
 
+                  {/* Preço de custo e margem.
+                      Guardado em tabela separada, sem permissão para o
+                      visitante: como coluna de `products` ele seria
+                      lido por qualquer um que abrisse a loja. */}
+                  <div>
+                    <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
+                      Preço de custo
+                    </label>
+
+                    <input
+                      type="text"
+                      placeholder="Quanto você paga no fornecedor"
+                      value={formCusto}
+                      onChange={(e) => setFormCusto(e.target.value)}
+                      className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
+                    />
+
+                    {(() => {
+                      const custo = valorNumerico(formCusto);
+                      const venda =
+                        valorNumerico(formPrecoPromocional) ??
+                        valorNumerico(formPreco);
+                      const m = margem(venda, custo);
+
+                      if (m === null) {
+                        return (
+                          <p className="t-apoio mt-1 text-[#6b7280]">
+                            Só você enxerga este valor. Quem abre a loja, não.
+                          </p>
+                        );
+                      }
+
+                      const lucro = (venda ?? 0) - (custo ?? 0);
+                      const ruim = m < 0;
+
+                      return (
+                        <p
+                          className={`t-apoio mt-1 leading-snug ${
+                            ruim ? "font-medium text-[#b91c1c]" : "text-[#6b7280]"
+                          }`}
+                        >
+                          {ruim
+                            ? `Atenção: vendendo a este preço você perde ${Math.abs(
+                                lucro,
+                              ).toLocaleString("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              })} por peça.`
+                            : `Margem de ${m.toFixed(1)}% — ${lucro.toLocaleString(
+                                "pt-BR",
+                                { style: "currency", currency: "BRL" },
+                              )} por peça.`}
+                          {formPrecoPromocional.trim() && !ruim
+                            ? " (sobre o preço promocional)"
+                            : ""}
+                        </p>
+                      );
+                    })()}
+                  </div>
+
                   {/* Estoque + Estoque mínimo */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
                         Estoque
                       </label>
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="0"
-                        value={formEstoque}
-                        onChange={(e) => setFormEstoque(e.target.value)}
-                        className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
-                      />
+                      {/* Com grade montada, este número passa a ser a
+                          soma das combinações e sai de edição. Dois
+                          campos editáveis para a mesma contagem é
+                          garantir que eles divirjam. */}
+                      {usaGrade ? (
+                        <div className="t-corpo flex h-11 items-center justify-between rounded-lg border border-[#e4e4e7] bg-[#fafafa] px-3">
+                          <span className="font-semibold text-[#0f1117]">
+                            {estoqueDaGrade}
+                          </span>
+                          <span className="t-apoio text-[#6b7280]">
+                            da grade
+                          </span>
+                        </div>
+                      ) : (
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="0"
+                          value={formEstoque}
+                          onChange={(e) => setFormEstoque(e.target.value)}
+                          className="t-corpo w-full h-11 px-3 rounded-lg border border-[#e4e4e7] bg-white text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
+                        />
+                      )}
                     </div>
                     <div>
                       <label className="t-corpo block font-semibold text-[#374151] mb-1.5">
@@ -1462,6 +1758,160 @@ export default function Products() {
                         </button>
                       ))}
                     </div>
+                  </div>
+
+                  {/* ================= GRADE DE ESTOQUE =================
+                      A combinação de cor e tamanho é a peça que o
+                      cliente compra. Enquanto o estoque for um número
+                      do produto, 3 cores x 5 tamanhos são 15
+                      combinações atrás de um número só — e a loja
+                      aceita pedido da P preta depois que a última P
+                      preta foi vendida.
+
+                      É OPCIONAL: sem grade, o produto segue usando o
+                      estoque de cima, exatamente como antes. */}
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <label className="t-corpo font-semibold text-[#374151]">
+                        Grade de estoque
+                      </label>
+
+                      {(formCores.length > 0 || formTamanhos.length > 0) && (
+                        <button
+                          type="button"
+                          onClick={montarGrade}
+                          className="t-apoio inline-flex items-center gap-1 font-medium text-[#16a34a] hover:text-[#15803d]"
+                        >
+                          <LayoutGrid size={13} strokeWidth={2.2} />
+                          {usaGrade ? "Atualizar grade" : "Montar grade"}
+                        </button>
+                      )}
+                    </div>
+
+                    {!usaGrade ? (
+                      <div className="rounded-lg border border-dashed border-[#d4d4d8] bg-[#fafafa] px-3.5 py-3">
+                        {formCores.length > 0 || formTamanhos.length > 0 ? (
+                          <p className="t-apoio leading-snug text-[#6b7280]">
+                            Este produto tem{" "}
+                            <strong className="text-[#0f1117]">
+                              {Math.max(formCores.length, 1) *
+                                Math.max(formTamanhos.length, 1)}{" "}
+                              combinações
+                            </strong>{" "}
+                            de cor e tamanho, mas um número de estoque só.
+                            Monte a grade para contar cada uma separada — sem
+                            isso a loja aceita pedido de um tamanho que já
+                            acabou.
+                          </p>
+                        ) : (
+                          <p className="t-apoio leading-snug text-[#6b7280]">
+                            Cadastre as cores e os tamanhos acima para montar a
+                            grade. Enquanto não houver grade, vale o estoque
+                            único do produto.
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {formVariacoes.map((v, i) => (
+                          <div
+                            key={v.id ?? `nova-${i}`}
+                            className="rounded-lg border border-[#e4e4e7] bg-white p-3"
+                          >
+                            <div className="flex items-center gap-2">
+                              {v.cor_hex && (
+                                <span
+                                  aria-hidden="true"
+                                  className="h-4 w-4 shrink-0 rounded-full border border-[#e4e4e7]"
+                                  style={{ backgroundColor: v.cor_hex }}
+                                />
+                              )}
+
+                              <p className="t-corpo min-w-0 flex-1 truncate font-medium text-[#0f1117]">
+                                {[v.cor_nome, v.tamanho]
+                                  .filter(Boolean)
+                                  .join(" · ") || "Padrão"}
+                              </p>
+
+                              <button
+                                type="button"
+                                onClick={() => removerVariacao(i)}
+                                aria-label={`Remover ${
+                                  [v.cor_nome, v.tamanho]
+                                    .filter(Boolean)
+                                    .join(" ") || "combinação"
+                                }`}
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#6b7280] hover:bg-[#fef2f2] hover:text-[#b91c1c]"
+                              >
+                                <X size={15} />
+                              </button>
+                            </div>
+
+                            <div className="mt-2 grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="t-apoio mb-1 block text-[#6b7280]">
+                                  Estoque
+                                </label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  inputMode="numeric"
+                                  value={v.estoque}
+                                  onChange={(e) =>
+                                    alterarVariacao(i, {
+                                      estoque: Math.max(
+                                        0,
+                                        parseInt(e.target.value || "0", 10) || 0,
+                                      ),
+                                    })
+                                  }
+                                  className="t-corpo h-11 w-full rounded-lg border border-[#e4e4e7] bg-white px-3 text-base outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="t-apoio mb-1 block text-[#6b7280]">
+                                  Preço
+                                </label>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="usa o do produto"
+                                  value={v.preco == null ? "" : String(v.preco)}
+                                  onChange={(e) =>
+                                    alterarVariacao(i, {
+                                      preco: valorNumerico(e.target.value),
+                                    })
+                                  }
+                                  className="t-corpo h-11 w-full rounded-lg border border-[#e4e4e7] bg-white px-3 text-base outline-none placeholder:text-[#a1a1aa] focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="mt-2">
+                              <label className="t-apoio mb-1 block text-[#6b7280]">
+                                SKU desta combinação
+                              </label>
+                              <input
+                                type="text"
+                                value={v.sku ?? ""}
+                                onChange={(e) =>
+                                  alterarVariacao(i, { sku: e.target.value })
+                                }
+                                className="t-corpo h-11 w-full rounded-lg border border-[#e4e4e7] bg-white px-3 font-mono text-base outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/10"
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                        <p className="t-apoio px-1 leading-snug text-[#6b7280]">
+                          Total: <strong className="text-[#0f1117]">{estoqueDaGrade}</strong>{" "}
+                          {estoqueDaGrade === 1 ? "peça" : "peças"} somando as{" "}
+                          {formVariacoes.length} combinações. É este número que
+                          vale para a loja.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Vender sem estoque */}
