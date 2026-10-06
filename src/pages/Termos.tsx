@@ -6,7 +6,6 @@
 // A rota fica em RootRouter.tsx (já adicionada):
 //   <Route path="/termos" element={<Termos />} />
 //
-// ⚠️ Troque os campos marcados com [[ ]] antes de publicar.
 // ⚠️ Não sou advogado — este texto é um ponto de partida sólido para a
 //    revisão da Stripe, mas peça a um advogado para revisar antes de
 //    operar com volume.
@@ -40,9 +39,9 @@ export default function Termos() {
         <Secao titulo="1. Quem somos">
           <P>
             Estes Termos regem o uso da plataforma <strong>Money NoTopo</strong>,
-            operada por <strong>[[RAZÃO SOCIAL]]</strong>, inscrita no CNPJ sob o
-            nº <strong>[[CNPJ]]</strong>, com sede em Barreiras, Bahia, Brasil
-            (“Plataforma”, “nós”).
+            operada por <strong>RAFAEL RODRIGUES PEREIRA</strong>, empresário individual
+            (ME), inscrito no CNPJ sob o nº <strong>68.007.923/0001-09</strong>, com sede
+            em Barreiras, Bahia, Brasil (“Plataforma”, “nós”).
           </P>
           <P>
             Contato: <A href="mailto:contato@moneynotopo.com.br">
@@ -199,7 +198,7 @@ export default function Termos() {
 
         <footer className="t-corpo mt-10 pt-6 border-t border-black/5 text-[#9ca3af]">
           <p>
-            [[RAZÃO SOCIAL]] — CNPJ [[CNPJ]] — Barreiras/BA
+            RAFAEL RODRIGUES PEREIRA — CNPJ 68.007.923/0001-09 — Barreiras/BA
             <br />
             contato@moneynotopo.com.br
           </p>

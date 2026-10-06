@@ -6,7 +6,6 @@
 // A rota fica em RootRouter.tsx (já adicionada):
 //   <Route path="/privacidade" element={<Privacidade />} />
 //
-// ⚠️ Troque os campos marcados com [[ ]] antes de publicar.
 
 import { Link } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
@@ -38,9 +37,9 @@ export default function Privacidade() {
 
         <Secao titulo="1. Quem trata seus dados">
           <P>
-            <strong>[[RAZÃO SOCIAL]]</strong>, CNPJ <strong>[[CNPJ]]</strong>,
-            sediada em Barreiras, Bahia, operadora da plataforma{" "}
-            <strong>Money NoTopo</strong>.
+            <strong>RAFAEL RODRIGUES PEREIRA</strong>, empresário individual (ME), CNPJ 
+            <strong>68.007.923/0001-09</strong>, sediado em Barreiras, Bahia, operador da
+            plataforma <strong>Money NoTopo</strong>.
           </P>
           <P>
             Encarregado de dados (DPO):{" "}
@@ -200,7 +199,7 @@ export default function Privacidade() {
 
         <footer className="t-corpo mt-10 pt-6 border-t border-black/5 text-[#9ca3af]">
           <p>
-            [[RAZÃO SOCIAL]] — CNPJ [[CNPJ]] — Barreiras/BA
+            RAFAEL RODRIGUES PEREIRA — CNPJ 68.007.923/0001-09 — Barreiras/BA
             <br />
             privacidade@moneynotopo.com.br
           </p>
