@@ -43,6 +43,34 @@ const SEGREDOS = Object.entries(Deno.env.toObject())
   )
   .map(([, valor]) => valor);
 
+/**
+ * Pede para a fila de e-mails ser esvaziada.
+ *
+ * Este webhook é do Stripe: se ele devolver erro, o Stripe REPETE o
+ * evento. Um e-mail que não saiu não pode causar reprocessamento de
+ * pagamento, então todo erro morre aqui dentro — a mensagem fica
+ * pendente na fila e sai na próxima vez que alguém mexer num pedido.
+ */
+async function esvaziarFilaDeEmails(): Promise<void> {
+  try {
+    const url = Deno.env.get("SUPABASE_URL");
+    const chave = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !chave) return;
+
+    await fetch(`${url}/functions/v1/emails-processar`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${chave}`,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    /* silêncio proposital: ver o comentário acima */
+  }
+}
+
 Deno.serve(async (req) => {
   const signature = req.headers.get("stripe-signature");
   const body = await req.text();
@@ -219,6 +247,11 @@ Deno.serve(async (req) => {
             .eq("status", "pendente");
 
           await (storeId ? q.eq("store_id", storeId) : q);
+
+          // O update acima faz o gatilho do banco enfileirar o aviso
+          // de pagamento confirmado. Aqui só pedimos para a fila ser
+          // esvaziada.
+          await esvaziarFilaDeEmails();
         }
         break;
       }

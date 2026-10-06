@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { getCurrentStoreId } from "./currentStore";
+import { dispararEmails } from "./emailsApi";
 
 /**
  * Pedidos da loja.
@@ -525,6 +526,9 @@ export async function avancarEntrega(
     .eq("store_id", storeId);
 
   if (error) throw error;
+
+  /* "enviado" faz o gatilho enfileirar o aviso com o rastreio. */
+  dispararEmails();
 }
 
 /**
@@ -564,6 +568,8 @@ export async function marcarPagamentoRecebido(pedidoId: string): Promise<void> {
     .eq("store_id", storeId);
 
   if (error) throw error;
+
+  dispararEmails();
 }
 
 /** Cancela o pedido. Não mexe no dinheiro — devolução é à parte. */
@@ -576,6 +582,8 @@ export async function cancelarPedido(pedidoId: string): Promise<void> {
     .eq("store_id", storeId);
 
   if (error) throw error;
+
+  dispararEmails();
 }
 
 /** Desfaz o cancelamento. */
@@ -588,6 +596,8 @@ export async function reativarPedido(pedidoId: string): Promise<void> {
     .eq("store_id", storeId);
 
   if (error) throw error;
+
+  dispararEmails();
 }
 
 /**
@@ -656,6 +666,8 @@ export async function salvarCodigoRastreio(
     .eq("store_id", storeId);
 
   if (error) throw error;
+
+  dispararEmails();
 }
 
 export interface ResultadoReembolso {

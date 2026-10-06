@@ -1,4 +1,5 @@
 import { supabase } from "../../lib/supabaseClient";
+import { dispararEmails } from "../../lib/emailsApi";
 
 export interface PublicStore {
   id: string;
@@ -296,6 +297,14 @@ export async function createPublicOrder(input: CheckoutInput) {
   if (!pedido?.id) {
     throw new Error("Não foi possível registrar o pedido. Tente de novo.");
   }
+
+  /*
+   * O banco já enfileirou o aviso de venda para o lojista e o de
+   * pedido recebido para o cliente. Isto só pede para a fila ser
+   * esvaziada, e nunca lança erro: o pedido ACABOU de ser criado e
+   * não pode falhar por causa de e-mail.
+   */
+  dispararEmails();
 
   return pedido as { id: string; numero: string; total: number };
 }
