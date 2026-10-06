@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { supabase } from "./lib/supabase";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
+import RedefinirSenha from "./pages/RedefinirSenha";
 import Dashboard from "./pages/Dashboard";
 import Loja from "./pages/Loja";
 import Products from "./pages/Products";
@@ -77,6 +78,16 @@ export default function App() {
   );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  /**
+   * O link de "Esqueci a senha" cria uma sessão de verdade antes de
+   * qualquer senha nova existir. Sem este desvio o app via a sessão,
+   * abria o painel e a senha continuava a antiga — o link de
+   * recuperação virava um login sem senha.
+   */
+  const [recuperandoSenha, setRecuperandoSenha] = useState(
+    window.location.pathname === "/redefinir-senha"
+  );
+
   useEffect(() => {
     let mounted = true;
 
@@ -84,13 +95,19 @@ export default function App() {
       if (mounted) setSession(data.session);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (mounted) setSession(nextSession);
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!mounted) return;
+      // Rede de segurança: se o endereço /redefinir-senha não estiver
+      // na lista de permitidos do Supabase, o link cai em "/" e o
+      // caminho sozinho não denunciaria a recuperação. Este evento sim.
+      if (event === "PASSWORD_RECOVERY") setRecuperandoSenha(true);
+      setSession(nextSession);
     });
 
     const onPopState = () => {
       setCurrentPage(paginaInicial());
       setAuthPath(window.location.pathname === "/cadastro" ? "cadastro" : "login");
+      setRecuperandoSenha(window.location.pathname === "/redefinir-senha");
     };
     window.addEventListener("popstate", onPopState);
 
@@ -109,6 +126,9 @@ export default function App() {
    */
   useEffect(() => {
     if (!session) return;
+    // Durante a troca de senha a URL fica onde está: assim um F5 no
+    // meio do caminho volta para a tela de senha, e não para o painel.
+    if (recuperandoSenha) return;
 
     const esperado = `/${currentPage}`;
     if (window.location.pathname !== esperado) {
@@ -120,7 +140,7 @@ export default function App() {
     } catch {
       // sem armazenamento: a URL já garante o F5
     }
-  }, [currentPage, session]);
+  }, [currentPage, session, recuperandoSenha]);
 
   function goTo(page: Page) {
     window.history.pushState({}, "", `/${page}`);
@@ -149,6 +169,26 @@ export default function App() {
 
   if (session === undefined) {
     return <TelaCarregando texto="Carregando sua loja…" />;
+  }
+
+  if (recuperandoSenha) {
+    return (
+      <RedefinirSenha
+        temSessao={Boolean(session)}
+        onConcluido={() => {
+          setRecuperandoSenha(false);
+          goTo("dashboard");
+        }}
+        onVoltarLogin={async () => {
+          // Desconecta de propósito: quem chegou por link de e-mail e
+          // não trocou a senha não pode continuar dentro do painel.
+          await supabase.auth.signOut();
+          setRecuperandoSenha(false);
+          window.history.replaceState({}, "", "/login");
+          setAuthPath("login");
+        }}
+      />
+    );
   }
 
   if (!session) {
