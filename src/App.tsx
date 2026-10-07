@@ -4,6 +4,7 @@ import { supabase } from "./lib/supabase";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import RedefinirSenha from "./pages/RedefinirSenha";
+import ConfirmarEmail from "./pages/ConfirmarEmail";
 import Dashboard from "./pages/Dashboard";
 import Loja from "./pages/Loja";
 import Products from "./pages/Products";
@@ -88,6 +89,11 @@ export default function App() {
     window.location.pathname === "/redefinir-senha"
   );
 
+  /** Fim dos links de confirmar cadastro e de trocar o e-mail. */
+  const [confirmandoEmail, setConfirmandoEmail] = useState(
+    window.location.pathname === "/confirmar-email"
+  );
+
   useEffect(() => {
     let mounted = true;
 
@@ -108,6 +114,7 @@ export default function App() {
       setCurrentPage(paginaInicial());
       setAuthPath(window.location.pathname === "/cadastro" ? "cadastro" : "login");
       setRecuperandoSenha(window.location.pathname === "/redefinir-senha");
+      setConfirmandoEmail(window.location.pathname === "/confirmar-email");
     };
     window.addEventListener("popstate", onPopState);
 
@@ -128,7 +135,7 @@ export default function App() {
     if (!session) return;
     // Durante a troca de senha a URL fica onde está: assim um F5 no
     // meio do caminho volta para a tela de senha, e não para o painel.
-    if (recuperandoSenha) return;
+    if (recuperandoSenha || confirmandoEmail) return;
 
     const esperado = `/${currentPage}`;
     if (window.location.pathname !== esperado) {
@@ -140,7 +147,7 @@ export default function App() {
     } catch {
       // sem armazenamento: a URL já garante o F5
     }
-  }, [currentPage, session, recuperandoSenha]);
+  }, [currentPage, session, recuperandoSenha, confirmandoEmail]);
 
   function goTo(page: Page) {
     window.history.pushState({}, "", `/${page}`);
@@ -171,13 +178,32 @@ export default function App() {
     return <TelaCarregando texto="Carregando sua loja…" />;
   }
 
+  if (confirmandoEmail) {
+    return (
+      <ConfirmarEmail
+        onIrParaPainel={() => {
+          setConfirmandoEmail(false);
+          goTo(paginaInicial());
+        }}
+        onIrParaLogin={() => {
+          setConfirmandoEmail(false);
+          window.history.replaceState({}, "", "/login");
+          setAuthPath("login");
+        }}
+      />
+    );
+  }
+
   if (recuperandoSenha) {
     return (
       <RedefinirSenha
         temSessao={Boolean(session)}
         onConcluido={() => {
+          // A tela de senha já desconectou. Aqui só devolve o app ao
+          // login, para o lojista entrar com a senha que acabou de criar.
           setRecuperandoSenha(false);
-          goTo("dashboard");
+          window.history.replaceState({}, "", "/login");
+          setAuthPath("login");
         }}
         onVoltarLogin={async () => {
           // Desconecta de propósito: quem chegou por link de e-mail e

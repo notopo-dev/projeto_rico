@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   Eye,
   EyeOff,
@@ -10,22 +10,32 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { traduzirErroAuth, forcaSenha } from "../lib/authErrors";
+import {
+  limparUrl,
+  tipoDoLink,
+  tokenDoLink,
+  trocarTokenPorSessao,
+} from "../lib/linkDeEmail";
 
 /**
  * Escolher uma nova senha.
  *
  * É a tela que faltava no fim do "Esqueci a senha". O link do e-mail
- * leva para /redefinir-senha, e o Supabase troca o código da URL por
- * uma sessão antes desta tela aparecer — por isso updateUser já sabe
- * de quem é a senha, sem pedir a antiga.
+ * leva para /redefinir-senha com um token_hash, e a própria tela troca
+ * esse token por uma sessão — por isso updateUser já sabe de quem é a
+ * senha, sem pedir a antiga.
  *
  * Sem esta tela, o link do e-mail virava um login sem senha: a pessoa
  * caía direto no painel, a senha continuava a mesma e no dia seguinte
  * ela não entrava de novo.
  *
- * "Voltar para o login" desconecta de propósito. Quem chegou por link
- * de e-mail e desistiu de trocar a senha não pode ficar com o painel
- * aberto.
+ * No fim ela DESCONECTA e manda para o login. O link de recuperação
+ * cria uma sessão que ninguém digitou senha para obter — deixar o
+ * painel aberto em cima dela seria entrar sem senha. Digitar a senha
+ * nova no login também prova, ali na hora, que a troca funcionou.
+ *
+ * "Cancelar" desconecta pelo mesmo motivo: quem chegou por link de
+ * e-mail e desistiu não pode ficar dentro do painel.
  */
 
 const campoCls =
@@ -49,6 +59,40 @@ export default function RedefinirSenha({
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [pronto, setPronto] = useState(false);
+
+  // Só há o que verificar se o link trouxe token. Sem token, quem
+  // manda é a sessão que o App já resolveu.
+  const [verificando, setVerificando] = useState(() =>
+    Boolean(tokenDoLink(window.location.search))
+  );
+  const [verificado, setVerificado] = useState(false);
+
+  useEffect(() => {
+    const token = tokenDoLink(window.location.search);
+    if (!token) return;
+
+    const tipo = tipoDoLink(window.location.search, ["recovery"]);
+    let vivo = true;
+
+    (async () => {
+      const r = tipo
+        ? await trocarTokenPorSessao(token, tipo)
+        : { autenticado: false, faltaOutroLado: false, invalido: true };
+
+      limparUrl();
+      if (!vivo) return;
+      setVerificado(r.autenticado);
+      setVerificando(false);
+    })();
+
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  // temSessao cobre o caminho antigo (link que já chega autenticado);
+  // verificado cobre o link novo, que chega com token e sem sessão.
+  const liberado = verificado || temSessao;
 
   const forca = forcaSenha(senha);
 
@@ -74,6 +118,10 @@ export default function RedefinirSenha({
       setSenha("");
       setConfirmacao("");
       setPronto(true);
+
+      // Encerra a sessão que veio do link. A partir daqui só se entra
+      // digitando a senha nova.
+      await supabase.auth.signOut();
     } catch (err: any) {
       setErro(traduzirErroAuth(err?.message));
     } finally {
@@ -82,9 +130,48 @@ export default function RedefinirSenha({
   }
 
   // ------------------------------------------------------------
+  // Trocou — já desconectado
+  // ------------------------------------------------------------
+  if (pronto) {
+    return (
+      <div className="min-h-dvh bg-white flex items-center justify-center px-5 py-8">
+        <div className="w-full max-w-[400px] text-center">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-[#f0fdf4] flex items-center justify-center">
+            <CheckCircle2 size={26} className="text-[#16a34a]" />
+          </div>
+          <h1 className="mt-4 text-[22px] font-extrabold text-[#0f1117]">
+            Senha alterada
+          </h1>
+          <p className="mt-2 text-[14px] leading-relaxed text-[#6b7280]">
+            Pronto. Agora entre com a senha nova.
+          </p>
+          <button
+            onClick={onConcluido}
+            className="mt-6 w-full h-[52px] rounded-2xl bg-[#0f1117] text-white text-[15px] font-semibold hover:bg-[#000]"
+          >
+            Ir para o login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ------------------------------------------------------------
+  // Validando o link
+  // ------------------------------------------------------------
+  if (verificando) {
+    return (
+      <div className="min-h-dvh bg-white flex flex-col items-center justify-center px-5 py-8 gap-3">
+        <Loader2 size={24} className="animate-spin text-[#16a34a]" />
+        <p className="text-[14px] text-[#6b7280]">Validando seu link…</p>
+      </div>
+    );
+  }
+
+  // ------------------------------------------------------------
   // Link morto
   // ------------------------------------------------------------
-  if (!temSessao) {
+  if (!liberado) {
     return (
       <div className="min-h-dvh bg-white flex items-center justify-center px-5 py-8">
         <div className="w-full max-w-[400px] text-center">
@@ -103,33 +190,6 @@ export default function RedefinirSenha({
             className="mt-6 w-full h-[52px] rounded-2xl bg-[#0f1117] text-white text-[15px] font-semibold hover:bg-[#000]"
           >
             Voltar para o login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ------------------------------------------------------------
-  // Trocou
-  // ------------------------------------------------------------
-  if (pronto) {
-    return (
-      <div className="min-h-dvh bg-white flex items-center justify-center px-5 py-8">
-        <div className="w-full max-w-[400px] text-center">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-[#f0fdf4] flex items-center justify-center">
-            <CheckCircle2 size={26} className="text-[#16a34a]" />
-          </div>
-          <h1 className="mt-4 text-[22px] font-extrabold text-[#0f1117]">
-            Senha alterada
-          </h1>
-          <p className="mt-2 text-[14px] leading-relaxed text-[#6b7280]">
-            Pronto. Da próxima vez, entre com a senha nova.
-          </p>
-          <button
-            onClick={onConcluido}
-            className="mt-6 w-full h-[52px] rounded-2xl bg-[#0f1117] text-white text-[15px] font-semibold hover:bg-[#000]"
-          >
-            Ir para o painel
           </button>
         </div>
       </div>
