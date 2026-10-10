@@ -2,40 +2,40 @@ import { useEffect, useRef, useState } from "react";
 import "./apresentacao.css";
 
 /**
- * A página que o lojista vê antes de ter conta.
+ * A página principal, para quem ainda não tem conta.
  *
  * ----------------------------------------------------------------
- * Para quem nunca viu uma loja virtual
+ * A estrutura veio de uma referência que o Rafael escolheu
  * ----------------------------------------------------------------
- * A primeira versão abria com a grade de estoque. É o que o sistema
- * tem de melhor, mas exige saber o que é uma grade para entender a
- * imagem — e quem está chegando não sabe. Agora abre com a LOJA
- * dentro de um celular, que diz "isto aqui é a sua vitrine" sem
- * precisar de uma linha de texto. A grade virou a terceira seção,
- * onde já faz sentido.
+ * Fundo creme, verde-limão forte, etiqueta em pílula abrindo cada
+ * seção, título com palavras coloridas no meio, fileira de cartões
+ * verdes em tons diferentes, e uma faixa cheia com um cartão escuro
+ * de um lado e os passos do outro.
  *
  * ----------------------------------------------------------------
- * Só o que existe
+ * Só promete o que existe
  * ----------------------------------------------------------------
- * Não entra aqui: automação de WhatsApp (a tela do painel é maquete),
- * Pix (não existe nas contas Accounts v2) e domínio próprio (os links
- * internos quebram fora da plataforma).
+ * Fora daqui: automação de WhatsApp (a tela do painel é maquete e
+ * não envia nada), Pix (não existe nas contas Accounts v2) e domínio
+ * próprio (os links internos da loja quebram fora da plataforma).
  */
 
 interface ApresentacaoProps {
+  /** Teste de um dia: leva ao cadastro. */
   onExperimentar: () => void;
+  /** Assinar: também passa pelo cadastro — conta vem antes de cobrança. */
+  onAssinar: () => void;
   onEntrar: () => void;
 }
 
 /* ============================================================
-   A loja dentro do celular — o herói
+   A loja dentro do celular
    ============================================================ */
 
-/** Peças desenhadas em SVG: sem foto, sem arquivo, sem promessa falsa. */
 function Peca({ tipo, cor }: { tipo: "camiseta" | "vestido"; cor: string }) {
   return (
     <svg viewBox="0 0 80 96" aria-hidden="true" className="np-peca">
-      <rect width="80" height="96" fill="#f3f5f3" />
+      <rect width="80" height="96" fill="#f2f3ef" />
       {tipo === "camiseta" ? (
         <path
           d="M28 26 L20 32 L14 44 L22 50 L26 42 L26 76 L54 76 L54 42 L58 50 L66 44 L60 32 L52 26 L46 30 Q40 34 34 30 Z"
@@ -51,50 +51,51 @@ function Peca({ tipo, cor }: { tipo: "camiseta" | "vestido"; cor: string }) {
   );
 }
 
-function Celular() {
+const PECAS = [
+  { t: "camiseta" as const, c: "#1f2937", n: "Camiseta canelada", p: "79,90" },
+  { t: "vestido" as const, c: "#9d5f4e", n: "Vestido midi", p: "189,00" },
+  { t: "camiseta" as const, c: "#4d5d45", n: "Regata básica", p: "59,90" },
+  { t: "vestido" as const, c: "#2b4a6f", n: "Vestido liso", p: "159,00" },
+];
+
+function Celular({ compacto = false }: { compacto?: boolean }) {
   return (
-    <div className="np-celular" role="img" aria-label="Exemplo de loja aberta no celular">
+    <div
+      className={`np-celular${compacto ? " np-celular-peq" : ""}`}
+      role="img"
+      aria-label="Exemplo de loja aberta no celular"
+    >
       <div className="np-tela">
         <div className="np-loja-topo">
           <span className="np-loja-nome">Ateliê Marina</span>
-          <span className="np-loja-sacola" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M6 7h12l-1 13H7L6 7Z" /><path d="M9 7a3 3 0 0 1 6 0" />
-            </svg>
-          </span>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6c7a70" strokeWidth="1.8" aria-hidden="true">
+            <path d="M6 7h12l-1 13H7L6 7Z" />
+            <path d="M9 7a3 3 0 0 1 6 0" />
+          </svg>
         </div>
-
         <div className="np-vitrine">
-          {[
-            { t: "camiseta" as const, c: "#1f2937", n: "Camiseta canelada", p: "79,90" },
-            { t: "vestido" as const, c: "#9d5f4e", n: "Vestido midi", p: "189,00" },
-            { t: "camiseta" as const, c: "#4d5d45", n: "Regata básica", p: "59,90" },
-            { t: "vestido" as const, c: "#2b4a6f", n: "Vestido liso", p: "159,00" },
-          ].map((p, i) => (
-            <div key={i} className="np-card">
+          {PECAS.map((p, i) => (
+            <div key={i} className="np-card-peca">
               <Peca tipo={p.t} cor={p.c} />
               <span className="np-card-nome">{p.n}</span>
               <span className="np-card-preco">R$ {p.p}</span>
             </div>
           ))}
         </div>
-
-        <div className="np-loja-rodape">
-          <span>Entrega calculada pelo CEP</span>
-        </div>
+        <div className="np-loja-rodape">Entrega calculada pelo CEP</div>
       </div>
     </div>
   );
 }
 
 /* ============================================================
-   A grade — terceira seção
+   A grade de estoque — vai no cartão escuro da faixa
    ============================================================ */
 
 const CORES = [
   { nome: "Preto", hex: "#18181b" },
   { nome: "Off-white", hex: "#efece4" },
-  { nome: "Verde-musgo", hex: "#4d5d45" },
+  { nome: "Musgo", hex: "#4d5d45" },
 ];
 const TAMANHOS = ["P", "M", "G", "GG"];
 const ESTOQUE_INICIAL = [
@@ -103,7 +104,7 @@ const ESTOQUE_INICIAL = [
   [2, 0, 1, 3],
 ];
 
-function Grade() {
+function GradeEscura() {
   const [estoque, setEstoque] = useState(ESTOQUE_INICIAL);
   const [vendendo, setVendendo] = useState(false);
   const [vendida, setVendida] = useState(false);
@@ -111,26 +112,25 @@ function Grade() {
   const jaRodou = useRef(false);
 
   useEffect(() => {
-    const quieto = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     const baixar = () => {
       setEstoque((e) => e.map((l, i) => (i === 0 ? [0, ...l.slice(1)] : l)));
       setVendida(true);
     };
 
-    if (quieto) {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       baixar();
       return;
     }
 
-    // Só vende quando a pessoa chega na seção. Animar fora da tela
-    // gastaria o único momento de movimento da página sem ninguém ver.
+    // Só vende quando a seção entra na tela: animar escondido
+    // gastaria o único momento de movimento da página.
     const alvo = caixa.current;
     if (!alvo) return;
 
     let t1: number, t2: number;
     const obs = new IntersectionObserver(
-      (entradas) => {
-        if (!entradas[0].isIntersecting || jaRodou.current) return;
+      (e) => {
+        if (!e[0].isIntersecting || jaRodou.current) return;
         jaRodou.current = true;
         obs.disconnect();
         t1 = window.setTimeout(() => setVendendo(true), 700);
@@ -139,10 +139,9 @@ function Grade() {
           setVendendo(false);
         }, 1400);
       },
-      { threshold: 0.45 },
+      { threshold: 0.4 },
     );
     obs.observe(alvo);
-
     return () => {
       obs.disconnect();
       clearTimeout(t1);
@@ -151,16 +150,16 @@ function Grade() {
   }, []);
 
   return (
-    <div className="np-grade" ref={caixa}>
-      <div className="np-grade-topo">
-        <span className="np-grade-produto">Camiseta canelada</span>
-        <span className="np-grade-codigo">0047</span>
+    <div className="np-grade-escura" ref={caixa}>
+      <div className="np-ge-topo">
+        <span className="np-ge-titulo">Camiseta canelada</span>
+        <span className="np-ge-codigo">0047</span>
       </div>
 
-      <table className="np-tabela">
+      <table className="np-ge-tabela">
         <thead>
           <tr>
-            <th scope="col" className="np-th-cor">
+            <th scope="col" className="np-ge-cor">
               <span className="np-oculto">Cor</span>
             </th>
             {TAMANHOS.map((t) => (
@@ -173,7 +172,7 @@ function Grade() {
         <tbody>
           {CORES.map((cor, i) => (
             <tr key={cor.nome}>
-              <th scope="row" className="np-th-cor">
+              <th scope="row" className="np-ge-cor">
                 <span className="np-bolinha" style={{ background: cor.hex }} aria-hidden="true" />
                 {cor.nome}
               </th>
@@ -183,7 +182,7 @@ function Grade() {
                 return (
                   <td
                     key={t}
-                    className={["np-celula", n === 0 ? "np-zero" : "", saindo ? "np-saindo" : ""]
+                    className={["np-ge-celula", n === 0 ? "np-ge-zero" : "", saindo ? "np-ge-saindo" : ""]
                       .filter(Boolean)
                       .join(" ")}
                   >
@@ -201,14 +200,8 @@ function Grade() {
         </tbody>
       </table>
 
-      <p className="np-grade-rodape" aria-live="polite">
-        {vendida ? (
-          <>
-            <strong>Preto · P</strong> acabou agora e saiu da vitrine.
-          </>
-        ) : (
-          "Cada cor em cada tamanho tem o seu próprio saldo."
-        )}
+      <p className="np-ge-rodape" aria-live="polite">
+        {vendida ? "Preto · P acabou agora e saiu da vitrine." : "Cada cor em cada tamanho tem o próprio saldo."}
       </p>
     </div>
   );
@@ -216,156 +209,241 @@ function Grade() {
 
 /* ============================================================ */
 
-export default function Apresentacao({ onExperimentar, onEntrar }: ApresentacaoProps) {
+export default function Apresentacao({ onExperimentar, onAssinar, onEntrar }: ApresentacaoProps) {
   return (
     <div className="np">
-      <header className="np-topo">
+      {/* ---------------- barra ---------------- */}
+      <header className="np-barra">
         <a href="/" className="np-marca">
           <span className="np-marca-1">Money</span> NoTopo
         </a>
-        <nav className="np-topo-acoes">
+
+        <nav className="np-menu">
+          <a href="#recursos">Recursos</a>
+          <a href="#passos">Como funciona</a>
+          <a href="#preco">Preço</a>
+        </nav>
+
+        <div className="np-barra-acoes">
           <button type="button" onClick={onEntrar} className="np-link">
             Entrar
           </button>
-          <button type="button" onClick={onExperimentar} className="np-btn np-btn-peq">
+          <button type="button" onClick={onExperimentar} className="np-btn np-btn-contorno">
             Experimente aqui
           </button>
-        </nav>
+        </div>
       </header>
 
       <main>
-        {/* ---------------- Herói ---------------- */}
+        {/* ---------------- herói ---------------- */}
         <section className="np-heroi">
           <div className="np-heroi-texto">
             <h1>
-              Tenha sua vitrine virtual
-              <span className="np-preco-inline">
-                por <strong>R$ 78</strong> por mês
-              </span>
+              Tenha sua <span className="np-verde">vitrine virtual</span> pronta{" "}
+              <span className="np-verde">hoje</span>
             </h1>
-
             <p className="np-lead">
-              Suas roupas numa loja de verdade, com link para mandar no
-              Instagram. A cliente escolhe, paga no cartão e o frete já vem
-              calculado.
+              Suas roupas numa loja de verdade, com link para mandar no Instagram. A
+              cliente escolhe, paga no cartão e o frete já vem calculado.
             </p>
 
             <div className="np-cta">
-              <button type="button" onClick={onExperimentar} className="np-btn np-btn-grande">
-                Experimente aqui
+              <button type="button" onClick={onExperimentar} className="np-btn np-btn-lima">
+                Experimente 1 dia grátis
               </button>
-              <span className="np-cta-nota">Um dia grátis. Sem cartão.</span>
+              <button type="button" onClick={onAssinar} className="np-btn np-btn-escuro">
+                Assinar por R$ 78
+              </button>
             </div>
+
+            <ul className="np-pilulas">
+              {["Catálogo", "Estoque por cor e tamanho", "Cartão", "Frete", "Pedidos", "Relatórios"].map(
+                (p) => (
+                  <li key={p}>{p}</li>
+                ),
+              )}
+            </ul>
           </div>
 
           <div className="np-heroi-arte">
+            <div className="np-anel" aria-hidden="true" />
             <Celular />
+            <div className="np-flutua np-flutua-1" aria-hidden="true">
+              <span className="np-flutua-rot">Pedido novo</span>
+              <strong>R$ 189,00</strong>
+              <span className="np-flutua-pe">Vestido midi · M</span>
+            </div>
+            <div className="np-flutua np-flutua-2" aria-hidden="true">
+              <span className="np-flutua-rot">Frete</span>
+              <strong>R$ 24,90</strong>
+              <span className="np-flutua-pe">Chega em 4 dias</span>
+            </div>
           </div>
         </section>
 
-        {/* ---------------- Os três pilares ---------------- */}
-        <section className="np-pilares">
-          <div className="np-pilar">
-            <div className="np-pilar-arte np-arte-vitrine" aria-hidden="true">
-              <svg viewBox="0 0 120 84">
-                <rect x="6" y="10" width="48" height="62" rx="7" fill="#fff" stroke="#cbd8cf" strokeWidth="1.6" />
-                <rect x="66" y="10" width="48" height="62" rx="7" fill="#fff" stroke="#cbd8cf" strokeWidth="1.6" />
-                <rect x="14" y="18" width="32" height="28" rx="4" fill="#dcfce7" />
-                <rect x="74" y="18" width="32" height="28" rx="4" fill="#dcfce7" />
-                <rect x="14" y="52" width="24" height="5" rx="2.5" fill="#cbd8cf" />
-                <rect x="74" y="52" width="24" height="5" rx="2.5" fill="#cbd8cf" />
-                <rect x="14" y="61" width="15" height="5" rx="2.5" fill="#15803d" />
-                <rect x="74" y="61" width="15" height="5" rx="2.5" fill="#15803d" />
-              </svg>
-            </div>
-            <h3>Sua vitrine no ar hoje</h3>
-            <p>
-              Cadastre as peças, tire a foto e pronto. Você recebe um endereço
-              só seu para colocar na bio do Instagram.
-            </p>
+        {/* ---------------- integrações ---------------- */}
+        <section className="np-parceiros">
+          <p className="np-parceiros-rot">Funciona junto com</p>
+          <ul>
+            <li>Melhor Envio</li>
+            <li>Correios</li>
+            <li>Jadlog</li>
+            <li>Visa</li>
+            <li>Mastercard</li>
+            <li>Elo</li>
+          </ul>
+        </section>
+
+        {/* ---------------- recursos ---------------- */}
+        <section className="np-secao" id="recursos">
+          <div className="np-secao-topo">
+            <span className="np-pilula-rot">Recursos</span>
+            <span className="np-secao-nota">Tudo o que a loja precisa. Nada que ela não use.</span>
           </div>
 
-          <div className="np-pilar">
-            <div className="np-pilar-arte np-arte-cartao" aria-hidden="true">
-              <svg viewBox="0 0 120 84">
-                <rect x="16" y="20" width="88" height="54" rx="8" fill="#15803d" />
-                <rect x="16" y="32" width="88" height="9" fill="#0f5c2c" />
-                <rect x="26" y="52" width="34" height="6" rx="3" fill="#8fd9ab" />
-                <rect x="26" y="62" width="20" height="5" rx="2.5" fill="#5bbd82" />
-                <circle cx="88" cy="60" r="9" fill="#dcfce7" />
-                <path d="M84 60l3 3 6-6" stroke="#15803d" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M46 14h28" stroke="#cbd8cf" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-            </div>
-            <h3>Recebimento na sua loja</h3>
-            <p>
-              A cliente paga com cartão em até 12 vezes sem sair do seu site. O
-              dinheiro cai na sua conta, não na nossa.
-            </p>
-          </div>
+          <h2 className="np-h2">
+            Monte o catálogo, <span className="np-verde">receba no cartão</span> e despache com o
+            frete <span className="np-verde-claro">já calculado</span> — num lugar só.
+          </h2>
 
-          <div className="np-pilar">
-            <div className="np-pilar-arte np-arte-frete" aria-hidden="true">
-              <svg viewBox="0 0 120 84">
-                <rect x="20" y="30" width="46" height="36" rx="5" fill="#fff" stroke="#cbd8cf" strokeWidth="1.6" />
-                <path d="M20 42h46" stroke="#cbd8cf" strokeWidth="1.6" />
-                <path d="M39 30v12" stroke="#cbd8cf" strokeWidth="1.6" />
-                <path d="M66 42h16l12 12v12H66z" fill="#dcfce7" stroke="#15803d" strokeWidth="1.6" strokeLinejoin="round" />
-                <circle cx="76" cy="68" r="6" fill="#fff" stroke="#15803d" strokeWidth="1.8" />
-                <circle cx="36" cy="68" r="6" fill="#fff" stroke="#15803d" strokeWidth="1.8" />
-                <path d="M14 36h-8M14 46h-12M14 56h-8" stroke="#8fd9ab" strokeWidth="2.6" strokeLinecap="round" />
-              </svg>
+          <div className="np-cartoes">
+            <div className="np-cartao np-cartao-foto">
+              <Celular compacto />
             </div>
-            <h3>Frete pelo Melhor Envio</h3>
-            <p>
-              A cliente digita o CEP e vê o valor e o prazo antes de fechar.
-              Correios e transportadoras, com a etiqueta saindo do painel.
-            </p>
+
+            <div className="np-cartao np-tom-1">
+              <h3>Vitrine no ar hoje</h3>
+              <p>
+                Cadastre as peças, tire a foto e pronto. Você recebe um endereço só seu
+                para colocar na bio do Instagram.
+              </p>
+            </div>
+
+            <div className="np-cartao np-tom-2">
+              <h3>Recebimento na sua loja</h3>
+              <p>
+                A cliente paga com cartão em até 12 vezes sem sair do seu site. O dinheiro
+                cai na sua conta, não na nossa.
+              </p>
+            </div>
+
+            <div className="np-cartao np-tom-3">
+              <h3>Frete pelo Melhor Envio</h3>
+              <p>
+                A cliente digita o CEP e vê valor e prazo antes de fechar. A etiqueta sai
+                do painel.
+              </p>
+            </div>
           </div>
         </section>
 
-        {/* ---------------- A grade ---------------- */}
-        <section className="np-secao np-secao-grade">
-          <div className="np-grade-texto">
-            <h2>E ela nunca vende o que já acabou</h2>
-            <p>
-              Cada cor em cada tamanho tem o próprio estoque. Vendeu a última P
-              preta? Ela some da vitrine na mesma hora — e se duas clientes
-              tentarem levar a mesma peça ao mesmo tempo, só uma consegue.
-            </p>
+        {/* ---------------- faixa de passos ---------------- */}
+        <section className="np-faixa" id="passos">
+          <div className="np-faixa-dentro">
+            <div className="np-faixa-cartao">
+              <GradeEscura />
+            </div>
+
+            <div className="np-faixa-texto">
+              <h2>
+                Sua loja no ar em <span className="np-sublinha">3 passos</span>
+              </h2>
+
+              <ol className="np-passos">
+                <li>
+                  <span className="np-passo-num">1</span>
+                  <div>
+                    <h3>Crie a conta</h3>
+                    <p>Nome da loja, e-mail e senha. Leva um minuto e não pede cartão.</p>
+                  </div>
+                </li>
+                <li>
+                  <span className="np-passo-num">2</span>
+                  <div>
+                    <h3>Cadastre as peças</h3>
+                    <p>
+                      Monte a grade de cor e tamanho. O sistema cria as combinações e você
+                      digita quanto tem de cada uma.
+                    </p>
+                  </div>
+                </li>
+                <li>
+                  <span className="np-passo-num">3</span>
+                  <div>
+                    <h3>Mande o link</h3>
+                    <p>
+                      Cole o endereço da sua loja na bio do Instagram. A partir daí ela
+                      vende sozinha — e nunca o que já acabou.
+                    </p>
+                  </div>
+                </li>
+              </ol>
+            </div>
           </div>
-          <Grade />
         </section>
 
-        {/* ---------------- Preço ---------------- */}
-        <section className="np-preco">
-          <div className="np-preco-caixa">
-            <h2>
-              R$ 78 por mês. <span>Só isso.</span>
-            </h2>
-            <p>
-              Sem porcentagem da sua venda. Vendeu dez mil no mês? Continua
-              sendo setenta e oito reais.
-            </p>
-            <button type="button" onClick={onExperimentar} className="np-btn np-btn-grande np-btn-claro">
-              Experimente aqui
-            </button>
-            <span className="np-cta-nota np-nota-clara">
-              Um dia para conhecer. Depois você decide.
-            </span>
+        {/* ---------------- preço ---------------- */}
+        <section className="np-secao" id="preco">
+          <div className="np-secao-topo">
+            <span className="np-pilula-rot">Preço</span>
+            <span className="np-secao-nota">Teste um dia. Depois você decide.</span>
+          </div>
+
+          <div className="np-plano">
+            <div className="np-plano-esq">
+              <h2 className="np-h2">
+                Um plano só.
+                <br />
+                <span className="np-verde">Sem porcentagem</span> da sua venda.
+              </h2>
+              <p>
+                Quase toda plataforma cobra uma fatia de cada pedido — quanto mais você
+                vende, mais paga. Aqui é fixo. Vendeu dez mil no mês? Continua sendo
+                setenta e oito reais.
+              </p>
+              <p className="np-mini">A taxa da operadora do cartão é cobrada por ela, não por nós.</p>
+            </div>
+
+            <div className="np-plano-caixa">
+              <span className="np-plano-rot">Plano único</span>
+              <div className="np-plano-valor">
+                <span className="np-moeda">R$</span>
+                <span className="np-numero">78</span>
+                <span className="np-mes">/mês</span>
+              </div>
+
+              <ul className="np-plano-lista">
+                <li>Loja com endereço próprio</li>
+                <li>Produtos e grade sem limite</li>
+                <li>Cartão em até 12 vezes</li>
+                <li>Frete e etiqueta no painel</li>
+                <li>Pedidos, clientes e relatórios</li>
+                <li>E-mail automático de pedido</li>
+              </ul>
+
+              <button type="button" onClick={onAssinar} className="np-btn np-btn-escuro np-btn-cheio">
+                Assinar por R$ 78
+              </button>
+              <button type="button" onClick={onExperimentar} className="np-btn np-btn-vazio np-btn-cheio">
+                Experimente 1 dia grátis
+              </button>
+              <p className="np-plano-pe">Sem fidelidade. Cancele quando quiser.</p>
+            </div>
           </div>
         </section>
       </main>
 
       <footer className="np-rodape">
-        <p className="np-marca">
-          <span className="np-marca-1">Money</span> NoTopo
-        </p>
-        <p>Barreiras, Bahia · Rafael Rodrigues Pereira · CNPJ 68.007.923/0001-09</p>
-        <p className="np-rodape-links">
-          <a href="/termos">Termos de uso</a>
-          <a href="/privacidade">Privacidade</a>
-        </p>
+        <div className="np-rodape-dentro">
+          <p className="np-marca">
+            <span className="np-marca-1">Money</span> NoTopo
+          </p>
+          <p>Barreiras, Bahia · Rafael Rodrigues Pereira · CNPJ 68.007.923/0001-09</p>
+          <p className="np-rodape-links">
+            <a href="/termos">Termos de uso</a>
+            <a href="/privacidade">Privacidade</a>
+          </p>
+        </div>
       </footer>
     </div>
   );

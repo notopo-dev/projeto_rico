@@ -291,6 +291,13 @@ export default function App() {
     return (
       <Apresentacao
         onExperimentar={() => goToAuth("cadastro")}
+        /*
+         * Assinar passa pelo cadastro também, e isso é o certo: não
+         * existe assinatura sem conta. O passo de cobrança em si
+         * ainda não existe no sistema — a Edge Function
+         * stripe-assinatura-ativar está pronta e ninguém a chama.
+         */
+        onAssinar={() => goToAuth("cadastro")}
         onEntrar={() => goToAuth("login")}
       />
     );
