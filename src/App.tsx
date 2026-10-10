@@ -5,6 +5,9 @@ import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import RedefinirSenha from "./pages/RedefinirSenha";
 import ConfirmarEmail from "./pages/ConfirmarEmail";
+import Apresentacao from "./pages/Apresentacao";
+import Termos from "./pages/Termos";
+import Privacidade from "./pages/Privacidade";
 import Dashboard from "./pages/Dashboard";
 import Loja from "./pages/Loja";
 import Products from "./pages/Products";
@@ -49,6 +52,33 @@ function ehPaginaValida(v: string): v is Page {
 }
 
 /**
+ * As telas que existem antes de o lojista ter conta.
+ *
+ * "site" é a apresentação: a raiz passou a ser a página de vendas,
+ * e não mais um desvio para o login.
+ */
+type CaminhoPublico = "site" | "login" | "cadastro" | "termos" | "privacidade";
+
+function caminhoPublico(pathname: string): CaminhoPublico {
+  switch (pathname) {
+    case "/cadastro":
+      return "cadastro";
+    case "/login":
+      return "login";
+    case "/termos":
+      return "termos";
+    case "/privacidade":
+      return "privacidade";
+    case "/":
+      return "site";
+    default:
+      // Endereço desconhecido e sem conta: a apresentação explica o
+      // que é isto aqui melhor do que um formulário de senha.
+      return "site";
+  }
+}
+
+/**
  * Qual página abrir.
  *
  * Ordem de prioridade:
@@ -74,8 +104,17 @@ function paginaInicial(): Page {
 export default function App() {
   const [session, setSession] = useState<any>(undefined);
   const [currentPage, setCurrentPage] = useState<Page>(paginaInicial);
-  const [authPath, setAuthPath] = useState<"login" | "cadastro">(
-    window.location.pathname === "/cadastro" ? "cadastro" : "login"
+  /**
+   * Onde o visitante sem conta está.
+   *
+   * Antes isto era só login|cadastro, e QUALQUER outro endereço era
+   * reescrito para /login. Era por isso que /termos e /privacidade
+   * caíam na tela de entrar — as duas páginas existiam, escritas e
+   * completas, e não estavam registradas em lugar nenhum. A Stripe
+   * exige essas URLs funcionando para revisar a integração.
+   */
+  const [authPath, setAuthPath] = useState<CaminhoPublico>(() =>
+    caminhoPublico(window.location.pathname)
   );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -112,7 +151,7 @@ export default function App() {
 
     const onPopState = () => {
       setCurrentPage(paginaInicial());
-      setAuthPath(window.location.pathname === "/cadastro" ? "cadastro" : "login");
+      setAuthPath(caminhoPublico(window.location.pathname));
       setRecuperandoSenha(window.location.pathname === "/redefinir-senha");
       setConfirmandoEmail(window.location.pathname === "/confirmar-email");
     };
@@ -157,7 +196,7 @@ export default function App() {
   }
 
   // Navegação entre /login e /cadastro (só usada quando deslogado)
-  function goToAuth(path: "login" | "cadastro") {
+  function goToAuth(path: CaminhoPublico) {
     window.history.pushState({}, "", `/${path}`);
     setAuthPath(path);
   }
@@ -217,6 +256,12 @@ export default function App() {
     );
   }
 
+  // Termos e Privacidade são públicos e valem logado ou não: a
+  // Stripe lê essas URLs, e quem já é cliente também precisa delas.
+  const caminhoAtual = caminhoPublico(window.location.pathname);
+  if (caminhoAtual === "termos") return <Termos />;
+  if (caminhoAtual === "privacidade") return <Privacidade />;
+
   if (!session) {
     if (authPath === "cadastro") {
       return (
@@ -227,14 +272,26 @@ export default function App() {
       );
     }
 
-    if (window.location.pathname !== "/login") {
-      window.history.replaceState({}, "", "/login");
+    if (authPath === "login") {
+      if (window.location.pathname !== "/login") {
+        window.history.replaceState({}, "", "/login");
+      }
+      return (
+        <Login
+          onSuccess={() => goTo(paginaInicial())}
+          onGoToCadastro={() => goToAuth("cadastro")}
+        />
+      );
     }
 
+    // A porta de entrada: quem chega sem conta vê o que é o produto.
+    if (window.location.pathname !== "/") {
+      window.history.replaceState({}, "", "/");
+    }
     return (
-      <Login
-        onSuccess={() => goTo(paginaInicial())}
-        onGoToCadastro={() => goToAuth("cadastro")}
+      <Apresentacao
+        onExperimentar={() => goToAuth("cadastro")}
+        onEntrar={() => goToAuth("login")}
       />
     );
   }
