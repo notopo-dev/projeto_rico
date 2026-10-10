@@ -150,7 +150,7 @@ function GradeEscura() {
   }, []);
 
   return (
-    <div className="np-grade-escura" ref={caixa}>
+    <div ref={caixa}>
       <div className="np-ge-topo">
         <span className="np-ge-titulo">Camiseta canelada</span>
         <span className="np-ge-codigo">0047</span>
@@ -229,7 +229,11 @@ export default function Apresentacao({ onExperimentar, onAssinar, onEntrar }: Ap
             Entrar
           </button>
           <button type="button" onClick={onExperimentar} className="np-btn np-btn-contorno">
-            Experimente aqui
+            {/* Duas etiquetas, uma escondida por largura de tela. A
+                escondida sai com display:none, então o leitor de tela
+                lê só uma. Em 320px o rótulo longo estourava a barra. */}
+            <span className="np-so-largo">Experimente aqui</span>
+            <span className="np-so-estreito">Testar</span>
           </button>
         </div>
       </header>
@@ -237,7 +241,7 @@ export default function Apresentacao({ onExperimentar, onAssinar, onEntrar }: Ap
       <main>
         {/* ---------------- herói ---------------- */}
         <section className="np-heroi">
-          <div className="np-heroi-texto">
+          <div>
             <h1>
               Tenha sua <span className="np-verde">vitrine virtual</span> pronta{" "}
               <span className="np-verde">hoje</span>
@@ -257,7 +261,7 @@ export default function Apresentacao({ onExperimentar, onAssinar, onEntrar }: Ap
             </div>
 
             <ul className="np-pilulas">
-              {["Catálogo", "Estoque por cor e tamanho", "Cartão", "Frete", "Pedidos", "Relatórios"].map(
+              {["Estoque por cor e tamanho", "Catálogo", "Cartão", "Frete", "Pedidos", "Relatórios"].map(
                 (p) => (
                   <li key={p}>{p}</li>
                 ),
