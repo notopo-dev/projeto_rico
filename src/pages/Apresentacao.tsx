@@ -5,24 +5,21 @@ import "./apresentacao.css";
  * A página que o lojista vê antes de ter conta.
  *
  * ----------------------------------------------------------------
- * O que ela promete
+ * Para quem nunca viu uma loja virtual
  * ----------------------------------------------------------------
- * Só o que existe e funciona hoje. Não entra aqui: automação de
- * WhatsApp (a tela do painel é maquete, não envia nada), Pix (a
- * capability não existe nas contas Accounts v2) e domínio próprio
- * (os links internos da loja ainda quebram fora da plataforma).
+ * A primeira versão abria com a grade de estoque. É o que o sistema
+ * tem de melhor, mas exige saber o que é uma grade para entender a
+ * imagem — e quem está chegando não sabe. Agora abre com a LOJA
+ * dentro de um celular, que diz "isto aqui é a sua vitrine" sem
+ * precisar de uma linha de texto. A grade virou a terceira seção,
+ * onde já faz sentido.
  *
- * Vender o que não funciona é o jeito mais rápido de perder um
- * cliente de mensalidade no primeiro mês.
- *
  * ----------------------------------------------------------------
- * O herói é a grade
+ * Só o que existe
  * ----------------------------------------------------------------
- * Cor nas linhas, tamanho nas colunas. É o objeto que todo mundo que
- * trabalha com roupa reconhece de longe, e é exatamente o que o
- * sistema faz de diferente. Ao carregar, uma venda acontece: a
- * última P preta cai de 1 para 0 e a célula apaga. O produto inteiro
- * num gesto, sem precisar de print de tela.
+ * Não entra aqui: automação de WhatsApp (a tela do painel é maquete),
+ * Pix (não existe nas contas Accounts v2) e domínio próprio (os links
+ * internos quebram fora da plataforma).
  */
 
 interface ApresentacaoProps {
@@ -30,14 +27,76 @@ interface ApresentacaoProps {
   onEntrar: () => void;
 }
 
+/* ============================================================
+   A loja dentro do celular — o herói
+   ============================================================ */
+
+/** Peças desenhadas em SVG: sem foto, sem arquivo, sem promessa falsa. */
+function Peca({ tipo, cor }: { tipo: "camiseta" | "vestido"; cor: string }) {
+  return (
+    <svg viewBox="0 0 80 96" aria-hidden="true" className="np-peca">
+      <rect width="80" height="96" fill="#f3f5f3" />
+      {tipo === "camiseta" ? (
+        <path
+          d="M28 26 L20 32 L14 44 L22 50 L26 42 L26 76 L54 76 L54 42 L58 50 L66 44 L60 32 L52 26 L46 30 Q40 34 34 30 Z"
+          fill={cor}
+        />
+      ) : (
+        <path
+          d="M30 26 L24 32 L30 44 L24 76 L56 76 L50 44 L56 32 L50 26 L45 30 Q40 33 35 30 Z"
+          fill={cor}
+        />
+      )}
+    </svg>
+  );
+}
+
+function Celular() {
+  return (
+    <div className="np-celular" role="img" aria-label="Exemplo de loja aberta no celular">
+      <div className="np-tela">
+        <div className="np-loja-topo">
+          <span className="np-loja-nome">Ateliê Marina</span>
+          <span className="np-loja-sacola" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M6 7h12l-1 13H7L6 7Z" /><path d="M9 7a3 3 0 0 1 6 0" />
+            </svg>
+          </span>
+        </div>
+
+        <div className="np-vitrine">
+          {[
+            { t: "camiseta" as const, c: "#1f2937", n: "Camiseta canelada", p: "79,90" },
+            { t: "vestido" as const, c: "#9d5f4e", n: "Vestido midi", p: "189,00" },
+            { t: "camiseta" as const, c: "#4d5d45", n: "Regata básica", p: "59,90" },
+            { t: "vestido" as const, c: "#2b4a6f", n: "Vestido liso", p: "159,00" },
+          ].map((p, i) => (
+            <div key={i} className="np-card">
+              <Peca tipo={p.t} cor={p.c} />
+              <span className="np-card-nome">{p.n}</span>
+              <span className="np-card-preco">R$ {p.p}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="np-loja-rodape">
+          <span>Entrega calculada pelo CEP</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   A grade — terceira seção
+   ============================================================ */
+
 const CORES = [
   { nome: "Preto", hex: "#18181b" },
   { nome: "Off-white", hex: "#efece4" },
   { nome: "Verde-musgo", hex: "#4d5d45" },
 ];
 const TAMANHOS = ["P", "M", "G", "GG"];
-
-/** Estoque inicial. A P preta (linha 0, coluna 0) é a que vai sair. */
 const ESTOQUE_INICIAL = [
   [1, 5, 2, 1],
   [0, 1, 4, 2],
@@ -48,35 +107,51 @@ function Grade() {
   const [estoque, setEstoque] = useState(ESTOQUE_INICIAL);
   const [vendendo, setVendendo] = useState(false);
   const [vendida, setVendida] = useState(false);
+  const caixa = useRef<HTMLDivElement>(null);
   const jaRodou = useRef(false);
 
   useEffect(() => {
-    if (jaRodou.current) return;
-    jaRodou.current = true;
-
-    // Quem pediu menos movimento já vê o resultado, sem a animação.
     const quieto = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (quieto) {
+    const baixar = () => {
       setEstoque((e) => e.map((l, i) => (i === 0 ? [0, ...l.slice(1)] : l)));
       setVendida(true);
+    };
+
+    if (quieto) {
+      baixar();
       return;
     }
 
-    const a = setTimeout(() => setVendendo(true), 1400);
-    const b = setTimeout(() => {
-      setEstoque((e) => e.map((l, i) => (i === 0 ? [0, ...l.slice(1)] : l)));
-      setVendendo(false);
-      setVendida(true);
-    }, 2100);
+    // Só vende quando a pessoa chega na seção. Animar fora da tela
+    // gastaria o único momento de movimento da página sem ninguém ver.
+    const alvo = caixa.current;
+    if (!alvo) return;
+
+    let t1: number, t2: number;
+    const obs = new IntersectionObserver(
+      (entradas) => {
+        if (!entradas[0].isIntersecting || jaRodou.current) return;
+        jaRodou.current = true;
+        obs.disconnect();
+        t1 = window.setTimeout(() => setVendendo(true), 700);
+        t2 = window.setTimeout(() => {
+          baixar();
+          setVendendo(false);
+        }, 1400);
+      },
+      { threshold: 0.45 },
+    );
+    obs.observe(alvo);
 
     return () => {
-      clearTimeout(a);
-      clearTimeout(b);
+      obs.disconnect();
+      clearTimeout(t1);
+      clearTimeout(t2);
     };
   }, []);
 
   return (
-    <div className="np-grade">
+    <div className="np-grade" ref={caixa}>
       <div className="np-grade-topo">
         <span className="np-grade-produto">Camiseta canelada</span>
         <span className="np-grade-codigo">0047</span>
@@ -99,24 +174,16 @@ function Grade() {
           {CORES.map((cor, i) => (
             <tr key={cor.nome}>
               <th scope="row" className="np-th-cor">
-                <span
-                  className="np-bolinha"
-                  style={{ background: cor.hex }}
-                  aria-hidden="true"
-                />
+                <span className="np-bolinha" style={{ background: cor.hex }} aria-hidden="true" />
                 {cor.nome}
               </th>
               {TAMANHOS.map((t, j) => {
                 const n = estoque[i][j];
-                const estaSaindo = vendendo && i === 0 && j === 0;
+                const saindo = vendendo && i === 0 && j === 0;
                 return (
                   <td
                     key={t}
-                    className={[
-                      "np-celula",
-                      n === 0 ? "np-zero" : "",
-                      estaSaindo ? "np-saindo" : "",
-                    ]
+                    className={["np-celula", n === 0 ? "np-zero" : "", saindo ? "np-saindo" : ""]
                       .filter(Boolean)
                       .join(" ")}
                   >
@@ -140,17 +207,16 @@ function Grade() {
             <strong>Preto · P</strong> acabou agora e saiu da vitrine.
           </>
         ) : (
-          "Cada combinação tem o seu próprio saldo."
+          "Cada cor em cada tamanho tem o seu próprio saldo."
         )}
       </p>
     </div>
   );
 }
 
-export default function Apresentacao({
-  onExperimentar,
-  onEntrar,
-}: ApresentacaoProps) {
+/* ============================================================ */
+
+export default function Apresentacao({ onExperimentar, onEntrar }: ApresentacaoProps) {
   return (
     <div className="np">
       <header className="np-topo">
@@ -171,157 +237,122 @@ export default function Apresentacao({
         {/* ---------------- Herói ---------------- */}
         <section className="np-heroi">
           <div className="np-heroi-texto">
-            <h1>Pare de vender a peça que já acabou.</h1>
+            <h1>
+              Tenha sua vitrine virtual
+              <span className="np-preco-inline">
+                por <strong>R$ 78</strong> por mês
+              </span>
+            </h1>
+
             <p className="np-lead">
-              Sua loja online com estoque separado por cor e tamanho. Quando a
-              última P preta sai, ela some da vitrine na mesma hora — sem você
-              precisar lembrar.
+              Suas roupas numa loja de verdade, com link para mandar no
+              Instagram. A cliente escolhe, paga no cartão e o frete já vem
+              calculado.
             </p>
 
             <div className="np-cta">
-              <button type="button" onClick={onExperimentar} className="np-btn">
+              <button type="button" onClick={onExperimentar} className="np-btn np-btn-grande">
                 Experimente aqui
               </button>
-              <span className="np-cta-nota">
-                Um dia inteiro para testar. Sem cartão.
-              </span>
+              <span className="np-cta-nota">Um dia grátis. Sem cartão.</span>
             </div>
           </div>
 
-          <div className="np-heroi-grade">
-            <Grade />
+          <div className="np-heroi-arte">
+            <Celular />
           </div>
         </section>
 
-        {/* ---------------- O dia ---------------- */}
-        <section className="np-secao np-dia">
-          <h2>Um dia na sua loja</h2>
+        {/* ---------------- Os três pilares ---------------- */}
+        <section className="np-pilares">
+          <div className="np-pilar">
+            <div className="np-pilar-arte np-arte-vitrine" aria-hidden="true">
+              <svg viewBox="0 0 120 84">
+                <rect x="6" y="10" width="48" height="62" rx="7" fill="#fff" stroke="#cbd8cf" strokeWidth="1.6" />
+                <rect x="66" y="10" width="48" height="62" rx="7" fill="#fff" stroke="#cbd8cf" strokeWidth="1.6" />
+                <rect x="14" y="18" width="32" height="28" rx="4" fill="#dcfce7" />
+                <rect x="74" y="18" width="32" height="28" rx="4" fill="#dcfce7" />
+                <rect x="14" y="52" width="24" height="5" rx="2.5" fill="#cbd8cf" />
+                <rect x="74" y="52" width="24" height="5" rx="2.5" fill="#cbd8cf" />
+                <rect x="14" y="61" width="15" height="5" rx="2.5" fill="#15803d" />
+                <rect x="74" y="61" width="15" height="5" rx="2.5" fill="#15803d" />
+              </svg>
+            </div>
+            <h3>Sua vitrine no ar hoje</h3>
+            <p>
+              Cadastre as peças, tire a foto e pronto. Você recebe um endereço
+              só seu para colocar na bio do Instagram.
+            </p>
+          </div>
 
-          <ol className="np-linha-tempo">
-            <li>
-              <span className="np-hora">8h</span>
-              <div>
-                <h3>Chegou mercadoria</h3>
-                <p>
-                  Você cadastra a camiseta uma vez e monta a grade: três cores,
-                  quatro tamanhos. O sistema cria as doze combinações e você
-                  digita quanto tem de cada uma. O código do produto é gerado
-                  sozinho.
-                </p>
-              </div>
-            </li>
-            <li>
-              <span className="np-hora">14h</span>
-              <div>
-                <h3>Alguém compra</h3>
-                <p>
-                  A cliente escolhe preto no P. O tamanho que não existe naquela
-                  cor aparece riscado, e o que acabou também — ela não consegue
-                  pedir o que você não tem. Paga no cartão sem sair da sua loja.
-                </p>
-              </div>
-            </li>
-            <li>
-              <span className="np-hora">14h01</span>
-              <div>
-                <h3>O estoque se acerta</h3>
-                <p>
-                  A peça sai da gaveta certa. Se duas pessoas tentarem comprar a
-                  última ao mesmo tempo, só uma leva — o banco de dados tranca a
-                  linha. Você recebe o pedido por e-mail com o endereço e o
-                  frete já calculados.
-                </p>
-              </div>
-            </li>
-          </ol>
+          <div className="np-pilar">
+            <div className="np-pilar-arte np-arte-cartao" aria-hidden="true">
+              <svg viewBox="0 0 120 84">
+                <rect x="16" y="20" width="88" height="54" rx="8" fill="#15803d" />
+                <rect x="16" y="32" width="88" height="9" fill="#0f5c2c" />
+                <rect x="26" y="52" width="34" height="6" rx="3" fill="#8fd9ab" />
+                <rect x="26" y="62" width="20" height="5" rx="2.5" fill="#5bbd82" />
+                <circle cx="88" cy="60" r="9" fill="#dcfce7" />
+                <path d="M84 60l3 3 6-6" stroke="#15803d" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M46 14h28" stroke="#cbd8cf" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+            </div>
+            <h3>Recebimento na sua loja</h3>
+            <p>
+              A cliente paga com cartão em até 12 vezes sem sair do seu site. O
+              dinheiro cai na sua conta, não na nossa.
+            </p>
+          </div>
+
+          <div className="np-pilar">
+            <div className="np-pilar-arte np-arte-frete" aria-hidden="true">
+              <svg viewBox="0 0 120 84">
+                <rect x="20" y="30" width="46" height="36" rx="5" fill="#fff" stroke="#cbd8cf" strokeWidth="1.6" />
+                <path d="M20 42h46" stroke="#cbd8cf" strokeWidth="1.6" />
+                <path d="M39 30v12" stroke="#cbd8cf" strokeWidth="1.6" />
+                <path d="M66 42h16l12 12v12H66z" fill="#dcfce7" stroke="#15803d" strokeWidth="1.6" strokeLinejoin="round" />
+                <circle cx="76" cy="68" r="6" fill="#fff" stroke="#15803d" strokeWidth="1.8" />
+                <circle cx="36" cy="68" r="6" fill="#fff" stroke="#15803d" strokeWidth="1.8" />
+                <path d="M14 36h-8M14 46h-12M14 56h-8" stroke="#8fd9ab" strokeWidth="2.6" strokeLinecap="round" />
+              </svg>
+            </div>
+            <h3>Frete pelo Melhor Envio</h3>
+            <p>
+              A cliente digita o CEP e vê o valor e o prazo antes de fechar.
+              Correios e transportadoras, com a etiqueta saindo do painel.
+            </p>
+          </div>
         </section>
 
-        {/* ---------------- O que vem junto ---------------- */}
-        <section className="np-secao np-inclui">
-          <h2>O que vem junto</h2>
-          <div className="np-colunas">
-            <dl>
-              <dt>Loja com endereço próprio</dt>
-              <dd>
-                moneynotopo.com.br/loja/seunome, pronta para mandar no
-                Instagram.
-              </dd>
-
-              <dt>Grade de cor e tamanho</dt>
-              <dd>
-                Estoque por combinação, não um número só para o produto todo.
-                Cor que não sai em certo tamanho simplesmente não existe.
-              </dd>
-
-              <dt>Pagamento no cartão</dt>
-              <dd>
-                A cliente paga dentro da sua loja, sem ir para outro site. Em
-                até 12 vezes.
-              </dd>
-
-              <dt>Frete calculado</dt>
-              <dd>
-                O cliente digita o CEP e vê o valor e o prazo antes de fechar.
-                Você imprime a etiqueta no painel.
-              </dd>
-            </dl>
-
-            <dl>
-              <dt>Pedidos e clientes</dt>
-              <dd>
-                Quem comprou, o que levou, quanto gastou. Histórico por pessoa,
-                sem planilha.
-              </dd>
-
-              <dt>Retirada no balcão</dt>
-              <dd>
-                Para quem busca na loja: pagamento em dinheiro ou maquininha,
-                registrado no mesmo lugar.
-              </dd>
-
-              <dt>E-mail automático</dt>
-              <dd>
-                A cliente recebe a confirmação do pedido e o aviso de envio com
-                o código de rastreio. Você recebe o aviso de venda nova.
-              </dd>
-
-              <dt>Relatórios</dt>
-              <dd>
-                Quanto entrou, o que mais sai, o que está parado na prateleira.
-              </dd>
-            </dl>
+        {/* ---------------- A grade ---------------- */}
+        <section className="np-secao np-secao-grade">
+          <div className="np-grade-texto">
+            <h2>E ela nunca vende o que já acabou</h2>
+            <p>
+              Cada cor em cada tamanho tem o próprio estoque. Vendeu a última P
+              preta? Ela some da vitrine na mesma hora — e se duas clientes
+              tentarem levar a mesma peça ao mesmo tempo, só uma consegue.
+            </p>
           </div>
+          <Grade />
         </section>
 
         {/* ---------------- Preço ---------------- */}
-        <section className="np-secao np-preco">
+        <section className="np-preco">
           <div className="np-preco-caixa">
-            <div className="np-preco-valor">
-              <span className="np-moeda">R$</span>
-              <span className="np-numero">78</span>
-              <span className="np-por">por mês</span>
-            </div>
-
-            <div className="np-preco-texto">
-              <h2>Um plano só. Sem porcentagem da sua venda.</h2>
-              <p>
-                Quase toda plataforma cobra uma fatia de cada pedido — quanto
-                mais você vende, mais paga. Aqui é um valor fixo. Vendeu dez mil
-                no mês? Continua sendo setenta e oito reais.
-              </p>
-              <p className="np-preco-mini">
-                A taxa da operadora do cartão é cobrada por ela, não por nós.
-              </p>
-
-              <div className="np-cta">
-                <button type="button" onClick={onExperimentar} className="np-btn">
-                  Experimente aqui
-                </button>
-                <span className="np-cta-nota">
-                  Um dia para conhecer. Depois você decide.
-                </span>
-              </div>
-            </div>
+            <h2>
+              R$ 78 por mês. <span>Só isso.</span>
+            </h2>
+            <p>
+              Sem porcentagem da sua venda. Vendeu dez mil no mês? Continua
+              sendo setenta e oito reais.
+            </p>
+            <button type="button" onClick={onExperimentar} className="np-btn np-btn-grande np-btn-claro">
+              Experimente aqui
+            </button>
+            <span className="np-cta-nota np-nota-clara">
+              Um dia para conhecer. Depois você decide.
+            </span>
           </div>
         </section>
       </main>
@@ -330,10 +361,7 @@ export default function Apresentacao({
         <p className="np-marca">
           <span className="np-marca-1">Money</span> NoTopo
         </p>
-        <p>
-          Barreiras, Bahia · Rafael Rodrigues Pereira · CNPJ
-          68.007.923/0001-09
-        </p>
+        <p>Barreiras, Bahia · Rafael Rodrigues Pereira · CNPJ 68.007.923/0001-09</p>
         <p className="np-rodape-links">
           <a href="/termos">Termos de uso</a>
           <a href="/privacidade">Privacidade</a>
