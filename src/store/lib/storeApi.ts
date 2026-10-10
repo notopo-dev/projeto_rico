@@ -54,6 +54,23 @@ export interface PublicProductColor {
   imagem_url?: string | null;
 }
 
+/**
+ * Uma gaveta da grade: esta cor neste tamanho.
+ *
+ * O estoque mora AQUI, não no produto. Um vestido com 3 cores e 5
+ * tamanhos tem 15 saldos, e o número do produto é só a soma deles —
+ * mantida pelo banco, não por esta tela.
+ */
+export interface PublicVariacao {
+  id: string;
+  cor_nome: string | null;
+  cor_hex: string | null;
+  cor_imagem_url: string | null;
+  tamanho: string | null;
+  preco: number | null;
+  estoque: number;
+}
+
 export interface PublicProduct {
   id: string;
   nome: string;
@@ -69,11 +86,17 @@ export interface PublicProduct {
   imagens: PublicProductImage[];
   cores: PublicProductColor[];
   tamanhos: { id?: string; tamanho: string }[];
+  /**
+   * A grade. Vazia = produto sem variação, e aí valem as duas
+   * listas soltas acima, como sempre foi. Produto que já vende não
+   * muda de comportamento por causa desta coluna nova.
+   */
+  variacoes: PublicVariacao[];
   item_promocao: boolean;
 }
 
 const PRODUCT_SELECT =
-  "id, nome, slug, descricao, sku, preco, preco_promocional, estoque, permite_venda_sem_estoque, category_id, categories(nome), product_images(url, posicao), product_colors(id,nome,codigo_hex,imagem_url), product_sizes(id,tamanho), item_promocao";
+  "id, nome, slug, descricao, sku, preco, preco_promocional, estoque, permite_venda_sem_estoque, category_id, categories(nome), product_images(url, posicao), product_colors(id,nome,codigo_hex,imagem_url), product_sizes(id,tamanho), product_variants(id,cor_nome,cor_hex,cor_imagem_url,tamanho,preco,estoque,ativa,ordem), item_promocao";
 
 function mapProduct(p: any): PublicProduct {
   return {
@@ -84,6 +107,21 @@ function mapProduct(p: any): PublicProduct {
     ),
     cores: p.product_colors ?? [],
     tamanhos: p.product_sizes ?? [],
+    // Variação desligada some da vitrine: é assim que o lojista tira
+    // uma combinação de circulação sem apagar o histórico de quem já
+    // comprou ela. `order_items.variant_id` continua apontando.
+    variacoes: ((p.product_variants ?? []) as any[])
+      .filter((v) => v?.ativa !== false)
+      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+      .map((v) => ({
+        id: v.id,
+        cor_nome: v.cor_nome ?? null,
+        cor_hex: v.cor_hex ?? null,
+        cor_imagem_url: v.cor_imagem_url ?? null,
+        tamanho: v.tamanho ?? null,
+        preco: v.preco == null ? null : Number(v.preco),
+        estoque: Number(v.estoque ?? 0),
+      })),
     item_promocao: p.item_promocao ?? false,
   };
 }

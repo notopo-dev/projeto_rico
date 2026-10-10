@@ -19,6 +19,15 @@ export interface CartItem {
 }
 
 export interface AddItemOptions {
+  /**
+   * Preço da variação escolhida, quando ela tem preço próprio.
+   *
+   * Existe porque o servidor já cobra o preço da variação (o
+   * `criar_pedido_publico` usa `product_variants.preco` quando está
+   * preenchido). Sem isto, o carrinho mostrava o preço do produto e
+   * o cliente via o valor mudar no fim da compra.
+   */
+  precoUnitario?: number | null;
   imagemUrl?: string | null;
   corSelecionada?: string;
   tamanhoSelecionado?: string;
@@ -118,7 +127,8 @@ export function CartProvider({
             : i
         );
       }
-      const preco = product.preco_promocional ?? product.preco;
+      const preco =
+        options?.precoUnitario ?? product.preco_promocional ?? product.preco;
       return [
         ...prev,
         {
