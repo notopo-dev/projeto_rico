@@ -72,6 +72,71 @@ async function esvaziarFilaDeEmails(): Promise<void> {
 }
 
 /**
+ * Fim do período da assinatura, nas duas gerações da API.
+ *
+ * A Stripe tirou `current_period_end` do objeto Subscription na
+ * versão 2025-03-31 (Basil) e passou o campo para cada ITEM da
+ * assinatura. O destino de eventos escolhe a versão, e quem
+ * escolhe é o Dashboard — não este código. Então lemos os dois.
+ *
+ * Com vários itens vale o que termina por último: é a data em que
+ * a loja realmente deixa de estar paga.
+ *
+ * https://docs.stripe.com/changelog/basil/2025-03-31/deprecate-subscription-current-period-start-and-end
+ */
+function fimDoPeriodo(sub: any): string | null {
+  const antigo = sub?.current_period_end;
+  if (typeof antigo === "number") {
+    return new Date(antigo * 1000).toISOString();
+  }
+
+  const itens = sub?.items?.data;
+  if (Array.isArray(itens) && itens.length > 0) {
+    const fins = itens
+      .map((i: any) => i?.current_period_end)
+      .filter((n: unknown): n is number => typeof n === "number");
+    if (fins.length > 0) {
+      return new Date(Math.max(...fins) * 1000).toISOString();
+    }
+  }
+
+  return null;
+}
+
+/**
+ * De qual assinatura é esta fatura, nas duas gerações da API.
+ *
+ * Mesma história: na Basil o campo `subscription` saiu do topo da
+ * fatura e foi para `parent.subscription_details.subscription`.
+ * Sem ler os dois, uma mensalidade recusada não encontraria a loja
+ * e o lojista continuaria usando de graça.
+ *
+ * https://docs.stripe.com/changelog/basil/2025-03-31/adds-new-parent-field-to-invoicing-objects
+ */
+function assinaturaDaFatura(fatura: any): {
+  id: string | null;
+  metaStoreId: string | null;
+} {
+  // Formato novo primeiro: quando os dois existirem, o novo é o
+  // que a versão escolhida considera verdade.
+  const pai = fatura?.parent;
+  if (pai?.type === "subscription_details" && pai?.subscription_details) {
+    const d = pai.subscription_details;
+    const id = typeof d.subscription === "string"
+      ? d.subscription
+      : d.subscription?.id ?? null;
+    return { id, metaStoreId: d.metadata?.store_id ?? null };
+  }
+
+  const antigo = fatura?.subscription;
+  const id = typeof antigo === "string" ? antigo : antigo?.id ?? null;
+  return {
+    id,
+    metaStoreId: fatura?.subscription_details?.metadata?.store_id ?? null,
+  };
+}
+
+/**
  * Status da Stripe traduzido para o que o banco entende.
  *
  * `trialing` e `active` são a mesma coisa para quem usa o sistema:
@@ -427,9 +492,7 @@ Deno.serve(async (req) => {
           .from("stores")
           .update({
             assinatura_status: novoStatus,
-            assinatura_proxima_cobranca: (sub as any).current_period_end
-              ? new Date((sub as any).current_period_end * 1000).toISOString()
-              : null,
+            assinatura_proxima_cobranca: fimDoPeriodo(sub),
             ...(cancelada
               ? { assinatura_cancelada_em: new Date().toISOString() }
               : { assinatura_cancelada_em: null }),
@@ -450,18 +513,12 @@ Deno.serve(async (req) => {
       case "invoice.paid":
       case "invoice.payment_failed": {
         const fatura = event.data.object as Stripe.Invoice;
-        const subId =
-          typeof (fatura as any).subscription === "string"
-            ? ((fatura as any).subscription as string)
-            : (fatura as any).subscription?.id ?? null;
+        const { id: subId, metaStoreId } = assinaturaDaFatura(fatura);
 
         // Fatura avulsa (sem assinatura) não é mensalidade.
         if (!subId) break;
 
-        const storeId = await lojaDaAssinatura(
-          subId,
-          (fatura as any).subscription_details?.metadata?.store_id,
-        );
+        const storeId = await lojaDaAssinatura(subId, metaStoreId);
         if (!storeId) break;
 
         const pago = event.type === "invoice.paid";
