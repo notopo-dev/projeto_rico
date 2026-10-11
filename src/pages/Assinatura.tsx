@@ -28,7 +28,7 @@ import { TelaCarregando } from "../components/Carregando";
 const BENEFICIOS = [
   "Loja com endereço próprio",
   "Produtos e grade de cor e tamanho sem limite",
-  "Cartão em até 12 vezes, direto na sua conta",
+  "Cartão e Pix, direto na sua conta",
   "Frete e etiqueta no painel",
   "Pedidos, clientes e relatórios",
   "E-mail automático de pedido",

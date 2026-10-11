@@ -326,8 +326,8 @@ export default function Apresentacao({ onExperimentar, onAssinar, onEntrar }: Ap
             <div className="np-cartao np-tom-2">
               <h3>Recebimento na sua loja</h3>
               <p>
-                A cliente paga com cartão em até 12 vezes sem sair do seu site. O dinheiro
-                cai na sua conta, não na nossa.
+                A cliente paga com cartão ou Pix sem sair do seu site. O dinheiro cai na
+                sua conta, não na nossa.
               </p>
             </div>
 
@@ -419,7 +419,7 @@ export default function Apresentacao({ onExperimentar, onAssinar, onEntrar }: Ap
               <ul className="np-plano-lista">
                 <li>Loja com endereço próprio</li>
                 <li>Produtos e grade sem limite</li>
-                <li>Cartão em até 12 vezes</li>
+                <li>Cartão e Pix no seu próprio site</li>
                 <li>Frete e etiqueta no painel</li>
                 <li>Pedidos, clientes e relatórios</li>
                 <li>E-mail automático de pedido</li>

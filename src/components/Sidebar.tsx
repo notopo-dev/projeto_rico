@@ -52,6 +52,14 @@ interface NavItem {
   id: Page;
   label: string;
   icon: React.ElementType;
+  /**
+   * Marca a tela como ainda não pronta.
+   *
+   * Existe porque o WhatsApp está no menu do plano pago e é uma
+   * maquete: as regras ficam só em memória e nenhuma mensagem é
+   * enviada. Deixar sem aviso é vender o que não existe.
+   */
+  emBreve?: boolean;
 }
 
 const groups: {
@@ -130,6 +138,7 @@ const groups: {
         id: "whatsapp",
         label: "WhatsApp",
         icon: MessageCircle,
+        emBreve: true,
       },
     ],
   },
@@ -461,6 +470,12 @@ export default function Sidebar({
                       <span className="truncate">
                         {item.label}
                       </span>
+
+                      {item.emBreve && (
+                        <span className="ml-auto shrink-0 rounded-full bg-[#f4f4f5] px-2 py-0.5 text-[11px] font-semibold text-[#6b7280]">
+                          em breve
+                        </span>
+                      )}
 
                     </button>
                   );

@@ -70,13 +70,28 @@ export default function WhatsApp() {
 
   return (
     <div className="w-full min-h-full px-3 py-3 sm:px-4 lg:max-w-[860px] lg:px-6 lg:py-6">
-      {/* Info banner */}
-      <div className="flex items-start gap-3 px-4 py-3 bg-[#f0fdf4] border border-[#bbf7d0] rounded-[6px] mb-6">
-        <MessageCircle size={16} strokeWidth={1.8} className="text-[#16a34a] shrink-0 mt-0.5" />
+      {/* ------------------------------------------------------------
+          Aviso honesto.
+
+          Esta tela é uma PRÉVIA: as regras ficam só na memória do
+          navegador (useState) e somem ao atualizar a página. Nenhuma
+          mensagem é enviada — não existe integração com o WhatsApp
+          em lugar nenhum do sistema.
+
+          O banner anterior dizia "Configure mensagens automáticas",
+          no presente, como se funcionasse. Numa tela que faz parte
+          de um plano pago, isso é vender o que não existe.
+          ------------------------------------------------------------ */}
+      <div className="flex items-start gap-3 px-4 py-3 bg-[#fffbeb] border border-[#fde68a] rounded-[6px] mb-6">
+        <MessageCircle size={16} strokeWidth={1.8} className="text-[#92400e] shrink-0 mt-0.5" />
         <div>
-          <p className="t-corpo font-medium text-[#15803d] mb-0.5">Automações de WhatsApp</p>
-          <p className="t-corpo text-[#166534]">
-            Configure mensagens automáticas para seus clientes em eventos específicos do pedido. Use variáveis como {"{nome}"} e {"{numero}"} para personalizar as mensagens.
+          <p className="t-corpo font-medium text-[#92400e] mb-0.5">
+            Em breve — esta tela é uma prévia
+          </p>
+          <p className="t-corpo text-[#92400e]">
+            O envio automático pelo WhatsApp ainda está em construção. Você
+            pode montar as regras aqui para ver como vai funcionar, mas elas
+            não são salvas e nenhuma mensagem é enviada por enquanto.
           </p>
         </div>
       </div>

@@ -636,19 +636,19 @@ export default function Loja() {
                 onAlternar={(v) => setForm((f) => ({ ...f, ativo: v }))}
               />
 
-              <Chave
-                label="Controle de estoque"
-                description="Bloquear compra sem estoque"
-                ligado={form.manter_estoque}
-                onAlternar={(v) => setForm((f) => ({ ...f, manter_estoque: v }))}
-              />
 
-              <Chave
-                label="Exibir sem estoque"
-                description="Mostrar produtos esgotados"
-                ligado={form.exibir_sem_estoque}
-                onAlternar={(v) => setForm((f) => ({ ...f, exibir_sem_estoque: v }))}
-              />
+              {/* Saíram daqui dois interruptores: "Controle de estoque" e
+                  "Exibir sem estoque".
+
+                  Os dois gravavam `manter_estoque` e `exibir_sem_estoque`
+                  em `stores`, e NINGUÉM lia essas colunas — nem a vitrine,
+                  nem o `criar_pedido_publico`. O lojista desligava a venda
+                  sem estoque, via "salvo", e a loja continuava vendendo.
+
+                  Quem decide isso de verdade é `permite_venda_sem_estoque`,
+                  por produto, na tela de Produtos. As colunas continuam no
+                  banco (nada foi apagado) — só não são mais oferecidas como
+                  se fizessem alguma coisa. */}
             </div>
           </section>
 
