@@ -19,12 +19,15 @@ import Frete from "./pages/Frete";
 import Vendas from "./pages/Vendas";
 import Pagamentos from "./pages/Pagamentos";
 import Recebimentos from "./pages/Recebimentos";
+import Assinatura from "./pages/Assinatura";
 import WhatsApp from "./pages/WhatsApp";
 import Configuracoes from "./pages/Configuracoes";
 import Academy from "./pages/Academy";
 import Header from "./components/Header";
 import Sidebar, { Page } from "./components/Sidebar";
 import BottomNav from "./components/BottomNav";
+import AvisoDeTeste from "./components/AvisoDeTeste";
+import { lerAssinatura } from "./lib/assinaturaApi";
 import { TelaCarregando } from "./components/Carregando";
 
 const pageConfig: Record<Page, { title: string; component: ReactNode }> = {
@@ -39,6 +42,7 @@ const pageConfig: Record<Page, { title: string; component: ReactNode }> = {
   vendas: { title: "Vendas", component: <Vendas /> },
   pagamentos: { title: "Pagamentos", component: <Pagamentos /> },
   recebimentos: { title: "Recebimentos", component: <Recebimentos /> },
+  assinatura: { title: "Assinatura", component: <Assinatura /> },
   whatsapp: { title: "WhatsApp", component: <WhatsApp /> },
   academy: { title: "Academy", component: <Academy /> },
   configuracoes: { title: "Configurações", component: <Configuracoes /> },
@@ -119,6 +123,18 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   /**
+   * Loja sem assinatura válida: o painel fecha e sobra só a tela de
+   * cobrança.
+   *
+   * `null` = ainda não sabemos. `false` em caso de ERRO é
+   * proposital: uma falha de rede não pode trancar o lojista para
+   * fora do próprio painel. Isto aqui é desenho de tela, não
+   * segurança — quem recusa pedido de loja sem assinatura é o
+   * gatilho no banco, e ele não depende desta variável.
+   */
+  const [bloqueada, setBloqueada] = useState<boolean | null>(null);
+
+  /**
    * O link de "Esqueci a senha" cria uma sessão de verdade antes de
    * qualquer senha nova existir. Sem este desvio o app via a sessão,
    * abria o painel e a senha continuava a antiga — o link de
@@ -196,6 +212,26 @@ export default function App() {
   }
 
   // Navegação entre /login e /cadastro (só usada quando deslogado)
+  // A situação da assinatura é lida uma vez por sessão. Não fica
+  // repetindo: o que muda o estado é o webhook, e a tela de
+  // Assinatura recarrega sozinha quando o lojista assina ali.
+  useEffect(() => {
+    if (!session || recuperandoSenha || confirmandoEmail) return;
+
+    let vivo = true;
+    lerAssinatura()
+      .then((e) => {
+        if (vivo) setBloqueada(!e.podeUsar);
+      })
+      .catch(() => {
+        if (vivo) setBloqueada(false);
+      });
+
+    return () => {
+      vivo = false;
+    };
+  }, [session, recuperandoSenha, confirmandoEmail]);
+
   function goToAuth(path: CaminhoPublico) {
     window.history.pushState({}, "", `/${path}`);
     setAuthPath(path);
@@ -303,6 +339,30 @@ export default function App() {
     );
   }
 
+  // Bloqueio: nem menu nem navegação. Só a cobrança e a saída.
+  // O conteúdo não é apagado em lugar nenhum — produtos, pedidos e
+  // clientes continuam no banco esperando a assinatura.
+  if (bloqueada === true) {
+    return (
+      <div className="min-h-dvh bg-[var(--app-fundo)] text-[var(--app-texto)]">
+        {/* Barra própria, e não o Header: o Header traz o botão de
+            menu lateral, e aqui não existe menu para abrir. Um botão
+            que não faz nada é pior do que botão nenhum. */}
+        <div className="flex h-14 items-center justify-between gap-3 border-b border-[var(--app-borda)] bg-white px-4">
+          <span className="t-secao font-bold text-[#0f1117]">Assinatura</span>
+          <button
+            type="button"
+            onClick={logout}
+            className="btn-app-pequeno border border-[var(--app-borda)] bg-white text-[#374151]"
+          >
+            Sair
+          </button>
+        </div>
+        <Assinatura />
+      </div>
+    );
+  }
+
   const page = pageConfig[currentPage];
 
   return (
@@ -319,6 +379,7 @@ export default function App() {
           onMenuToggle={() => setMobileMenuOpen(true)}
           onLogout={logout}
         />
+        <AvisoDeTeste onAssinar={() => goTo("assinatura")} />
         {/* Sem overflow aqui de propósito: quem rola é a JANELA.
             Enquanto a rolagem acontecia dentro desta div, componentes
             de terceiros que abrem menus (o formulário de verificação

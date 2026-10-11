@@ -71,6 +71,35 @@ async function esvaziarFilaDeEmails(): Promise<void> {
   }
 }
 
+/**
+ * Status da Stripe traduzido para o que o banco entende.
+ *
+ * `trialing` e `active` são a mesma coisa para quem usa o sistema:
+ * pode operar. `past_due` e `unpaid` continuam operando porque a
+ * Stripe ainda está retentando — ver o comentário no case da
+ * fatura. Só cancelamento tira a loja do ar.
+ */
+function statusDaAssinatura(
+  stripeStatus: string,
+  cancelada: boolean,
+): string | null {
+  if (cancelada) return "cancelada";
+  switch (stripeStatus) {
+    case "trialing":
+    case "active":
+      return "ativa";
+    case "past_due":
+    case "unpaid":
+      return "inadimplente";
+    default:
+      // `incomplete`: o cartão ainda não passou pela autenticação
+      // do banco. Devolve null, e quem chamou NÃO grava nada — a
+      // loja pode estar no teste grátis, e escrever aqui a tiraria
+      // do ar por causa de uma assinatura que nem começou.
+      return null;
+  }
+}
+
 Deno.serve(async (req) => {
   const signature = req.headers.get("stripe-signature");
   const body = await req.text();
@@ -175,6 +204,30 @@ Deno.serve(async (req) => {
     }
 
     return metadataStoreId ?? null;
+  }
+
+  /**
+   * De qual loja é esta assinatura.
+   *
+   * O id da assinatura vale mais que o metadata: ele foi gravado
+   * por nós quando a assinatura nasceu, enquanto o metadata é só um
+   * campo que viaja junto do objeto. O metadata entra como segunda
+   * opção, para o caso de o evento `created` chegar antes de a
+   * gravação terminar.
+   */
+  async function lojaDaAssinatura(
+    subscriptionId: string | null | undefined,
+    metadataStoreId: string | null | undefined,
+  ): Promise<string | null> {
+    if (subscriptionId) {
+      const { data } = await admin
+        .from("stores")
+        .select("id")
+        .eq("stripe_subscription_id", subscriptionId)
+        .maybeSingle();
+      if (data?.id) return data.id;
+    }
+    return await lojaAutorizada(metadataStoreId);
   }
 
   try {
@@ -337,6 +390,95 @@ Deno.serve(async (req) => {
             stripe_atualizado_em: new Date().toISOString(),
           })
           .eq("stripe_account_id", conta.id);
+        break;
+      }
+
+      // -----------------------------------------------------------
+      // MENSALIDADE DA PLATAFORMA
+      //
+      // Estes eventos nascem na conta da PLATAFORMA, não na conta
+      // conectada do lojista — `event.account` vem vazio. É o
+      // contrário dos eventos de venda logo acima.
+      //
+      // Até esta versão nenhum deles era tratado: a assinatura era
+      // criada e, no mês seguinte, se o cartão falhasse, o sistema
+      // nunca ficava sabendo. O lojista continuava usando de graça
+      // e o painel seguia dizendo "ativa".
+      // -----------------------------------------------------------
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as Stripe.Subscription;
+        const storeId = await lojaDaAssinatura(sub.id, sub.metadata?.store_id);
+        if (!storeId) break;
+
+        const cancelada =
+          event.type === "customer.subscription.deleted" ||
+          sub.status === "canceled" ||
+          sub.status === "incomplete_expired";
+
+        const novoStatus = statusDaAssinatura(sub.status, cancelada);
+
+        // Status desconhecido (`incomplete`) não vira gravação: ver
+        // o comentário em statusDaAssinatura.
+        if (novoStatus === null) break;
+
+        await admin
+          .from("stores")
+          .update({
+            assinatura_status: novoStatus,
+            assinatura_proxima_cobranca: (sub as any).current_period_end
+              ? new Date((sub as any).current_period_end * 1000).toISOString()
+              : null,
+            ...(cancelada
+              ? { assinatura_cancelada_em: new Date().toISOString() }
+              : { assinatura_cancelada_em: null }),
+          })
+          .eq("id", storeId);
+        break;
+      }
+
+      // -----------------------------------------------------------
+      // A fatura do mês
+      //
+      // `invoice.paid` é o que prova que a mensalidade entrou.
+      // `invoice.payment_failed` NÃO derruba a loja: a Stripe ainda
+      // vai retentar o cartão por alguns dias, e quem só trocou de
+      // cartão não merece ficar fora do ar no primeiro "não
+      // autorizado". Quem derruba é o cancelamento, acima.
+      // -----------------------------------------------------------
+      case "invoice.paid":
+      case "invoice.payment_failed": {
+        const fatura = event.data.object as Stripe.Invoice;
+        const subId =
+          typeof (fatura as any).subscription === "string"
+            ? ((fatura as any).subscription as string)
+            : (fatura as any).subscription?.id ?? null;
+
+        // Fatura avulsa (sem assinatura) não é mensalidade.
+        if (!subId) break;
+
+        const storeId = await lojaDaAssinatura(
+          subId,
+          (fatura as any).subscription_details?.metadata?.store_id,
+        );
+        if (!storeId) break;
+
+        const pago = event.type === "invoice.paid";
+
+        await admin
+          .from("stores")
+          .update({
+            assinatura_status: pago ? "ativa" : "inadimplente",
+            ...(pago && (fatura as any).period_end
+              ? {
+                  assinatura_proxima_cobranca: new Date(
+                    (fatura as any).period_end * 1000,
+                  ).toISOString(),
+                }
+              : {}),
+          })
+          .eq("id", storeId);
         break;
       }
 

@@ -15,6 +15,7 @@ import {
   ChevronDown,
   Landmark,
   Truck,
+  Receipt,
   X,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ export type Page =
   | "frete"
   | "vendas"
   | "pagamentos"
+  | "assinatura"
   | "whatsapp"
   | "academy"
   | "configuracoes";
@@ -118,6 +120,11 @@ const groups: {
         id: "recebimentos",
         label: "Recebimentos",
         icon: Landmark,
+      },
+      {
+        id: "assinatura",
+        label: "Assinatura",
+        icon: Receipt,
       },
       {
         id: "whatsapp",

@@ -652,42 +652,6 @@ export default function Loja() {
             </div>
           </section>
 
-          {/* Plano */}
-          <section className="bg-white border border-[#e4e4e7] rounded-[6px]">
-            <div className="px-4 py-3 border-b border-[#e4e4e7]">
-              <h2 className="t-corpo font-semibold text-[#0f1117]">
-                Plano atual
-              </h2>
-            </div>
-
-            <div className="px-4 py-4">
-              <p className="t-corpo font-semibold text-[#0f1117] mb-0.5">
-                {store.plano
-                  ? store.plano
-                      .charAt(0)
-                      .toUpperCase() +
-                    store.plano.slice(1)
-                  : "Gratuito"}
-              </p>
-
-              <p className="t-corpo text-[#6b7280] mb-3">
-                {store.plano_renovacao
-                  ? `Renovação em ${new Date(
-                      store.plano_renovacao
-                    ).toLocaleDateString(
-                      "pt-BR"
-                    )}`
-                  : "Sem renovação agendada"}
-              </p>
-
-              <button
-                type="button"
-                className="t-corpo w-full px-3 py-1.5 text-[#374151] border border-[#e4e4e7] rounded-[6px] bg-white hover:bg-[#f4f4f5] transition-colors"
-              >
-                Gerenciar plano
-              </button>
-            </div>
-          </section>
         </div>
       </div>
     </div>
