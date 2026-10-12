@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
           headers: {
             Authorization: `Bearer ${tokens.access_token}`,
             Accept: "application/json",
-            "User-Agent": "LojaPro (contato@moneynotopo.com.br)",
+            "User-Agent": "Money NoTopo (contato@moneynotopo.com.br)",
           },
         });
         if (res.ok) {

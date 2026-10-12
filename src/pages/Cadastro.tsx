@@ -129,7 +129,7 @@ export default function Cadastro({ onSuccess, onVoltarLogin }: CadastroProps) {
                 <Store size={19} className="text-white" strokeWidth={2.2} />
               </span>
               <span className="text-[15px] font-extrabold tracking-tight text-[#0f1117]">
-                LojaPro
+                <span className="text-[#16a34a]">Money</span>NoTopo
               </span>
             </div>
 

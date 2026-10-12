@@ -68,7 +68,7 @@ export function cabecalhosME(token: string, contato?: string | null) {
     Authorization: `Bearer ${token}`,
     Accept: "application/json",
     "Content-Type": "application/json",
-    "User-Agent": `LojaPro (${contato || "contato@moneynotopo.com.br"})`,
+    "User-Agent": `Money NoTopo (${contato || "contato@moneynotopo.com.br"})`,
   };
 }
 
@@ -90,7 +90,7 @@ export async function pedirTokens(
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      "User-Agent": "LojaPro (contato@moneynotopo.com.br)",
+      "User-Agent": "Money NoTopo (contato@moneynotopo.com.br)",
     },
     body: JSON.stringify({
       client_id: clientId,

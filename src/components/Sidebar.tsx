@@ -327,7 +327,7 @@ export default function Sidebar({
             <span
               className="t-corpo font-semibold text-[#111827] tracking-tight"
             >
-              LojaPro
+              <span className="text-[#16a34a]">Money</span>NoTopo
             </span>
 
           </div>

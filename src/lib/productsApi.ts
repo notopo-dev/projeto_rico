@@ -567,17 +567,45 @@ p.product_sizes??[]
 
 
 
-export async function deleteProduct(
-id:string
-){
+export async function deleteProduct(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("products")
+    .delete()
+    .eq("id", id);
 
-const {error}=await supabase
-.from("products")
-.delete()
-.eq("id",id);
+  if (!error) return;
 
+  /**
+   * Por que isto não é mais `throw error`.
+   *
+   * O erro do Supabase (PostgrestError) é um objeto simples — não é
+   * uma instância de Error. A tela faz
+   * `err instanceof Error ? err.message : "Erro ao excluir produto."`,
+   * então o `false` caía no texto genérico e o motivo REAL morria no
+   * caminho. O lojista via "Erro ao excluir produto." e não tinha
+   * como descobrir o que fazer.
+   */
 
-if(error)
-throw error;
+  // 23503 = foreign_key_violation. O produto está em pedidos, e o
+  // banco recusa apagar — corretamente: apagar levaria o histórico
+  // do pedido junto. Não é falha, é proteção.
+  if (error.code === "23503") {
+    throw new Error(
+      "Este produto já aparece em pedidos e não pode ser apagado — " +
+        "apagar levaria o histórico de venda junto. " +
+        'Mude o status para "Inativo": ele sai da vitrine e continua ' +
+        "nos pedidos antigos.",
+    );
+  }
 
+  // 42501 = insufficient_privilege. Quase sempre sessão expirada.
+  if (error.code === "42501") {
+    throw new Error(
+      "Sem permissão para excluir. Saia e entre de novo; se continuar, fale com o suporte.",
+    );
+  }
+
+  throw new Error(
+    error.message || "Não foi possível excluir o produto. Tente de novo.",
+  );
 }

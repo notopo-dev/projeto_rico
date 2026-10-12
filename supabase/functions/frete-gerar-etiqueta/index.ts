@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       Authorization: `Bearer ${settings.melhor_envio_token}`,
       "Content-Type": "application/json",
       Accept: "application/json",
-      "User-Agent": "LojaPro (contato@lojapro.com.br)",
+      "User-Agent": "Money NoTopo (contato@moneynotopo.com.br)",
     };
 
     // Pedido + cliente + itens

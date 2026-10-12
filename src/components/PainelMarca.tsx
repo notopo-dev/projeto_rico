@@ -52,7 +52,7 @@ export default function PainelMarca() {
     >
       <div>
         <p className="text-[13px] font-bold tracking-[0.18em] text-[#15803d] uppercase">
-          LojaPro
+          Money NoTopo
         </p>
         <h2 className="mt-5 text-[30px] xl:text-[34px] font-extrabold text-[#0f1117] leading-[1.15] max-w-[16ch]">
           Sua loja online, pronta para vender hoje.
