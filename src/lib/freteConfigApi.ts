@@ -39,6 +39,24 @@ export interface RegrasFrete {
    */
   retirada_aceita_dinheiro: boolean;
   retirada_aceita_maquininha: boolean;
+
+  /**
+   * Embalagem padrão da loja: a rede de segurança do frete.
+   *
+   * Produto sem peso ou medida derrubava a cotação do carrinho
+   * INTEIRO, e quem descobria era o cliente no meio do checkout — que
+   * então não comprava. Com a embalagem padrão, falta a medida do
+   * produto e entra a da loja.
+   *
+   * As quatro andam juntas: o banco tem restrição de tudo preenchido
+   * ou nada (53_embalagem_padrao.sql). Meia embalagem dá ao lojista a
+   * impressão de rede de segurança enquanto a cotação continua
+   * falhando pela medida que ficou de fora.
+   */
+  embalagem_padrao_peso_gramas: number | null;
+  embalagem_padrao_altura_cm: number | null;
+  embalagem_padrao_largura_cm: number | null;
+  embalagem_padrao_comprimento_cm: number | null;
 }
 
 export interface ConfigFrete extends RegrasFrete {
@@ -56,10 +74,18 @@ export interface ConfigFrete extends RegrasFrete {
    * no meio do checkout. Melhor o lojista ver antes.
    */
   produtos_sem_medidas: { id: string; nome: string }[];
+  /**
+   * A embalagem padrão está preenchida?
+   *
+   * Decide o TOM do aviso dos produtos sem medida: com embalagem
+   * padrão é recado ("o frete sai, mas pode sair errado"); sem ela é
+   * alarme ("estes produtos não vendem").
+   */
+  tem_embalagem_padrao: boolean;
 }
 
 const CAMPOS_REGRAS =
-  "frete_modo, frete_fixo, frete_fixo_prazo_dias, frete_fixo_nome, frete_gratis_acima, retirada_na_loja, retirada_instrucoes, retirada_aceita_dinheiro, retirada_aceita_maquininha";
+  "frete_modo, frete_fixo, frete_fixo_prazo_dias, frete_fixo_nome, frete_gratis_acima, retirada_na_loja, retirada_instrucoes, retirada_aceita_dinheiro, retirada_aceita_maquininha, embalagem_padrao_peso_gramas, embalagem_padrao_altura_cm, embalagem_padrao_largura_cm, embalagem_padrao_comprimento_cm";
 
 function semMedidas(p: {
   peso_gramas: number | null;
@@ -116,6 +142,17 @@ export async function getConfigFrete(): Promise<ConfigFrete> {
     retirada_instrucoes: s.retirada_instrucoes ?? null,
     retirada_aceita_dinheiro: Boolean(s.retirada_aceita_dinheiro),
     retirada_aceita_maquininha: Boolean(s.retirada_aceita_maquininha),
+    // numeric do Postgres chega como texto no JS. Sem converter, o
+    // campo do formulário recebe "5.00" e a comparação com zero
+    // compara texto com número.
+    embalagem_padrao_peso_gramas:
+      s.embalagem_padrao_peso_gramas === null ? null : Number(s.embalagem_padrao_peso_gramas),
+    embalagem_padrao_altura_cm:
+      s.embalagem_padrao_altura_cm === null ? null : Number(s.embalagem_padrao_altura_cm),
+    embalagem_padrao_largura_cm:
+      s.embalagem_padrao_largura_cm === null ? null : Number(s.embalagem_padrao_largura_cm),
+    embalagem_padrao_comprimento_cm:
+      s.embalagem_padrao_comprimento_cm === null ? null : Number(s.embalagem_padrao_comprimento_cm),
     cep_origem: s.cep_origem ?? null,
     conectado: conectado.data === true,
     conta: settings.data?.melhor_envio_conta ?? null,
@@ -123,6 +160,14 @@ export async function getConfigFrete(): Promise<ConfigFrete> {
     produtos_sem_medidas: (produtos.data ?? [])
       .filter(semMedidas)
       .map((p: any) => ({ id: p.id, nome: p.nome })),
+    // A restrição no banco garante tudo ou nada, então basta olhar um
+    // campo. Olho os quatro de qualquer forma: se a restrição cair
+    // algum dia, isto não passa a mentir em silêncio.
+    tem_embalagem_padrao:
+      Number(s.embalagem_padrao_peso_gramas) > 0 &&
+      Number(s.embalagem_padrao_altura_cm) > 0 &&
+      Number(s.embalagem_padrao_largura_cm) > 0 &&
+      Number(s.embalagem_padrao_comprimento_cm) > 0,
   };
 }
 
@@ -134,6 +179,30 @@ export async function salvarRegrasFrete(regras: RegrasFrete): Promise<void> {
   }
   if (regras.frete_gratis_acima !== null && regras.frete_gratis_acima <= 0) {
     throw new Error("O valor para frete grátis precisa ser maior que zero.");
+  }
+
+  // Embalagem padrão: as quatro ou nenhuma.
+  //
+  // O banco já recusa meia embalagem (restrição do
+  // 53_embalagem_padrao.sql), mas erro de banco chega ao lojista como
+  // texto de Postgres. Barrar aqui dá uma frase que ele entende, e a
+  // restrição continua valendo como última linha de defesa para
+  // qualquer outro caminho até a coluna.
+  const emb = [
+    regras.embalagem_padrao_peso_gramas,
+    regras.embalagem_padrao_altura_cm,
+    regras.embalagem_padrao_largura_cm,
+    regras.embalagem_padrao_comprimento_cm,
+  ];
+  const preenchidos = emb.filter((v) => v !== null && v !== undefined).length;
+
+  if (preenchidos > 0 && preenchidos < 4) {
+    throw new Error(
+      "Para a embalagem padrão, preencha peso, altura, largura e comprimento — ou deixe os quatro em branco.",
+    );
+  }
+  if (emb.some((v) => v !== null && v !== undefined && !(Number(v) > 0))) {
+    throw new Error("As medidas da embalagem padrão precisam ser maiores que zero.");
   }
 
   const storeId = await getCurrentStoreId();
@@ -165,6 +234,12 @@ export async function salvarRegrasFrete(regras: RegrasFrete): Promise<void> {
         regras.retirada_na_loja && regras.retirada_aceita_dinheiro,
       retirada_aceita_maquininha:
         regras.retirada_na_loja && regras.retirada_aceita_maquininha,
+      // Normalizado para null: campo vazio no formulário chega como
+      // string vazia ou NaN, e a restrição do banco conta NULOS.
+      embalagem_padrao_peso_gramas: regras.embalagem_padrao_peso_gramas ?? null,
+      embalagem_padrao_altura_cm: regras.embalagem_padrao_altura_cm ?? null,
+      embalagem_padrao_largura_cm: regras.embalagem_padrao_largura_cm ?? null,
+      embalagem_padrao_comprimento_cm: regras.embalagem_padrao_comprimento_cm ?? null,
     })
     .eq("id", storeId);
 

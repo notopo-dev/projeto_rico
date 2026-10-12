@@ -82,7 +82,11 @@ Deno.serve(async (req) => {
     // 1. Busca a loja (precisa estar ativa e ter CEP de origem)
     const { data: store, error: storeError } = await supabaseAdmin
       .from("stores")
-      .select("id, ativo, cep_origem, email")
+      .select(
+        "id, ativo, cep_origem, email, " +
+          "embalagem_padrao_peso_gramas, embalagem_padrao_altura_cm, " +
+          "embalagem_padrao_largura_cm, embalagem_padrao_comprimento_cm",
+      )
       .eq("id", storeId)
       .single();
 
@@ -140,18 +144,65 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verifica se todos têm dimensões cadastradas
-    const semDimensoes = produtos.filter(
-      (p: any) => !p.peso_gramas || !p.altura_cm || !p.largura_cm || !p.comprimento_cm
+    // ----------------------------------------------------------------
+    // A embalagem padrão da loja é a rede de segurança
+    // ----------------------------------------------------------------
+    // Antes, UM produto sem peso ou medida fazia esta função recusar a
+    // cotação INTEIRA — e o cliente não via frete nenhum, ou seja, não
+    // comprava. Metade do catálogo cair nisso é comum: peso e medida
+    // são os campos que o lojista deixa para depois.
+    //
+    // Agora falta a medida do produto e entra a da loja. A queda é
+    // CAMPO POR CAMPO de propósito: quem cadastrou altura, largura e
+    // comprimento mas esqueceu o peso continua usando as medidas
+    // certas do produto, e só o peso vem da embalagem padrão. Trocar o
+    // pacote inteiro nesse caso daria um frete pior sem motivo.
+    //
+    // Só recusa quando não há nem um nem outro. A restrição no banco
+    // garante que a embalagem padrão é completa ou inexistente, então
+    // aqui não existe o caso de meia embalagem.
+    const medidaValida = (v: unknown) => {
+      const n = Number(v);
+      return Number.isFinite(n) && n > 0;
+    };
+
+    const padrao = {
+      peso_gramas: store.embalagem_padrao_peso_gramas,
+      altura_cm: store.embalagem_padrao_altura_cm,
+      largura_cm: store.embalagem_padrao_largura_cm,
+      comprimento_cm: store.embalagem_padrao_comprimento_cm,
+    };
+
+    /** Medida do produto; se faltar, a da embalagem padrão. */
+    const medidaDe = (p: any, campo: keyof typeof padrao) =>
+      medidaValida(p[campo]) ? Number(p[campo]) : Number(padrao[campo]);
+
+    const CAMPOS = [
+      ["peso_gramas", "peso"],
+      ["altura_cm", "altura"],
+      ["largura_cm", "largura"],
+      ["comprimento_cm", "comprimento"],
+    ] as const;
+
+    // Produto que não tem a medida nem no cadastro nem na embalagem
+    // padrão: aí sim não há como cotar.
+    const semMedida = produtos.filter((p: any) =>
+      CAMPOS.some(([campo]) => !medidaValida(medidaDe(p, campo))),
     );
-    if (semDimensoes.length > 0) {
+
+    if (semMedida.length > 0) {
+      const temPadrao = CAMPOS.every(([campo]) => medidaValida(padrao[campo]));
       return new Response(
         JSON.stringify({
-          error: `Produto sem dimensões cadastradas: ${semDimensoes
-            .map((p: any) => p.nome)
-            .join(", ")}. O lojista precisa informar peso e medidas.`,
+          error:
+            `Produto sem peso ou medidas: ${semMedida
+              .map((p: any) => p.nome)
+              .join(", ")}. ` +
+            (temPadrao
+              ? "Informe peso e medidas no cadastro do produto."
+              : "Informe peso e medidas no produto, ou cadastre uma embalagem padrão em Frete para cobrir os produtos sem medida."),
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -160,10 +211,11 @@ Deno.serve(async (req) => {
       const p: any = produtos.find((x: any) => x.id === item.product_id);
       return {
         id: p.id,
-        width: Number(p.largura_cm),
-        height: Number(p.altura_cm),
-        length: Number(p.comprimento_cm),
-        weight: Number(p.peso_gramas) / 1000, // Melhor Envio usa kg
+        width: medidaDe(p, "largura_cm"),
+        height: medidaDe(p, "altura_cm"),
+        length: medidaDe(p, "comprimento_cm"),
+        // Melhor Envio usa kg; o cadastro é em gramas.
+        weight: medidaDe(p, "peso_gramas") / 1000,
         insurance_value: Number(p.preco_promocional ?? p.preco),
         quantity: item.quantidade,
       };

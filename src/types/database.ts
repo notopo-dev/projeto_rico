@@ -58,6 +58,15 @@ export interface Store {
   retirada_na_loja: boolean;
   retirada_instrucoes: string | null;
 
+  /* Embalagem padrão da loja — 53_embalagem_padrao.sql.
+     Rede de segurança do frete: falta a medida do produto e usa-se
+     esta. As quatro andam juntas (restrição no banco de tudo
+     preenchido ou nada). */
+  embalagem_padrao_peso_gramas: number | null;
+  embalagem_padrao_altura_cm: number | null;
+  embalagem_padrao_largura_cm: number | null;
+  embalagem_padrao_comprimento_cm: number | null;
+
   endereco_logradouro: string | null;
   endereco_numero: string | null;
   endereco_complemento: string | null;

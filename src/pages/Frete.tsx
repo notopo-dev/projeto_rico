@@ -155,6 +155,13 @@ export default function Frete() {
   /** Pagar no balcão, na hora de buscar. */
   const [aceitaDinheiro, setAceitaDinheiro] = useState(false);
   const [aceitaMaquininha, setAceitaMaquininha] = useState(false);
+  // Embalagem padrão: texto, não número, porque campo vazio e zero são
+  // coisas diferentes aqui e `number | null` no estado obriga a
+  // adivinhar qual é qual enquanto a pessoa digita.
+  const [embPeso, setEmbPeso] = useState("");
+  const [embAltura, setEmbAltura] = useState("");
+  const [embLargura, setEmbLargura] = useState("");
+  const [embComprimento, setEmbComprimento] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
 
@@ -181,6 +188,10 @@ export default function Frete() {
       setInstrucoes(c.retirada_instrucoes ?? "");
       setAceitaDinheiro(c.retirada_aceita_dinheiro);
       setAceitaMaquininha(c.retirada_aceita_maquininha);
+      setEmbPeso(c.embalagem_padrao_peso_gramas?.toString() ?? "");
+      setEmbAltura(paraCampo(c.embalagem_padrao_altura_cm));
+      setEmbLargura(paraCampo(c.embalagem_padrao_largura_cm));
+      setEmbComprimento(paraCampo(c.embalagem_padrao_comprimento_cm));
     } catch (e) {
       setErro(
         e instanceof Error ? e.message : "Não foi possível carregar o frete.",
@@ -265,6 +276,10 @@ export default function Frete() {
         retirada_instrucoes: instrucoes,
         retirada_aceita_dinheiro: aceitaDinheiro,
         retirada_aceita_maquininha: aceitaMaquininha,
+        embalagem_padrao_peso_gramas: embPeso ? Number(embPeso) : null,
+        embalagem_padrao_altura_cm: paraNumero(embAltura),
+        embalagem_padrao_largura_cm: paraNumero(embLargura),
+        embalagem_padrao_comprimento_cm: paraNumero(embComprimento),
       });
       setSalvo(true);
       await carregar();
@@ -569,10 +584,63 @@ export default function Frete() {
       </Cartao>
 
       {/* ---------------- pendências ---------------- */}
+      {/* ---------------- embalagem padrão ---------------- */}
+      <Cartao
+        titulo="Embalagem padrão da loja"
+        descricao="A caixa que você usa quando o produto não tem medida cadastrada. Serve de rede de segurança: sem ela, um produto sem medida derruba o frete do carrinho inteiro e o cliente não consegue comprar."
+      >
+        <div className="px-3.5 pb-3.5 space-y-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            {(
+              [
+                ["Peso (g)", embPeso, setEmbPeso, "300"],
+                ["Altura (cm)", embAltura, setEmbAltura, "5"],
+                ["Largura (cm)", embLargura, setEmbLargura, "20"],
+                ["Comprim. (cm)", embComprimento, setEmbComprimento, "30"],
+              ] as const
+            ).map(([rotulo, valor, setar, exemplo]) => (
+              <div key={rotulo}>
+                <label className="t-apoio block font-medium text-[#374151] mb-1">
+                  {rotulo}
+                </label>
+                <input
+                  value={valor}
+                  onChange={(e) => setar(e.target.value)}
+                  inputMode="decimal"
+                  placeholder={exemplo}
+                  className="campo-app"
+                />
+              </div>
+            ))}
+          </div>
+
+          <p className="t-apoio text-[#9ca3af] leading-snug">
+            Os quatro juntos, ou os quatro em branco. Meia embalagem não
+            protege nada: a cotação continuaria falhando pela medida que
+            ficou de fora.
+          </p>
+
+          {/* Mínimo dos Correios, não número inventado: 11 x 6 x 0,4 cm
+              para SEDEX e PAC, 13 x 8 x 0,4 cm para os demais serviços.
+              Caixa menor que isso é recusada por eles, e o lojista
+              descobriria com a cotação vindo vazia. */}
+          <p className="t-apoio text-[#9ca3af] leading-snug">
+            Os Correios não aceitam embalagem menor que 11 × 6 × 0,4 cm no
+            SEDEX e no PAC. Use a medida da caixa que você mais despacha.
+          </p>
+        </div>
+      </Cartao>
+
       {(bloqueiaME || (precisaMelhorEnvio && semMedidas.length > 0)) && (
         <div className="rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3.5 py-3 space-y-2.5">
+          {/* O título segue o que o bloco está dizendo de verdade.
+              Quando a embalagem padrão cobre e o resto está ligado,
+              nada falta: a tabela FUNCIONA, só não está afinada. Dizer
+              "falta" aí treina o lojista a ignorar o aviso amarelo. */}
           <p className="t-corpo font-semibold text-[#92400e]">
-            Falta isto para a tabela das transportadoras funcionar
+            {bloqueiaME
+              ? "Falta isto para a tabela das transportadoras funcionar"
+              : "A tabela funciona, mas vale ajustar isto"}
           </p>
 
           {!config?.cep_origem && (
@@ -604,8 +672,13 @@ export default function Frete() {
                   {semMedidas.length === 1 ? "produto" : "produtos"} sem peso
                   ou medidas.
                 </strong>{" "}
-                A transportadora recusa o carrinho inteiro por causa de um
-                só, e quem vê o erro é o cliente, no meio da compra:{" "}
+                {/* Com embalagem padrão isto é recado, não alarme: a
+                    venda acontece, mas o frete sai pela caixa genérica e
+                    pode vir mais caro ou mais barato que o real. Sem ela
+                    é alarme de verdade — estes produtos não vendem. */}
+                {config?.tem_embalagem_padrao
+                  ? "A embalagem padrão está cobrindo, então a venda acontece — mas o frete sai pela caixa genérica e pode vir diferente do real. Vale cadastrar a medida de verdade em: "
+                  : "A transportadora recusa o carrinho inteiro por causa de um só, e quem vê o erro é o cliente, no meio da compra: "}
                 {semMedidas
                   .slice(0, 6)
                   .map((p) => p.nome)
