@@ -228,17 +228,30 @@ export default function Cupons() {
 
   return (
     <div className="w-full min-h-full px-3 py-3 sm:px-4 lg:max-w-[900px] lg:px-6 lg:py-6">
+      {/* O botão NÃO usa `.btn-app`.
+          Aquela classe tem `width: 100%`, e ela vive numa folha sem
+          camada — então vence o `w-auto` do Tailwind, que vem da
+          camada de utilitários. O botão esticava e esmagava o título
+          numa coluna de 90px. As outras telas do painel (Produtos,
+          Categorias) escrevem as classes à mão por este motivo, e
+          aqui faço igual. */}
       <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h1 className="t-titulo font-bold text-[#0f1117]">Cupons</h1>
           <p className="t-corpo mt-1 leading-snug text-[#6b7280]">
             O cliente digita o código no checkout e o desconto é calculado
             aqui no sistema — nunca no navegador dele.
           </p>
         </div>
-        <button type="button" onClick={abrirNovo} className="btn-app w-auto shrink-0">
+        <button
+          type="button"
+          onClick={abrirNovo}
+          className="t-corpo flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-[#16a34a] px-3.5 font-semibold text-white shadow-sm transition-transform active:scale-[0.98] lg:h-9 lg:rounded-[6px] lg:px-3"
+        >
           <Plus size={16} />
-          Novo cupom
+          {/* No celular estreito sobra o sinal de mais, que já é
+              entendido — o rótulo inteiro empurrava o título. */}
+          <span className="hidden sm:inline">Novo cupom</span>
         </button>
       </div>
 

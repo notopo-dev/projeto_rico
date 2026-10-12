@@ -928,7 +928,7 @@ export default function Products() {
             className="t-corpo flex shrink-0 items-center justify-center gap-1.5 h-10 px-3.5 rounded-lg bg-[#16a34a] text-white font-semibold shadow-sm active:scale-[0.98] transition-transform lg:h-9 lg:px-3 lg:rounded-[6px]"
           >
             <Plus size={17} strokeWidth={2.2} />
-            <span className="hidden xs:inline sm:inline">Novo produto</span>
+            <span className="hidden sm:inline">Novo produto</span>
           </button>
         </div>
       </div>

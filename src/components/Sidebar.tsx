@@ -489,24 +489,23 @@ export default function Sidebar({
                         />
                       </span>
 
-                      <span className="truncate">
-                        {item.label}
+                      {/* A etiqueta fica EMBAIXO do rótulo, não ao lado.
+                          Ao lado ela disputava largura e cortava o nome:
+                          a fonte raiz do projeto é 14px, então `w-56` dá
+                          196px, e a barra de rolagem do menu leva ~15px —
+                          sobram 181px, que é exatamente o limite de
+                          "WhatsApp" mais a etiqueta. Empatar no fio
+                          significa cortar em alguns computadores e não em
+                          outros. Em linha própria ela não concorre, e o
+                          nome nunca é cortado. */}
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate">{item.label}</span>
+                        {item.emBreve && (
+                          <span className="text-[10px] font-semibold uppercase leading-tight tracking-wide text-[#9ca3af]">
+                            em breve
+                          </span>
+                        )}
                       </span>
-
-                      {/* Etiqueta curta de propósito.
-                          Com "em breve" (60px) a linha de 224px do menu
-                          ficava sem folga e o rótulo era cortado para
-                          "Whats..." — ainda mais no Windows, onde a barra
-                          de rolagem do menu ocupa uns 15px de verdade.
-                          "breve" devolve ~20px, que cobre a diferença. */}
-                      {item.emBreve && (
-                        <span
-                          title="Em breve"
-                          className="ml-auto shrink-0 rounded-full bg-[#f4f4f5] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#6b7280]"
-                        >
-                          breve
-                        </span>
-                      )}
 
                     </button>
                   );
