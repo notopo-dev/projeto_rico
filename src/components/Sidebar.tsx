@@ -471,9 +471,18 @@ export default function Sidebar({
                         {item.label}
                       </span>
 
+                      {/* Etiqueta curta de propósito.
+                          Com "em breve" (60px) a linha de 224px do menu
+                          ficava sem folga e o rótulo era cortado para
+                          "Whats..." — ainda mais no Windows, onde a barra
+                          de rolagem do menu ocupa uns 15px de verdade.
+                          "breve" devolve ~20px, que cobre a diferença. */}
                       {item.emBreve && (
-                        <span className="ml-auto shrink-0 rounded-full bg-[#f4f4f5] px-2 py-0.5 text-[11px] font-semibold text-[#6b7280]">
-                          em breve
+                        <span
+                          title="Em breve"
+                          className="ml-auto shrink-0 rounded-full bg-[#f4f4f5] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#6b7280]"
+                        >
+                          breve
                         </span>
                       )}
 
