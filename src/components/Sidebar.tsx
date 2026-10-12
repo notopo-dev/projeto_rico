@@ -50,7 +50,7 @@ interface SidebarProps {
   storeLogoUrl?: string | null;
 }
 
-interface NavItem {
+export interface NavItem {
   id: Page;
   label: string;
   icon: React.ElementType;
@@ -64,7 +64,22 @@ interface NavItem {
   emBreve?: boolean;
 }
 
-const groups: {
+/**
+ * O menu do sistema, em um lugar só.
+ *
+ * ----------------------------------------------------------------
+ * Por que isto é exportado
+ * ----------------------------------------------------------------
+ * O celular não usa esta barra — usa o BottomNav, que tinha a PRÓPRIA
+ * lista fixa de telas. As duas precisavam concordar à mão, e não
+ * concordaram: "Assinatura" e "Cupons" foram adicionadas aqui e
+ * ficaram inalcançáveis no celular, onde está a maior parte dos
+ * lojistas.
+ *
+ * Agora o BottomNav deriva desta lista. Tela nova entra aqui uma vez
+ * e aparece nos dois lugares.
+ */
+export const GRUPOS_DO_MENU: {
   label?: string;
   items: NavItem[];
 }[] = [
@@ -411,7 +426,7 @@ export default function Sidebar({
         <nav
           className="flex-1 overflow-y-auto overscroll-contain py-2 px-2"
         >
-          {groups.map((group, gi) => (
+          {GRUPOS_DO_MENU.map((group, gi) => (
             <div
               key={gi}
               className={`${

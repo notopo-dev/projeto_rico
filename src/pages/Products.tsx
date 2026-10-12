@@ -23,6 +23,7 @@ import {
   updateProduct,
   deleteProduct,
   inativarProduto,
+  alternarProdutoAVenda,
   ProdutoEmPedidos,
   getProductById,
   type ProductWithCategoria,
@@ -246,6 +247,8 @@ export default function Products() {
   const [salvandoCategoria, setSalvandoCategoria] = useState(false);
   const [erroCategoria, setErroCategoria] = useState<string | null>(null);
   const [formVendaSemEstoque, setFormVendaSemEstoque] = useState(false);
+  /** O lojista quer este produto na vitrine. */
+  const [formAVenda, setFormAVenda] = useState(true);
 
   /*
    * Custo e grade de variações.
@@ -354,6 +357,7 @@ export default function Products() {
     setFormEstoqueMinimo("");
     setFormCategoriaId("");
     setFormVendaSemEstoque(false);
+    setFormAVenda(true);
     setFormItemPromocao(false);
     setFormCores([]);
     setFormTamanhos([]);
@@ -416,6 +420,9 @@ export default function Products() {
       setFormEstoqueMinimo(String(p.estoqueMinimo));
       setFormCategoriaId(p.categoriaId ?? "");
       setFormVendaSemEstoque(p.permiteVendaSemEstoque);
+      // "Sem estoque" é consequência do estoque, não escolha — então
+      // conta como à venda. Só "Inativo" é decisão do lojista.
+      setFormAVenda(p.status !== "Inativo");
       setFormItemPromocao(p.itemPromocao ?? false);
       setFormCores(p.cores ?? []);
       setFormTamanhos((p.tamanhos ?? []).map((t:any)=> typeof t === "string" ? t : t.tamanho).filter(Boolean));
@@ -735,6 +742,7 @@ export default function Products() {
       category_id: formCategoriaId || null,
       permite_venda_sem_estoque: formVendaSemEstoque,
       item_promocao: formItemPromocao,
+      a_venda: formAVenda,
       cores: formCores,
       tamanhos: formTamanhos,
       peso_gramas: formPeso ? parseInt(formPeso, 10) : null,
@@ -843,6 +851,34 @@ export default function Products() {
       setBloqueadoEmPedidos(err instanceof ProdutoEmPedidos ? alvo : null);
     } finally {
       setDeleteTarget(null);
+    }
+  }
+
+  /** Liga/desliga direto da lista, sem abrir o formulário. */
+  async function alternarAVenda(p: Product, aVenda: boolean) {
+    const antes = p.status;
+    // Resposta imediata; se o servidor recusar, volta ao estado real.
+    setProducts((prev) =>
+      prev.map((x) =>
+        x.id === p.id
+          ? { ...x, status: aVenda ? "Ativo" : "Inativo" }
+          : x
+      )
+    );
+    try {
+      const novo = await alternarProdutoAVenda(p.id, aVenda);
+      const rotulo =
+        novo === "ativo" ? "Ativo" : novo === "inativo" ? "Inativo" : "Sem estoque";
+      setProducts((prev) =>
+        prev.map((x) => (x.id === p.id ? { ...x, status: rotulo } : x))
+      );
+    } catch (err) {
+      setProducts((prev) =>
+        prev.map((x) => (x.id === p.id ? { ...x, status: antes } : x))
+      );
+      setLoadError(
+        err instanceof Error ? err.message : "Não foi possível alterar."
+      );
     }
   }
 
@@ -1026,7 +1062,14 @@ export default function Products() {
                         </span>
                       </div>
                     </div>
-                    <Badge variant={statusVariant[p.status]} label={p.status} />
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge variant={statusVariant[p.status]} label={p.status} />
+                      <Interruptor
+                        ligado={p.status !== "Inativo"}
+                        onAlternar={(v) => alternarAVenda(p, v)}
+                        rotulo={`${p.nome} à venda`}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1195,6 +1238,15 @@ export default function Products() {
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
+                        {/* Liga/desliga a vitrine sem abrir o
+                            formulário: é a ação que o lojista repete
+                            mais, e atravessar um modal para ela era o
+                            que faltava na tela. */}
+                        <Interruptor
+                          ligado={p.status !== "Inativo"}
+                          onAlternar={(v) => alternarAVenda(p, v)}
+                          rotulo={`${p.nome} à venda`}
+                        />
                         <button
                           className="p-1 text-[#6b7280] hover:text-[#0f1117] rounded hover:bg-[#f4f4f5]"
                           onClick={() => openEditProduct(p)}
@@ -1970,6 +2022,28 @@ export default function Products() {
                   </div>
 
                   {/* Vender sem estoque */}
+                  {/* Este interruptor não existia: o status era
+                      recalculado em toda gravação e nunca podia ser
+                      "inativo", então não havia como tirar um produto
+                      da vitrine sem apagá-lo — e apagar é recusado
+                      quando ele já foi vendido. */}
+                  <div className="flex items-center justify-between rounded-lg border border-[#e4e4e7] bg-[#fafafa] px-3.5 py-3">
+                    <div className="pr-3">
+                      <p className="t-corpo font-medium text-[#111827]">
+                        À venda na loja
+                      </p>
+                      <p className="t-apoio mt-0.5 text-[#6b7280]">
+                        Desligue para tirar da vitrine sem apagar. Os pedidos
+                        antigos continuam intactos.
+                      </p>
+                    </div>
+                    <Interruptor
+                      ligado={formAVenda}
+                      onAlternar={setFormAVenda}
+                      rotulo="Produto à venda na loja"
+                    />
+                  </div>
+
                   <div className="flex items-center justify-between rounded-lg border border-[#e4e4e7] bg-[#fafafa] px-3.5 py-3">
                     <div className="pr-3">
                       <p className="t-corpo font-medium text-[#111827]">

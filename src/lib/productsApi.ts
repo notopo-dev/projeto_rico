@@ -120,6 +120,15 @@ export interface ProductInput {
 
   item_promocao:boolean;
 
+  /**
+   * O lojista quer este produto na vitrine?
+   *
+   * Opcional para não quebrar nenhuma chamada antiga: ausente vale
+   * como `true`. Falso grava status "inativo", e o cálculo
+   * automático respeita.
+   */
+  a_venda?:boolean;
+
 
   cores:{
     nome:string;
@@ -147,19 +156,36 @@ export interface ProductInput {
 
 
 
+/**
+ * O status do produto.
+ *
+ * ----------------------------------------------------------------
+ * Por que a escolha do lojista entra aqui
+ * ----------------------------------------------------------------
+ * Esta função era chamada em toda gravação e só devolvia "ativo" ou
+ * "sem_estoque" — nunca "inativo". Duas consequências, as duas
+ * ruins:
+ *
+ *   1. O lojista não tinha como tirar um produto da vitrine. O
+ *      "Ativo" na lista era selo de leitura, e nenhum formulário
+ *      oferecia o campo.
+ *   2. Pior: se algo marcasse o produto como inativo por outro
+ *      caminho, a PRÓXIMA edição recalculava o status e voltava para
+ *      ativo em silêncio. O produto reaparecia na loja sem ninguém
+ *      ter pedido.
+ *
+ * Agora a vontade do lojista manda. O cálculo automático só decide
+ * entre "ativo" e "sem_estoque" DENTRO de um produto que ele deixou
+ * à venda.
+ */
 function calcularStatus(
- estoque:number,
- permiteVendaSemEstoque:boolean
-){
-
- if(estoque>0)
- return "ativo";
-
-
- return permiteVendaSemEstoque
- ? "ativo"
- : "sem_estoque";
-
+  estoque: number,
+  permiteVendaSemEstoque: boolean,
+  aVenda: boolean,
+): "ativo" | "inativo" | "sem_estoque" {
+  if (!aVenda) return "inativo";
+  if (estoque > 0) return "ativo";
+  return permiteVendaSemEstoque ? "ativo" : "sem_estoque";
 }
 
 
@@ -299,7 +325,9 @@ input.comprimento_cm,
 status:
 calcularStatus(
 input.estoque,
-input.permite_venda_sem_estoque
+input.permite_venda_sem_estoque,
+// Produto novo nasce à venda quando o campo não vem.
+input.a_venda ?? true
 )
 
 })
@@ -389,7 +417,9 @@ input.comprimento_cm,
 status:
 calcularStatus(
 input.estoque,
-input.permite_venda_sem_estoque
+input.permite_venda_sem_estoque,
+// Produto novo nasce à venda quando o campo não vem.
+input.a_venda ?? true
 )
 
 })
@@ -578,8 +608,8 @@ export class ProdutoEmPedidos extends Error {
     super(
       "Este produto já aparece em pedidos e não pode ser apagado — " +
         "apagar levaria o histórico de venda junto. " +
-        "Você pode inativá-lo: ele sai da vitrine e continua nos " +
-        "pedidos antigos.",
+        'Desligue o botão "à venda" na lista: ele sai da vitrine e ' +
+        "continua nos pedidos antigos.",
     );
     this.name = "ProdutoEmPedidos";
   }
@@ -591,6 +621,46 @@ export class ProdutoEmPedidos extends Error {
  * É a saída para o produto já vendido. Atualiza só o status — nada de
  * mexer em preço, estoque ou imagens de passagem.
  */
+/**
+ * Liga e desliga o produto na vitrine, sem abrir o formulário.
+ *
+ * Grava o status direto. Ao LIGAR, recalcula: um produto com estoque
+ * zerado e sem "vender sem estoque" volta como "sem_estoque", não
+ * como "ativo" — senão a vitrine ofereceria peça que não existe.
+ */
+export async function alternarProdutoAVenda(
+  id: string,
+  aVenda: boolean,
+): Promise<"ativo" | "inativo" | "sem_estoque"> {
+  let novo: "ativo" | "inativo" | "sem_estoque" = "inativo";
+
+  if (aVenda) {
+    const { data, error: erroLeitura } = await supabase
+      .from("products")
+      .select("estoque, permite_venda_sem_estoque")
+      .eq("id", id)
+      .single();
+
+    if (erroLeitura) throw new Error(erroLeitura.message);
+
+    novo = calcularStatus(
+      Number(data?.estoque ?? 0),
+      Boolean(data?.permite_venda_sem_estoque),
+      true,
+    );
+  }
+
+  const { error } = await supabase
+    .from("products")
+    .update({ status: novo })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(error.message || "Não foi possível alterar o produto.");
+  }
+  return novo;
+}
+
 export async function inativarProduto(id: string): Promise<void> {
   const { error } = await supabase
     .from("products")
