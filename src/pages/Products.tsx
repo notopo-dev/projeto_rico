@@ -22,6 +22,8 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  inativarProduto,
+  ProdutoEmPedidos,
   getProductById,
   type ProductWithCategoria,
   type ProductInput,
@@ -208,6 +210,15 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  /**
+   * Produto que o lojista tentou apagar e não pode, por já estar em
+   * pedidos. Guardado para o aviso poder oferecer "Inativar" — a
+   * saída de verdade — em vez de só explicar o problema.
+   */
+  const [bloqueadoEmPedidos, setBloqueadoEmPedidos] = useState<Product | null>(
+    null
+  );
 
   const [categorias, setCategorias] = useState<{ id: string; nome: string }[]>(
     []
@@ -819,15 +830,41 @@ export default function Products() {
 
   async function confirmDelete() {
     if (!deleteTarget) return;
+    const alvo = deleteTarget;
     try {
-      await deleteProduct(deleteTarget.id);
-      setProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      await deleteProduct(alvo.id);
+      setProducts((prev) => prev.filter((p) => p.id !== alvo.id));
+      setBloqueadoEmPedidos(null);
     } catch (err) {
       setLoadError(
         err instanceof Error ? err.message : "Erro ao excluir produto."
       );
+      // Já vendido: o aviso passa a oferecer o botão de inativar.
+      setBloqueadoEmPedidos(err instanceof ProdutoEmPedidos ? alvo : null);
     } finally {
       setDeleteTarget(null);
+    }
+  }
+
+  /** Tira da vitrine o produto que não pode ser apagado. */
+  async function inativarBloqueado() {
+    if (!bloqueadoEmPedidos) return;
+    const alvo = bloqueadoEmPedidos;
+    try {
+      await inativarProduto(alvo.id);
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === alvo.id
+            ? { ...p, status: "inativo" as Product["status"] }
+            : p
+        )
+      );
+      setBloqueadoEmPedidos(null);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(
+        err instanceof Error ? err.message : "Não foi possível inativar."
+      );
     }
   }
 
@@ -881,9 +918,27 @@ export default function Products() {
       {loadError && (
         <div className="t-corpo mb-3 flex items-center justify-between gap-3 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3.5 py-2.5 text-[#b91c1c]">
           <span>{loadError}</span>
-          <button onClick={loadProducts} className="shrink-0 font-semibold underline">
-            Tentar novamente
-          </button>
+
+          {/* Produto já vendido: o botão útil é inativar, não
+              "tentar novamente" — tentar de novo vai falhar igual,
+              porque a recusa do banco está certa. */}
+          {bloqueadoEmPedidos ? (
+            <button
+              type="button"
+              onClick={inativarBloqueado}
+              className="shrink-0 rounded-lg bg-[#b91c1c] px-3 py-1.5 font-semibold text-white"
+            >
+              Inativar produto
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={loadProducts}
+              className="shrink-0 font-semibold underline"
+            >
+              Tentar novamente
+            </button>
+          )}
         </div>
       )}
 

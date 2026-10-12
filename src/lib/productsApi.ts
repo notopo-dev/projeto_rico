@@ -567,6 +567,43 @@ p.product_sizes??[]
 
 
 
+/**
+ * Produto que já foi vendido e por isso não pode ser apagado.
+ *
+ * Classe própria para a tela distinguir este caso dos outros erros e
+ * oferecer "Inativar" no lugar do apagar.
+ */
+export class ProdutoEmPedidos extends Error {
+  constructor() {
+    super(
+      "Este produto já aparece em pedidos e não pode ser apagado — " +
+        "apagar levaria o histórico de venda junto. " +
+        "Você pode inativá-lo: ele sai da vitrine e continua nos " +
+        "pedidos antigos.",
+    );
+    this.name = "ProdutoEmPedidos";
+  }
+}
+
+/**
+ * Tira o produto da vitrine sem apagar nada.
+ *
+ * É a saída para o produto já vendido. Atualiza só o status — nada de
+ * mexer em preço, estoque ou imagens de passagem.
+ */
+export async function inativarProduto(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("products")
+    .update({ status: "inativo" })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(
+      error.message || "Não foi possível inativar o produto. Tente de novo.",
+    );
+  }
+}
+
 export async function deleteProduct(id: string): Promise<void> {
   const { error } = await supabase
     .from("products")
@@ -589,13 +626,12 @@ export async function deleteProduct(id: string): Promise<void> {
   // 23503 = foreign_key_violation. O produto está em pedidos, e o
   // banco recusa apagar — corretamente: apagar levaria o histórico
   // do pedido junto. Não é falha, é proteção.
+  //
+  // Erro de classe própria para a tela poder OFERECER a saída em vez
+  // de só contar qual é: quem está com o produto na mão quer resolver
+  // ali, não ir procurar o campo de status no formulário.
   if (error.code === "23503") {
-    throw new Error(
-      "Este produto já aparece em pedidos e não pode ser apagado — " +
-        "apagar levaria o histórico de venda junto. " +
-        'Mude o status para "Inativo": ele sai da vitrine e continua ' +
-        "nos pedidos antigos.",
-    );
+    throw new ProdutoEmPedidos();
   }
 
   // 42501 = insufficient_privilege. Quase sempre sessão expirada.

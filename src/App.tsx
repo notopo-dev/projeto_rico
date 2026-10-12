@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Loja from "./pages/Loja";
 import Products from "./pages/Products";
 import Categorias from "./pages/Categorias";
+import Cupons from "./pages/Cupons";
 import Orders from "./pages/Orders";
 import Customers from "./pages/Customers";
 import Estoque from "./pages/Estoque";
@@ -35,6 +36,7 @@ const pageConfig: Record<Page, { title: string; component: ReactNode }> = {
   loja: { title: "Loja", component: <Loja /> },
   produtos: { title: "Produtos", component: <Products /> },
   categorias: { title: "Categorias", component: <Categorias /> },
+  cupons: { title: "Cupons", component: <Cupons /> },
   pedidos: { title: "Pedidos", component: <Orders /> },
   clientes: { title: "Clientes", component: <Customers /> },
   estoque: { title: "Estoque", component: <Estoque /> },

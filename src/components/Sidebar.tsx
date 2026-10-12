@@ -16,6 +16,7 @@ import {
   Landmark,
   Truck,
   Receipt,
+  Ticket,
   X,
 } from "lucide-react";
 
@@ -27,6 +28,7 @@ export type Page =
   | "loja"
   | "produtos"
   | "categorias"
+  | "cupons"
   | "pedidos"
   | "clientes"
   | "estoque"
@@ -87,6 +89,11 @@ const groups: {
         id: "categorias",
         label: "Categorias",
         icon: Tag,
+      },
+      {
+        id: "cupons",
+        label: "Cupons",
+        icon: Ticket,
       },
       {
         id: "pedidos",

@@ -21,6 +21,8 @@ import { useCart } from "../context/CartContext";
 import { createPublicOrder, type EnderecoEntrega } from "../lib/storeApi";
 import { calcularFrete, type OpcaoFrete } from "../lib/freteApi";
 import StripeCardPayment from "../components/StripeCardPayment";
+import CampoCupom from "../components/CampoCupom";
+import type { CupomAplicado } from "../lib/cupomApi";
 import {
   lerComprador,
   limparComprador,
@@ -264,6 +266,16 @@ export default function StoreCheckout() {
   /** 1 dados · 2 entrega · 3 pagamento. Só vale enquanto etapa = "dados". */
   const [passo, setPasso] = useState(1);
   const [orderId, setOrderId] = useState<string | null>(null);
+
+  /**
+   * Total que vale de verdade, vindo do BANCO depois do cupom.
+   *
+   * Enquanto é null, manda o total calculado do carrinho. Depois do
+   * cupom, quem manda é o servidor — ele é a única fonte que o
+   * comprador não consegue alterar.
+   */
+  const [totalDoServidor, setTotalDoServidor] = useState<number | null>(null);
+  const [cupom, setCupom] = useState<CupomAplicado | null>(null);
   /**
    * De que dados o pedido atual nasceu.
    *
@@ -557,6 +569,15 @@ export default function StoreCheckout() {
 
   const valorFrete = entrega === "retirada" ? 0 : (freteSelecionado?.preco ?? 0);
   const totalComFrete = total + valorFrete;
+
+  /**
+   * O valor que vai ser cobrado.
+   *
+   * O total do carrinho serve até o cupom entrar. Depois dele, quem
+   * manda é o número que o BANCO devolveu — o comprador não alcança
+   * aquele cálculo.
+   */
+  const totalAPagar = totalDoServidor ?? totalComFrete;
 
   async function handleCepChange(valor: string) {
     const formatado = formatarCep(valor);
@@ -895,6 +916,11 @@ export default function StoreCheckout() {
       setOrderId(order.id);
       setOrderNumero(order.numero);
       setPedidoCriadoCom(assinatura);
+      // Pedido novo nasce sem cupom. Sem esta limpeza, voltar ao
+      // passo 1, mudar o carrinho e seguir de novo mostraria o
+      // desconto do pedido ANTERIOR sobre um pedido que não o tem.
+      setTotalDoServidor(null);
+      setCupom(null);
       setEtapa("pagamento");
     } catch (err: any) {
       console.error("Erro completo do checkout:", err);
@@ -1667,18 +1693,57 @@ export default function StoreCheckout() {
       {etapa === "pagamento" && orderId && (
         <div className="px-4 pt-4 space-y-4">
           <div className="bg-white rounded-2xl border border-black/5 p-4">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#f0f0f1]">
-              <span className="text-[13px] text-[#6b7280]">
-                Pedido #{orderNumero}
-              </span>
-              <span className="text-[16px] font-extrabold text-[#111827]">
-                {formatBRL(totalComFrete)}
-              </span>
+            <div className="mb-4 border-b border-[#f0f0f1] pb-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] text-[#6b7280]">
+                  Pedido #{orderNumero}
+                </span>
+                <span className="text-[16px] font-extrabold text-[#111827]">
+                  {formatBRL(totalAPagar)}
+                </span>
+              </div>
+
+              {/* O desconto aparece discriminado: ver só o total menor
+                  deixa a cliente sem saber se o cupom pegou. */}
+              {cupom && (
+                <div className="mt-2 space-y-0.5 text-[12px]">
+                  {cupom.desconto > 0 && (
+                    <div className="flex items-center justify-between text-[#15803d]">
+                      <span>Desconto {cupom.codigo}</span>
+                      <span>−{formatBRL(cupom.desconto)}</span>
+                    </div>
+                  )}
+                  {cupom.desconto_frete > 0 && (
+                    <div className="flex items-center justify-between text-[#15803d]">
+                      <span>Frete grátis</span>
+                      <span>−{formatBRL(cupom.desconto_frete)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
+            <div className="mb-4">
+              <CampoCupom
+                orderId={orderId}
+                onTotalMudou={(total, aplicado) => {
+                  setTotalDoServidor(total);
+                  setCupom(aplicado);
+                }}
+              />
+            </div>
+
             <StripeCardPayment
+              /* A `key` com o total força o formulário a nascer de
+                 novo quando o cupom muda. É necessário: a cobrança é
+                 criada ao montar, com o valor daquele instante. Sem
+                 isto a cliente veria o desconto e pagaria o valor
+                 cheio — ou a cobrança não bateria com o pedido e a
+                 função do servidor recusaria. */
+              key={`pagamento-${totalAPagar}`}
               storeId={store.id}
               orderId={orderId}
-              totalReais={totalComFrete}
+              totalReais={totalAPagar}
               metodo={metodo === "pix" ? "pix" : "card"}
               /* O Pix exige o e-mail do pagador. Como ele já foi
                  pedido no passo 1, vai daqui para a Stripe — sem
