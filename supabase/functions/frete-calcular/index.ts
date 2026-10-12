@@ -193,14 +193,44 @@ Deno.serve(async (req) => {
     }
 
     // 6. Normaliza a resposta, descartando serviços indisponíveis
+    //
+    // ----------------------------------------------------------------
+    // `custom_price`, não `price`
+    // ----------------------------------------------------------------
+    // A cotação devolve DOIS pares de valores:
+    //
+    //   price        / delivery_time         valor cru da transportadora
+    //   custom_price / custom_delivery_time  valor DEPOIS dos ajustes
+    //                                        que o lojista configurou na
+    //                                        conta dele no Melhor Envio
+    //
+    // A documentação oficial manda usar o segundo par nas integrações,
+    // e com razão: acrescentar uns reais por envio para cobrir
+    // embalagem e fita é das primeiras coisas que o lojista configura
+    // lá. Lendo `price`, a loja cobrava o valor cru do cliente e o
+    // lojista pagava a diferença do próprio bolso em todo pedido, sem
+    // aviso nenhum. Mesmo problema no prazo: dias extras de preparo
+    // configurados lá não apareciam, e o cliente recebia uma promessa
+    // que a loja não ia cumprir.
+    //
+    // A queda para os campos antigos é de propósito: se o lojista não
+    // configurou ajuste nenhum, a API pode não mandar o campo custom —
+    // e aí os dois valores são o mesmo de qualquer forma.
+    const valorDoServico = (s: any) =>
+      Number(s.custom_price ?? s.price);
+    const prazoDoServico = (s: any) =>
+      Number(s.custom_delivery_time ?? s.delivery_time ?? 0);
+
     const opcoes: OpcaoFrete[] = (Array.isArray(dados) ? dados : [])
-      .filter((s: any) => !s.error && s.price)
+      // O filtro também olha o valor já resolvido, senão um serviço que
+      // só tem `custom_price` seria descartado como indisponível.
+      .filter((s: any) => !s.error && Number.isFinite(valorDoServico(s)) && valorDoServico(s) > 0)
       .map((s: any) => ({
         id: s.id,
         nome: s.name,
         transportadora: s.company?.name ?? "",
-        preco: Number(s.price),
-        prazo_dias: Number(s.delivery_time ?? 0),
+        preco: valorDoServico(s),
+        prazo_dias: prazoDoServico(s),
       }))
       .sort((a, b) => a.preco - b.preco);
 
