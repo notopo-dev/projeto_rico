@@ -56,7 +56,11 @@ export default function StoreHeader({ onSearchClick }: StoreHeaderProps) {
 
           <Link
             to={`/loja/${store.slug}/meus-pedidos`}
-            className="w-11 h-11 rounded-full bg-white/85 flex items-center justify-center text-[#374151] active:scale-95 transition-transform shadow-sm"
+            /* 44x44 literal: este é um <a>, e a regra de alvo mínimo do
+               index.css só alcança button e [role=button]. Ficava em
+               41x41 — redondo, mas abaixo do mínimo do dedo, e sem
+               nada na tela denunciando. Medido na loja no ar. */
+            className="h-[44px] w-[44px] rounded-full bg-white/85 flex items-center justify-center text-[#374151] active:scale-95 transition-transform shadow-sm"
             aria-label="Meus pedidos"
           >
             <Receipt size={21} strokeWidth={2} />
@@ -64,7 +68,8 @@ export default function StoreHeader({ onSearchClick }: StoreHeaderProps) {
 
           <Link
             to={`/loja/${store.slug}/carrinho`}
-            className="relative w-11 h-11 rounded-full bg-white/85 flex items-center justify-center text-[#374151] active:scale-95 transition-transform shadow-sm"
+            /* Mesmo caso do link acima: <a>, 44x44 literal. */
+            className="relative h-[44px] w-[44px] rounded-full bg-white/85 flex items-center justify-center text-[#374151] active:scale-95 transition-transform shadow-sm"
             aria-label="Carrinho"
           >
             <ShoppingBag size={21} strokeWidth={2} />

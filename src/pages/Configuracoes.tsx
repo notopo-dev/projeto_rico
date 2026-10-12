@@ -198,6 +198,16 @@ export default function Configuracoes() {
   const [saveErrorAparencia, setSaveErrorAparencia] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  /**
+   * Falha de ENVIO de imagem, separada da falha de SALVAR.
+   *
+   * As duas usavam o mesmo aviso, que fica no pé da aba, depois do
+   * cartão de cores. Quem clicava em "Trocar banner" e tinha o arquivo
+   * recusado não via nada acontecer: o botão voltava ao normal e a
+   * mensagem ficava fora da tela. Agora o erro do arquivo aparece
+   * logo abaixo do botão que o causou.
+   */
+  const [erroMarca, setErroMarca] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -231,12 +241,12 @@ export default function Configuracoes() {
 
   async function handleUploadLogo(file: File) {
     setUploadingLogo(true);
-    setSaveErrorAparencia(null);
+    setErroMarca(null);
     try {
       const url = await uploadStoreAsset(file, "logo");
       setAparencia((a) => ({ ...a, logoUrl: url }));
     } catch (err) {
-      setSaveErrorAparencia(err instanceof Error ? err.message : "Erro ao enviar logo.");
+      setErroMarca(err instanceof Error ? err.message : "Erro ao enviar logo.");
     } finally {
       setUploadingLogo(false);
     }
@@ -244,12 +254,12 @@ export default function Configuracoes() {
 
   async function handleUploadBanner(file: File) {
     setUploadingBanner(true);
-    setSaveErrorAparencia(null);
+    setErroMarca(null);
     try {
       const url = await uploadStoreAsset(file, "banner");
       setAparencia((a) => ({ ...a, bannerUrl: url }));
     } catch (err) {
-      setSaveErrorAparencia(err instanceof Error ? err.message : "Erro ao enviar banner.");
+      setErroMarca(err instanceof Error ? err.message : "Erro ao enviar banner.");
     } finally {
       setUploadingBanner(false);
     }
@@ -446,7 +456,7 @@ export default function Configuracoes() {
                       <input
                         ref={logoInputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
                         className="hidden"
                         onChange={(e) => {
                           const f = e.target.files?.[0];
@@ -479,7 +489,7 @@ export default function Configuracoes() {
                       <input
                         ref={bannerInputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
                         className="hidden"
                         onChange={(e) => {
                           const f = e.target.files?.[0];
@@ -489,6 +499,8 @@ export default function Configuracoes() {
                       />
                     </div>
                   </div>
+
+                  {erroMarca && <Mensagem tipo="erro" texto={erroMarca} />}
                 </div>
               </div>
 

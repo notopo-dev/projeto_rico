@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronLeft, ShoppingBag, Loader2, ImageOff, Minus, Plus } from "lucide-react";
+import { ChevronLeft, ShoppingBag, Loader2, ImageOff, Minus, Plus, Check } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import { useCart } from "../context/CartContext";
 import {
@@ -284,7 +284,15 @@ export default function StoreProduct() {
 
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm active:scale-95 transition-transform"
+          /* 44x44 em pixel literal, não w-10 h-10.
+             `w-10 h-10` é rem, e a regra global do index.css obriga
+             todo <button> a ter min-height: 44px no celular. Com a
+             fonte da raiz em 15px, h-10 dá 37,5px de altura pedida e
+             38px de largura — a altura era esticada para 44 e a
+             largura não, então o "círculo" virava um ovo de 38x44.
+             Mesmo defeito que os toggles do painel tinham. Em 44x44
+             literal nada estica e o alvo de toque fica correto. */
+          className="absolute top-4 left-4 h-[44px] w-[44px] rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm active:scale-95 transition-transform"
           aria-label="Voltar"
         >
           <ChevronLeft size={20} className="text-[#374151]" />
@@ -292,7 +300,10 @@ export default function StoreProduct() {
 
         <Link
           to={`/loja/${store.slug}/carrinho`}
-          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm active:scale-95 transition-transform"
+          /* Este é um <a>, e a regra de alvo mínimo do index.css só
+             alcança button e [role=button] — então ficava 38x38, sob
+             o mínimo do dedo, sem ninguém notar. 44x44 literal. */
+          className="absolute top-4 right-4 h-[44px] w-[44px] rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm active:scale-95 transition-transform"
           aria-label="Carrinho"
         >
           <ShoppingBag size={18} className="text-[#374151]" />
@@ -658,27 +669,39 @@ export default function StoreProduct() {
           <span className="text-[13.5px] font-bold text-[#111827]">
             Quantidade
           </span>
-          <div className="flex items-center gap-2.5">
+          {/* Um controle só, com moldura em volta dos três pedaços.
+              Eram três peças soltas — círculo, número, círculo — com
+              espaço entre elas, e os círculos saíam deformados. Loja
+              grande (Shopee, Shein, Mercado Livre) usa esta pílula
+              única: lê como UM controle de quantidade, e não como
+              dois botões que por acaso estão perto de um número.
+
+              Alturas em pixel literal pelo mesmo motivo do botão de
+              voltar: a regra global de 44px não deforma o que já tem
+              44. */}
+          <div className="flex items-center rounded-full border border-[#e4e4e7] bg-white overflow-hidden">
             <button
               onClick={() => setQuantidade((q) => Math.max(1, q - 1))}
-              className="w-10 h-10 rounded-full border border-[#e4e4e7] bg-white flex items-center justify-center text-[#374151] active:bg-[#f4f4f5]"
-              aria-label="Diminuir"
+              disabled={quantidade <= 1}
+              className="h-[44px] w-[44px] flex items-center justify-center text-[#374151] active:bg-[#f4f4f5] disabled:opacity-30"
+              aria-label="Diminuir quantidade"
             >
-              <Minus size={15} strokeWidth={2.4} />
+              <Minus size={16} strokeWidth={2.4} />
             </button>
-            <span className="min-w-[20px] text-center text-[15px] font-bold text-[#111827] tabular-nums">
+
+            <span className="min-w-[32px] text-center text-[15px] font-bold text-[#111827] tabular-nums">
               {quantidade}
             </span>
+
             {/* Trava no que existe na gaveta, em vez de deixar pedir
                 10 e o servidor recusar no fim do checkout. */}
             <button
               onClick={() => setQuantidade((q) => Math.min(maximo, q + 1))}
               disabled={quantidade >= maximo}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-white active:opacity-80 disabled:opacity-40"
-              style={{ backgroundColor: "var(--store-primary)" }}
-              aria-label="Aumentar"
+              className="h-[44px] w-[44px] flex items-center justify-center text-[#374151] active:bg-[#f4f4f5] disabled:opacity-30"
+              aria-label="Aumentar quantidade"
             >
-              <Plus size={15} strokeWidth={2.6} />
+              <Plus size={16} strokeWidth={2.4} />
             </button>
           </div>
         </div>
@@ -690,16 +713,28 @@ export default function StoreProduct() {
           {/* "Comprar agora" é o caminho que a loja quer, então é o
               maior e o colorido. Dois botões do mesmo tamanho fazem a
               pessoa parar para escolher. */}
+          {/* Quadrado de 52x52 com o ícone, não um botão de texto.
+              Com rótulo ele media 107px ao lado de um principal de
+              228px — larguras que não casam com nada e parecem erro
+              de montagem. Pior: o texto do principal muda para
+              "Escolha cor e tamanho", que precisa da linha inteira.
+              Quadrado + pílula larga é o arranjo das lojas grandes e
+              não tem como truncar. */}
           <button
             onClick={handleAdicionar}
             disabled={!podeComprar}
-            className="h-[52px] px-4 rounded-2xl border-2 font-semibold text-[14px] active:scale-[0.98] transition-transform shrink-0 disabled:opacity-40 disabled:active:scale-100"
+            aria-label={adicionado ? "Adicionado ao carrinho" : "Adicionar ao carrinho"}
+            className="h-[52px] w-[52px] shrink-0 rounded-2xl border-2 flex items-center justify-center active:scale-[0.98] transition-transform disabled:opacity-40 disabled:active:scale-100"
             style={{
               borderColor: "var(--store-primary)",
               color: "var(--store-primary)",
             }}
           >
-            {adicionado ? "Adicionado" : "Adicionar"}
+            {adicionado ? (
+              <Check size={22} strokeWidth={2.6} />
+            ) : (
+              <ShoppingBag size={21} strokeWidth={2} />
+            )}
           </button>
           <button
             onClick={handleComprarAgora}

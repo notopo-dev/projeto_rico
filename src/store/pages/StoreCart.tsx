@@ -144,23 +144,34 @@ export default function StoreCart() {
                       </button>
                     </div>
 
-                    <div className="flex items-end justify-between gap-2 mt-1.5">
+                    {/* `flex-wrap`: a pílula de quantidade tem 116px
+                        fixos (dois alvos de 44 e o número), e num
+                        aparelho de 320px ela mais o preço estouravam a
+                        linha em 12px — medido. Deixar quebrar é melhor
+                        que encolher o alvo do dedo. `ml-auto` mantém a
+                        pílula à direita também quando desce de linha. */}
+                    <div className="flex flex-wrap items-end justify-between gap-2 gap-y-2.5 mt-1.5">
                       <span className="text-[16px] font-extrabold text-[#111827] tabular-nums">
                         {formatBRL(item.preco * item.quantidade)}
                       </span>
 
-                      <div className="flex items-center gap-2.5 shrink-0">
+                      {/* Pílula única, igual à da página do produto.
+                          O cliente vê o mesmo controle nos dois
+                          lugares; antes eram três peças soltas aqui e
+                          três peças soltas lá, com desenhos
+                          diferentes. */}
+                      <div className="ml-auto flex shrink-0 items-center rounded-full border border-[#e4e4e7] bg-white overflow-hidden">
                         <button
                           onClick={() =>
                             updateQuantidade(chave, item.quantidade - 1)
                           }
-                          className="w-9 h-9 rounded-full border border-[#e4e4e7] bg-white flex items-center justify-center text-[#374151] active:bg-[#f4f4f5]"
-                          aria-label="Diminuir"
+                          className="h-[44px] w-[44px] flex items-center justify-center text-[#374151] active:bg-[#f4f4f5]"
+                          aria-label={`Diminuir quantidade de ${item.nome}`}
                         >
-                          <Minus size={15} strokeWidth={2.4} />
+                          <Minus size={16} strokeWidth={2.4} />
                         </button>
 
-                        <span className="min-w-[18px] text-center text-[14px] font-bold text-[#111827] tabular-nums">
+                        <span className="min-w-[28px] text-center text-[14px] font-bold text-[#111827] tabular-nums">
                           {item.quantidade}
                         </span>
 
@@ -168,11 +179,10 @@ export default function StoreCart() {
                           onClick={() =>
                             updateQuantidade(chave, item.quantidade + 1)
                           }
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-white active:opacity-80"
-                          style={{ backgroundColor: "var(--store-primary)" }}
-                          aria-label="Aumentar"
+                          className="h-[44px] w-[44px] flex items-center justify-center text-[#374151] active:bg-[#f4f4f5]"
+                          aria-label={`Aumentar quantidade de ${item.nome}`}
                         >
-                          <Plus size={15} strokeWidth={2.6} />
+                          <Plus size={16} strokeWidth={2.4} />
                         </button>
                       </div>
                     </div>

@@ -19,6 +19,7 @@ import {
   type Category,
 } from "../lib/categoriesApi";
 import Folha from "../components/Folha";
+import Interruptor from "../components/Interruptor";
 
 export default function Categorias() {
   const [categorias, setCategorias] = useState<Category[]>([]);
@@ -27,6 +28,14 @@ export default function Categorias() {
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Qual categoria está tendo o status gravado agora.
+   *
+   * O interruptor salva no servidor. Sem sinal nenhum o lojista acha
+   * que não pegou e clica de novo, o que manda duas escritas opostas.
+   */
+  const [alternando, setAlternando] = useState<string | null>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<Category | null>(null);
@@ -170,30 +179,47 @@ export default function Categorias() {
 
   /**
    * Ativa ou inativa uma categoria.
+   *
+   * Categoria inativa continua existindo e continua ligada aos
+   * produtos que já a usam — ela só para de aparecer na loja. É o
+   * `listPublicCategories`, que filtra `ativa = true`, que faz isso.
+   * Por isso desativar é a saída para a categoria que não pode ser
+   * excluída: nada se perde.
+   *
+   * Recebe o valor NOVO em vez de inverter aqui dentro. Invertendo
+   * aqui, dois cliques rápidos mandam a mesma inversão duas vezes e o
+   * resultado depende de qual resposta chega primeiro.
    */
-  async function toggleAtiva(categoria: Category) {
+  async function toggleAtiva(categoria: Category, novoValor: boolean) {
     setError(null);
+    setAlternando(categoria.id);
+
+    // Mexe na tela primeiro: o interruptor tem que responder ao dedo
+    // na hora, não depois da ida ao servidor.
+    setCategorias((prev) =>
+      prev.map((item) =>
+        item.id === categoria.id ? { ...item, ativa: novoValor } : item
+      )
+    );
 
     try {
-      await toggleCategory(categoria.id, !categoria.ativa);
-
+      await toggleCategory(categoria.id, novoValor);
+    } catch (err) {
+      // Falhou: devolve o interruptor para onde estava. Deixar ligado
+      // na tela e desligado no banco é pior que o erro.
       setCategorias((prev) =>
         prev.map((item) =>
-          item.id === categoria.id
-            ? {
-                ...item,
-                ativa: !item.ativa,
-              }
-            : item
+          item.id === categoria.id ? { ...item, ativa: categoria.ativa } : item
         )
       );
-    } catch (err) {
-      const mensagem =
+
+      setError(
         err instanceof Error
           ? err.message
-          : "Não foi possível alterar o status da categoria.";
-
-      setError(mensagem);
+          : "Não foi possível alterar o status da categoria."
+      );
+    } finally {
+      setAlternando(null);
     }
   }
 
@@ -361,8 +387,25 @@ export default function Categorias() {
                         {categoria.nome}
                       </h2>
 
-                      <p className="t-apoio mt-0.5 truncate font-mono text-[#6b7280]">
-                        {categoria.slug}
+                      {/* Status na SEGUNDA linha, não ao lado do nome.
+                          Ao lado, a etiqueta custava uns 95px e num
+                          celular de 360px sobrava "Roup…" para o nome.
+                          Embaixo ela não concorre por largura nenhuma
+                          e a palavra continua lá — que é o que serve
+                          para quem não distingue o verde do cinza do
+                          interruptor. */}
+                      <p className="t-apoio mt-0.5 flex items-center gap-1.5 truncate text-[#6b7280]">
+                        <span
+                          className={`shrink-0 font-semibold ${
+                            categoria.ativa ? "text-[#15803d]" : "text-[#52525b]"
+                          }`}
+                        >
+                          {categoria.ativa ? "Ativa" : "Inativa"}
+                        </span>
+                        <span aria-hidden="true" className="shrink-0 text-[#d4d4d8]">
+                          ·
+                        </span>
+                        <span className="truncate font-mono">{categoria.slug}</span>
                       </p>
                     </div>
                   </div>
@@ -371,21 +414,17 @@ export default function Categorias() {
                       faz o nome longo truncar em vez de empurrar os
                       botões para fora da tela. */}
                   <div className="flex shrink-0 items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => toggleAtiva(categoria)}
-                      className={`t-apoio inline-flex min-h-8 shrink-0 items-center gap-1 rounded-[4px] border px-2 py-1 font-medium ${
-                        categoria.ativa
-                          ? "border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]"
-                          : "border-[#e4e4e7] bg-[#f4f4f5] text-[#52525b]"
-                      }`}
-                    >
-                      {categoria.ativa && (
-                        <Check size={11} strokeWidth={2.5} />
-                      )}
-
-                      {categoria.ativa ? "Ativa" : "Inativa"}
-                    </button>
+                    {/* Antes a própria etiqueta de status era o
+                        botão: ninguém adivinha que a palavra "Ativa" é
+                        clicável, e o lojista ficava sem como
+                        desativar. Agora quem controla é o interruptor,
+                        e quem informa é o texto da segunda linha. */}
+                    <Interruptor
+                      ligado={categoria.ativa}
+                      onAlternar={(v) => toggleAtiva(categoria, v)}
+                      rotulo={`Categoria ${categoria.nome} ativa na loja`}
+                      carregando={alternando === categoria.id}
+                    />
 
                     <button
                       type="button"
@@ -453,21 +492,28 @@ export default function Categorias() {
                     </td>
 
                     <td className="px-4 py-2.5">
-                      <button
-                        type="button"
-                        onClick={() => toggleAtiva(categoria)}
-                        className={`t-apoio inline-flex items-center gap-1 rounded-[3px] border px-1.5 py-0.5 font-medium ${
-                          categoria.ativa
-                            ? "border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]"
-                            : "border-[#e4e4e7] bg-[#f4f4f5] text-[#52525b]"
-                        }`}
-                      >
-                        {categoria.ativa && (
-                          <Check size={10} strokeWidth={2.5} />
-                        )}
+                      <div className="flex items-center gap-2">
+                        <Interruptor
+                          ligado={categoria.ativa}
+                          onAlternar={(v) => toggleAtiva(categoria, v)}
+                          rotulo={`Categoria ${categoria.nome} ativa na loja`}
+                          carregando={alternando === categoria.id}
+                        />
 
-                        {categoria.ativa ? "Ativa" : "Inativa"}
-                      </button>
+                        <span
+                          className={`t-apoio inline-flex items-center gap-1 rounded-[3px] border px-1.5 py-0.5 font-medium ${
+                            categoria.ativa
+                              ? "border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]"
+                              : "border-[#e4e4e7] bg-[#f4f4f5] text-[#52525b]"
+                          }`}
+                        >
+                          {categoria.ativa && (
+                            <Check size={10} strokeWidth={2.5} />
+                          )}
+
+                          {categoria.ativa ? "Ativa" : "Inativa"}
+                        </span>
+                      </div>
                     </td>
 
                     <td className="px-4 py-2.5">

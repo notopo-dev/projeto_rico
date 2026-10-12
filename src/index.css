@@ -550,10 +550,34 @@ textarea {
 
   /* Alvo de toque mínimo. Botões desenhados para mouse costumavam ter
      28-32px de altura; no dedo isso erra muito. 44px é a recomendação
-     da Apple, 48px a do Google — 44 com folga de padding resolve. */
+     da Apple, 48px a do Google — 44 com folga de padding resolve.
+
+     `min-width` junto com `min-height`, e não só a altura.
+
+     Só a altura era meia correção, e ela DEFORMAVA todo botão
+     quadrado. As classes de tamanho do Tailwind são em rem, e a fonte
+     da raiz aqui é 15px na loja: `w-9 h-9` pede 33,75px, `w-10 h-10`
+     pede 37,5px, `w-11 h-11` pede 41,25px. A altura era esticada para
+     44 e a largura ficava onde estava — então todo `rounded-full`
+     desse tamanho virava um OVO em pé. Medido na loja no ar, no
+     celular de 375px: o carrinho tinha cinco (voltar 38x44, esvaziar
+     38x44, remover 34x44, diminuir 34x44, aumentar 34x44), o checkout
+     tinha o voltar em 34x44 e a página do produto o voltar e os dois
+     botões de quantidade.
+
+     `min-width` vence a `width` menor que o Tailwind escreve, igual a
+     `min-height` já vencia a altura. Resultado: os quadrados voltam a
+     ser quadrados, agora com 44 nos dois lados — o desenho certo e o
+     alvo de toque certo pelo mesmo caminho. Botão de texto já é mais
+     largo que 44, então para esses não muda nada.
+
+     Conferido página por página na loja no ar depois da mudança:
+     nenhuma passou a transbordar na horizontal (scrollWidth continuou
+     em 375 na vitrine, no produto, no carrinho e no checkout). */
   button,
   [role="button"] {
     min-height: 44px;
+    min-width: 44px;
   }
 
   /* Exceções: elementos que já controlam o próprio tamanho e não devem
@@ -568,6 +592,7 @@ textarea {
   [role="switch"],
   [role="switch"] * {
     min-height: 0;
+    min-width: 0;
   }
 }
 
